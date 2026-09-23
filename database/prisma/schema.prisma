@@ -152,7 +152,7 @@ model Project {
   updatedAt                DateTime      @updatedAt
 
   subject                 Subject       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  versions                ProjectVersion[]
+  versions                ProjectVersion[] @relation("ProjectVersions")
   currentPublishedVersion ProjectVersion? @relation("CurrentPublishedVersion", fields: [currentPublishedVersionId], references: [id], onDelete: SetNull)
   currentPublishedVersionId String? @unique @db.Uuid
   progress                UserProjectProgress[]
