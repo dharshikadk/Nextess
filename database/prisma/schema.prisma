@@ -1,0 +1,525 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubjectStatus {
+  ACTIVE
+  FUTURE
+}
+
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum VersionStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+  RETIRED
+}
+
+enum InvestigationStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum RewardType {
+  XP
+  COINS
+}
+
+enum BadgeKind {
+  STREAK
+  PERFECT
+  MISSION
+  SUBJECT
+  CONTEST
+  MILESTONE
+}
+
+enum StreakState {
+  QUALIFIED
+  RECOVERED
+}
+
+enum FeedbackStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+enum ActorType {
+  USER
+  ANONYMOUS
+  SYSTEM
+  ADMIN
+}
+
+model AnonymousSession {
+  id             String   @id @default(uuid()) @db.Uuid
+  sessionHash    String   @unique @db.VarChar(128)
+  createdAt      DateTime @default(now())
+  lastActivityAt DateTime @default(now())
+  expiresAt      DateTime
+
+  investigations Investigation[]
+
+  @@index([expiresAt])
+  @@index([lastActivityAt])
+}
+
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  username       String   @unique @db.VarChar(50)
+  passwordHash   String   @db.VarChar(255)
+  gradeClass     String?  @db.VarChar(50)
+  level          Int      @default(1)
+  xp             Int      @default(0)
+  coins          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastActivityAt DateTime?
+
+  settings       UserSetting?
+  investigations Investigation[]
+  answers        InvestigationAnswer[]
+  notes          UserNote[]
+  progress       UserProjectProgress[]
+  levelProgress  UserLevelProgress[]
+  performance    UserPerformance[]
+  rewards        RewardLedger[]
+  streakActivity StreakActivity[]
+  badges         UserBadge[]
+  feedback       Feedback[]
+  auditEvents    AuditEvent[]
+
+  @@index([lastActivityAt])
+}
+
+model UserSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  theme     String   @default("light") @db.VarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subject {
+  id          String        @id @default(uuid()) @db.Uuid
+  key         String        @unique @db.VarChar(50)
+  displayName String        @db.VarChar(100)
+  status      SubjectStatus  @default(FUTURE)
+  ordering    Int
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  projects Project[]
+
+  @@index([status, ordering])
+}
+
+model Project {
+  id                       String        @id @default(uuid()) @db.Uuid
+  subjectId                String        @db.Uuid
+  slug                     String        @unique @db.VarChar(120)
+  title                    String        @db.VarChar(200)
+  mission                  String
+  role                     String?
+  priority                 String?       @db.VarChar(30)
+  problemType              String?       @db.VarChar(120)
+  estimatedLengthMinutes   Int?
+  status                   ProjectStatus @default(DRAFT)
+  anonymousAccess          Boolean       @default(true)
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  subject                 Subject       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  versions                ProjectVersion[]
+  currentPublishedVersion ProjectVersion? @relation("CurrentPublishedVersion", fields: [currentPublishedVersionId], references: [id], onDelete: SetNull)
+  currentPublishedVersionId String? @unique @db.Uuid
+  progress                UserProjectProgress[]
+  investigations          Investigation[]
+
+  @@index([subjectId, status])
+}
+
+model ProjectVersion {
+  id             String        @id @default(uuid()) @db.Uuid
+  projectId      String        @db.Uuid
+  version        Int
+  status         VersionStatus @default(DRAFT)
+  contentChecksum String       @db.VarChar(128)
+  publishedAt    DateTime?
+  retiredAt      DateTime?
+  createdAt      DateTime      @default(now())
+
+  project         Project @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  currentForProject Project? @relation("CurrentPublishedVersion")
+  levels          Level[]
+  caseFiles       CaseFile[]
+  investigations  Investigation[]
+
+  @@unique([projectId, version])
+  @@index([projectId, status])
+}
+
+model Level {
+  id                    String   @id @default(uuid()) @db.Uuid
+  projectVersionId      String   @db.Uuid
+  levelNumber           Int
+  title                 String   @db.VarChar(200)
+  learningObjectives    Json?
+  completionRules       Json?
+  debrief               Json?
+  rewardXp              Int      @default(0)
+  rewardCoins           Int      @default(0)
+  simulationDefinitionId String?  @unique @db.Uuid
+
+  projectVersion ProjectVersion       @relation(fields: [projectVersionId], references: [id], onDelete: Cascade)
+  questions      Question[]
+  simulation    SimulationDefinition? @relation(fields: [simulationDefinitionId], references: [id], onDelete: SetNull)
+  progress      UserLevelProgress[]
+
+  @@unique([projectVersionId, levelNumber])
+  @@index([projectVersionId, levelNumber])
+}
+
+model Question {
+  id                    String   @id @default(uuid()) @db.Uuid
+  levelId               String   @db.Uuid
+  questionNumber        Int
+  questionType          String   @db.VarChar(80)
+  prompt                String
+  inputSchema           Json?
+  evaluationDefinition  Json
+  consequenceDefinition Json?
+  explanation           String?
+  ordering              Int
+  createdAt             DateTime @default(now())
+
+  level       Level                    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  options     QuestionOption[]
+  hints       Hint[]
+  rules       EvaluationRule[]
+  answers     InvestigationAnswer[]
+
+  @@unique([levelId, questionNumber])
+  @@index([levelId, ordering])
+}
+
+model QuestionOption {
+  id             String   @id @default(uuid()) @db.Uuid
+  questionId     String   @db.Uuid
+  optionKey      String   @db.VarChar(20)
+  optionText     String
+  evaluationData Json?
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionKey])
+}
+
+model Hint {
+  id          String   @id @default(uuid()) @db.Uuid
+  questionId  String   @db.Uuid
+  level       Int
+  text        String
+  xpCost      Int      @default(0)
+  coinCost    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, level])
+}
+
+model CaseFile {
+  id               String   @id @default(uuid()) @db.Uuid
+  projectVersionId String   @db.Uuid
+  name             String   @db.VarChar(255)
+  mimeType         String   @db.VarChar(120)
+  content          String?
+  storageKey       String?  @db.VarChar(500)
+  displayMode      String   @db.VarChar(40)
+  ordering         Int
+  createdAt        DateTime @default(now())
+
+  projectVersion ProjectVersion @relation(fields: [projectVersionId], references: [id], onDelete: Cascade)
+
+  @@index([projectVersionId, ordering])
+}
+
+model SimulationDefinition {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String   @db.VarChar(120)
+  version        Int
+  rendererKey    String   @db.VarChar(120)
+  purpose        String
+  configuration  Json
+  frontendNotes  String?
+  createdAt      DateTime @default(now())
+
+  level         Level?
+  variables     SimulationVariable[]
+  consequences  SimulationConsequence[]
+
+  @@unique([key, version])
+}
+
+model SimulationVariable {
+  id             String   @id @default(uuid()) @db.Uuid
+  simulationId   String   @db.Uuid
+  variableKey    String   @db.VarChar(100)
+  label          String   @db.VarChar(150)
+  valueType      String   @db.VarChar(30)
+  minValue       Decimal? @db.Decimal(18, 6)
+  maxValue       Decimal? @db.Decimal(18, 6)
+  stepValue      Decimal? @db.Decimal(18, 6)
+  defaultValue   Json
+  unit            String?  @db.VarChar(50)
+  options        Json?
+
+  simulation SimulationDefinition @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@unique([simulationId, variableKey])
+}
+
+model SimulationConsequence {
+  id             String   @id @default(uuid()) @db.Uuid
+  simulationId   String   @db.Uuid
+  code           String   @db.VarChar(60)
+  label          String   @db.VarChar(150)
+  ruleDefinition Json
+  ordering       Int
+
+  simulation SimulationDefinition @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@unique([simulationId, code])
+}
+
+model EvaluationRule {
+  id             String   @id @default(uuid()) @db.Uuid
+  questionId     String   @db.Uuid
+  ruleKey        String   @db.VarChar(100)
+  evaluatorVersion String  @db.VarChar(40)
+  definition     Json
+  enabled        Boolean  @default(true)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, ruleKey])
+}
+
+model Investigation {
+  id                String             @id @default(uuid()) @db.Uuid
+  userId            String?            @db.Uuid
+  anonymousSessionId String?           @db.Uuid
+  projectId         String             @db.Uuid
+  projectVersionId  String             @db.Uuid
+  currentLevelId    String?            @db.Uuid
+  currentQuestionId String?            @db.Uuid
+  status            InvestigationStatus @default(IN_PROGRESS)
+  state              Json?
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+  lastActivityAt    DateTime           @default(now())
+
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  projectVersion  ProjectVersion   @relation(fields: [projectVersionId], references: [id], onDelete: Restrict)
+  answers         InvestigationAnswer[]
+  rewards         RewardLedger[]
+
+  @@index([userId, status])
+  @@index([anonymousSessionId, status])
+  @@index([projectId, status])
+  @@index([projectVersionId])
+}
+
+model InvestigationAnswer {
+  id              String   @id @default(uuid()) @db.Uuid
+  investigationId String   @db.Uuid
+  questionId      String   @db.Uuid
+  userId          String?  @db.Uuid
+  attemptNumber   Int
+  answerPayload   Json
+  normalizedAnswer Json?
+  result          String   @db.VarChar(40)
+  evaluatorVersion String  @db.VarChar(40)
+  consequenceCode String?  @db.VarChar(60)
+  feedbackData    Json?
+  submittedAt     DateTime @default(now())
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  question      Question      @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([investigationId, questionId, attemptNumber])
+  @@index([userId, submittedAt])
+}
+
+model UserProjectProgress {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  projectId       String         @db.Uuid
+  status          ProgressStatus @default(NOT_STARTED)
+  currentLevelId  String?        @db.Uuid
+  currentQuestionId String?      @db.Uuid
+  progressPercent Int            @default(0)
+  lastActivityAt  DateTime?
+  completedAt     DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId, status])
+}
+
+model UserLevelProgress {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  levelId         String         @db.Uuid
+  status           ProgressStatus @default(NOT_STARTED)
+  currentQuestionId String?       @db.Uuid
+  completedQuestions Int          @default(0)
+  totalQuestions   Int            @default(0)
+  completedAt      DateTime?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, levelId])
+}
+
+model UserPerformance {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  skillKey       String   @db.VarChar(100)
+  scorePercent   Decimal  @default(0) @db.Decimal(5, 2)
+  attempts       Int      @default(0)
+  correctCount   Int      @default(0)
+  mistakeTags    Json?
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillKey])
+  @@index([userId])
+}
+
+model RewardLedger {
+  id             String     @id @default(uuid()) @db.Uuid
+  userId         String     @db.Uuid
+  investigationId String?   @db.Uuid
+  sourceId       String     @db.Uuid
+  rewardType     RewardType
+  amount         Int
+  reasonCode     String     @db.VarChar(100)
+  idempotencyKey String     @unique @db.VarChar(180)
+  createdAt      DateTime   @default(now())
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investigation Investigation? @relation(fields: [investigationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([sourceId, rewardType])
+}
+
+model Badge {
+  id          String    @id @default(uuid()) @db.Uuid
+  key         String    @unique @db.VarChar(100)
+  name        String    @db.VarChar(120)
+  description String
+  kind        BadgeKind
+  criteria    Json
+  createdAt   DateTime  @default(now())
+
+  users UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  badgeId   String   @db.Uuid
+  earnedAt  DateTime @default(now())
+  metadata  Json?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId, earnedAt])
+}
+
+model StreakActivity {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @db.Uuid
+  activityDate DateTime
+  state       StreakState @default(QUALIFIED)
+  sourceId    String?     @db.Uuid
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityDate])
+  @@index([userId, activityDate])
+}
+
+model UserNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  investigationId String?  @db.Uuid
+  title          String?  @db.VarChar(200)
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Feedback {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String?        @db.Uuid
+  category  String         @db.VarChar(80)
+  message   String
+  status    FeedbackStatus @default(OPEN)
+  createdAt DateTime       @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model AuditEvent {
+  id         String    @id @default(uuid()) @db.Uuid
+  actorType  ActorType
+  actorId    String?   @db.Uuid
+  action     String    @db.VarChar(120)
+  entityType String    @db.VarChar(80)
+  entityId   String?   @db.Uuid
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
