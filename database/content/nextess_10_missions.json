@@ -1,0 +1,1824 @@
+{
+  "contentVersion": "1.0",
+  "packageType": "nextess-mission-content-draft",
+  "sourceBasis": [
+    "MODEL CHALLENGES PHYSICS.txt",
+    "MODEL CHALLENGES ECONOMICS.txt",
+    "PHYSICS TYPES OF MISSION.txt",
+    "ECONOMICS TYPES OF MISSION.txt"
+  ],
+  "schemaNote": "The GitHub repository/API contract could not be read in this session, so this package uses the mission/content structure supported by the uploaded source files. It must be mapped to the repository's exact Prisma/API field names before direct seeding.",
+  "levelPolicy": "Starting from easier missions and increasing in reasoning demand.",
+  "missions": [
+    {
+      "id": "PHY-001",
+      "subject": "Physics",
+      "title": "The Safe House Circuit",
+      "domain": "Electricity",
+      "difficulty": "Easy",
+      "missionType": "Investigation → Diagnosis → Prediction → Engineering Decision",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Find why a small house circuit overheats and choose a safe arrangement.",
+      "missionBrief": "A small workshop uses a 12 V supply for a lamp and a motor. The wires become hot when both devices are used. The owner thinks the wire is simply old. The student must use the reports and test bench to find the real cause.",
+      "resources": [
+        {
+          "fileName": "concept_brief_electric_current.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses current, potential difference, resistance and electrical power. The student should first find what changes when the circuit becomes unsafe. The main idea is that a device can draw more current when its resistance is lower or the supply is higher, and the heating effect depends strongly on current."
+        },
+        {
+          "fileName": "circuit_incident_report.txt",
+          "fileType": "report",
+          "content": "Supply: 12 V. Wire resistance: 0.50 ohm. Fuse limit: 5 A. The wire becomes hot when both devices run."
+        },
+        {
+          "fileName": "device_test_data.csv",
+          "fileType": "data",
+          "content": "device,current_A\nlamp,2\nmotor,3\nboth,6"
+        },
+        {
+          "fileName": "circuit_layout.txt",
+          "fileType": "diagram",
+          "content": "12 V source connected to lamp and motor. Main wire and fuse are before the branch."
+        }
+      ],
+      "simulation": {
+        "type": "circuit_lab",
+        "purpose": "Show how supply, device resistance and connected loads change current and heating.",
+        "controls": [
+          {
+            "id": "voltage",
+            "label": "Supply voltage",
+            "min": 8,
+            "max": 16,
+            "step": 1,
+            "default": 12,
+            "unit": "V"
+          },
+          {
+            "id": "lampResistance",
+            "label": "Lamp resistance",
+            "min": 2,
+            "max": 10,
+            "step": 1,
+            "default": 6,
+            "unit": "ohm"
+          },
+          {
+            "id": "motorResistance",
+            "label": "Motor resistance",
+            "min": 2,
+            "max": 10,
+            "step": 1,
+            "default": 4,
+            "unit": "ohm"
+          }
+        ],
+        "outputs": [
+          "branch currents",
+          "main current",
+          "wire heating power",
+          "fuse status"
+        ],
+        "states": [
+          "SAFE",
+          "HIGH CURRENT",
+          "FUSE TRIP",
+          "WIRE OVERHEATING"
+        ],
+        "logic": "Compute branch currents from the supply and branch resistance, add the branch currents in the main wire, then show heating and fuse state. The student must predict before running.",
+        "frontend": "Interactive circuit diagram on the right. Sliders stay active across all challenges. Show current arrows, a temperature bar for the main wire, and a fuse that trips when the limit is crossed."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "investigation",
+          "prompt": "The owner says the old wire is the main problem. From the report and data, what changed most clearly when both devices were used? Select the evidence that should be checked first.",
+          "options": [
+            "Main current",
+            "Paint colour of the wire",
+            "Room temperature",
+            "Number of switches"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Main current"
+          },
+          "systemResponse": "The main current rises from the individual device values to 6 A. The wire is carrying the combined current.",
+          "insight": "Compare the current in one device with the current when both devices run."
+        },
+        {
+          "id": "C2",
+          "type": "diagnose_claim",
+          "prompt": "An engineer says: 'If the supply stays at 12 V, the main wire current cannot change.' Test the claim with two different device settings and explain what you find.",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "current depends on the connected load",
+              "changing resistance changes current"
+            ]
+          },
+          "systemResponse": "Claim rejected. The same supply can give different current when the connected resistance changes.",
+          "insight": "A fixed supply does not mean a fixed current."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "The fuse is rated for 5 A. The two devices together draw 6 A. What must change so that the main current stays at or below the fuse limit? Use the test bench before giving your final value.",
+          "answer": {
+            "type": "numeric_range",
+            "value": 5,
+            "tolerance": 0.05,
+            "unit": "A"
+          },
+          "systemResponse": "The safe boundary is 5 A. A setting that keeps the main current at or below this value avoids the fuse trip.",
+          "insight": "The fuse limit is a constraint. Work backwards from the allowed main current."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "What happens if the supply is raised while the device settings stay unchanged? Predict the direction of the current change, then test it.",
+          "answer": {
+            "type": "direction",
+            "value": "increase"
+          },
+          "systemResponse": "Current increases when the supply is raised for the same load.",
+          "insight": "Change one control only and compare the before and after readings."
+        },
+        {
+          "id": "C5",
+          "type": "connect_concepts",
+          "prompt": "The wire heats much more when the current rises from 3 A to 6 A. Is the heating expected to double or rise by a larger factor? Explain from the test data.",
+          "answer": {
+            "type": "concept",
+            "value": "larger_factor"
+          },
+          "systemResponse": "The heating rises by a larger factor because the heating effect depends on the square of current for a fixed resistance.",
+          "insight": "Compare the ratio of current with the ratio of heating."
+        },
+        {
+          "id": "C6",
+          "type": "final_design",
+          "prompt": "Choose supply and device settings that let both devices work while keeping the main current at or below 5 A and avoiding wire overheating. Run the test before submitting.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "mainCurrent<=5",
+              "fuseNotTripped",
+              "wireSafe"
+            ]
+          },
+          "systemResponse": "Design accepted when all safety limits are satisfied.",
+          "insight": "Do not optimise one reading alone. Meet every safety condition."
+        }
+      ],
+      "insights": [
+        "What measurement changes at the failure?",
+        "What controls that measurement?",
+        "Change one control at a time.",
+        "Work backwards from the safety limit."
+      ],
+      "solution": {
+        "finalAnswer": "The main current must be kept within the fuse and wire limits. Connected loads, their resistance and the supply determine the current. The heating effect rises strongly with current.",
+        "analysis": "Situation → observe current → identify load dependence → test a prediction → connect current to heating → choose a safe design."
+      },
+      "debrief": {
+        "concepts": [
+          "current",
+          "potential difference",
+          "resistance",
+          "heating effect",
+          "electrical power"
+        ],
+        "skills": [
+          "pattern recognition",
+          "failure analysis",
+          "prediction",
+          "constraint design"
+        ]
+      }
+    },
+    {
+      "id": "PHY-002",
+      "subject": "Physics",
+      "title": "The Bicycle Headlight",
+      "domain": "Electricity and Energy",
+      "difficulty": "Easy",
+      "missionType": "Failure Analysis → What If → Design",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Find why a bicycle light becomes dim and choose a better operating condition.",
+      "missionBrief": "A delivery bicycle uses a rechargeable battery and a headlight. The light is bright at the start but becomes weak during a long trip. The rider wants the same battery to last longer without making the light too dim.",
+      "resources": [
+        {
+          "fileName": "concept_brief_power_energy.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses electrical power and energy in a real device. The student compares voltage, current, running time and useful output instead of being told which formula to use."
+        },
+        {
+          "fileName": "battery_report.txt",
+          "fileType": "report",
+          "content": "Battery: 12 V, 8 Ah. Headlight rated near 24 W. Safe battery voltage range: 10.5–12.6 V."
+        },
+        {
+          "fileName": "trip_log.csv",
+          "fileType": "data",
+          "content": "time_h,voltage_V,brightness_percent\n0,12.6,100\n1,12.0,94\n2,11.4,84\n3,10.8,70"
+        },
+        {
+          "fileName": "rider_note.txt",
+          "fileType": "observation",
+          "content": "The rider says the light is acceptable above about 80% brightness."
+        }
+      ],
+      "simulation": {
+        "type": "battery_device_lab",
+        "purpose": "Show how battery voltage, device power and running time affect brightness and stored energy.",
+        "controls": [
+          {
+            "id": "batteryVoltage",
+            "label": "Battery voltage",
+            "min": 10.5,
+            "max": 12.6,
+            "step": 0.1,
+            "default": 12,
+            "unit": "V"
+          },
+          {
+            "id": "lampPower",
+            "label": "Lamp power demand",
+            "min": 12,
+            "max": 30,
+            "step": 1,
+            "default": 24,
+            "unit": "W"
+          },
+          {
+            "id": "runTime",
+            "label": "Run time",
+            "min": 1,
+            "max": 5,
+            "step": 0.5,
+            "default": 3,
+            "unit": "h"
+          }
+        ],
+        "outputs": [
+          "current",
+          "power",
+          "energy_used",
+          "brightness",
+          "battery_remaining"
+        ],
+        "logic": "Estimate current from power and voltage, energy use from power and time, and brightness from operating voltage. Flag low brightness and battery depletion.",
+        "frontend": "Battery gauge, lamp brightness, current meter and energy-use graph. The student can change one control and replay the trip."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "pattern_recognition",
+          "prompt": "The light becomes dim as the trip continues. Which measured change matches the brightness fall most closely?",
+          "options": [
+            "Battery voltage falls",
+            "Trip time becomes zero",
+            "Battery mass increases",
+            "Wheel diameter changes"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Battery voltage falls"
+          },
+          "systemResponse": "The data show brightness falling as battery voltage falls.",
+          "insight": "Look for the quantity that changes in the same part of the trip."
+        },
+        {
+          "id": "C2",
+          "type": "diagnose_claim",
+          "prompt": "The rider says: 'A bigger battery voltage always makes the lamp safer.' Is that statement complete? Use the safe voltage range and explain.",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "voltage must stay within device range",
+              "higher is not always safer"
+            ]
+          },
+          "systemResponse": "A higher voltage is not automatically safe. The device has a safe operating range.",
+          "insight": "A useful change can become harmful if it crosses a limit."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "At 12 V the lamp needs 24 W. Estimate the current it draws at this condition.",
+          "answer": {
+            "type": "numeric_range",
+            "value": 2,
+            "tolerance": 0.05,
+            "unit": "A"
+          },
+          "systemResponse": "The lamp draws about 2 A.",
+          "insight": "Power tells you how quickly electrical energy is being used."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "If the lamp demand is reduced from 24 W to 18 W while voltage stays near 12 V, predict what happens to current and battery life.",
+          "answer": {
+            "type": "multi",
+            "values": {
+              "current": "decrease",
+              "batteryLife": "increase"
+            }
+          },
+          "systemResponse": "Current falls and the battery can run the lamp for longer, though brightness may also change.",
+          "insight": "Lower energy use can improve run time, but check the required output."
+        },
+        {
+          "id": "C5",
+          "type": "connect_concepts",
+          "prompt": "The rider wants at least 80% brightness for a 3-hour trip. Test different lamp demands and decide whether lower power alone solves the problem.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "brightness>=80",
+              "runTime>=3"
+            ]
+          },
+          "systemResponse": "The best choice must satisfy both brightness and run-time limits.",
+          "insight": "A good design must satisfy the user need and the battery limit together."
+        },
+        {
+          "id": "C6",
+          "type": "final_design",
+          "prompt": "Design a 3-hour operating condition that keeps brightness at or above 80% for as long as possible without exceeding the safe battery range.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "runTime>=3",
+              "brightness>=80",
+              "voltage>=10.5",
+              "voltage<=12.6"
+            ]
+          },
+          "systemResponse": "Design accepted when all four limits are satisfied.",
+          "insight": "Check output, energy use and safety together."
+        }
+      ],
+      "insights": [
+        "Follow the battery voltage through time.",
+        "Power tells how fast energy is used.",
+        "Lower demand is not automatically a good answer; check brightness.",
+        "Use all mission limits together."
+      ],
+      "solution": {
+        "finalAnswer": "The battery voltage falls with use, reducing lamp output. Lower power demand can reduce current and energy use, but the final design must still keep brightness above the required level.",
+        "analysis": "Observe voltage and brightness → connect power to current → test lower demand → balance brightness and battery life."
+      },
+      "debrief": {
+        "concepts": [
+          "power",
+          "electrical energy",
+          "current",
+          "battery capacity"
+        ],
+        "skills": [
+          "data reading",
+          "what-if reasoning",
+          "optimisation"
+        ]
+      }
+    },
+    {
+      "id": "PHY-003",
+      "subject": "Physics",
+      "title": "The Weak Crane Magnet",
+      "domain": "Magnetic Effects of Current",
+      "difficulty": "Easy",
+      "missionType": "Failure Analysis → Pattern Recognition → Engineering Decision",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Find why an electromagnet loses lifting strength and choose a safe way to improve it.",
+      "missionBrief": "A small workshop crane uses an electromagnet to lift steel parts. The crane sometimes drops a part when the battery becomes weak. The team must find which changes matter most.",
+      "resources": [
+        {
+          "fileName": "concept_brief_electromagnet.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses the idea that a current-carrying coil produces a magnetic field and that coil turns, current and a suitable core affect an electromagnet's strength."
+        },
+        {
+          "fileName": "crane_incident_report.txt",
+          "fileType": "report",
+          "content": "The crane lifts 8 kg normally. It begins to fail below a lifting force equivalent to 60 N."
+        },
+        {
+          "fileName": "coil_test_data.csv",
+          "fileType": "data",
+          "content": "turns,current_A,core,lift_N\n100,1,iron,30\n200,1,iron,60\n300,1,iron,90\n200,0.5,iron,30\n200,1,air,12"
+        },
+        {
+          "fileName": "safety_note.txt",
+          "fileType": "report",
+          "content": "Coil current must not exceed 1.5 A because of heating."
+        }
+      ],
+      "simulation": {
+        "type": "electromagnet_lab",
+        "purpose": "Show how coil turns, current and core material affect magnetic lifting force.",
+        "controls": [
+          {
+            "id": "turns",
+            "label": "Coil turns",
+            "min": 100,
+            "max": 400,
+            "step": 50,
+            "default": 200
+          },
+          {
+            "id": "current",
+            "label": "Current",
+            "min": 0.5,
+            "max": 1.5,
+            "step": 0.1,
+            "default": 1,
+            "unit": "A"
+          },
+          {
+            "id": "core",
+            "label": "Core",
+            "options": [
+              "air",
+              "iron"
+            ],
+            "default": "iron"
+          }
+        ],
+        "outputs": [
+          "magnetic_strength",
+          "lifting_force",
+          "coil_temperature",
+          "lift_status"
+        ],
+        "logic": "Use a simple educational model where lifting force rises with turns, current and iron core. Add a heating warning as current approaches the limit.",
+        "frontend": "Animated coil around a core lifting a steel block. Show field lines, force meter and coil temperature."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "pattern_recognition",
+          "prompt": "Which change gives the clearest increase in lifting force in the report?",
+          "options": [
+            "More coil turns",
+            "Changing the block colour",
+            "Reducing the coil turns",
+            "Removing the iron core"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "More coil turns"
+          },
+          "systemResponse": "More turns increase the lifting force in the tested range.",
+          "insight": "Compare trials where only one main condition changes."
+        },
+        {
+          "id": "C2",
+          "type": "diagnose_claim",
+          "prompt": "A technician says: 'The iron core does not matter because current is the only source of the magnetic effect.' Test the claim.",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "iron core increases magnetic strength",
+              "same current gives different force"
+            ]
+          },
+          "systemResponse": "The iron core makes a large difference in the test.",
+          "insight": "Compare the air-core and iron-core trials at the same current and turns."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "The crane needs at least 60 N of lifting force. At 1 A with an iron core, how many turns are needed according to the test data?",
+          "answer": {
+            "type": "numeric",
+            "value": 200
+          },
+          "systemResponse": "200 turns reaches the 60 N requirement in the given test data.",
+          "insight": "Find the first tested condition that reaches the required force."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "If the current falls from 1 A to 0.5 A, what should you expect if the coil turns and core stay the same?",
+          "answer": {
+            "type": "direction",
+            "value": "lifting_force_decreases"
+          },
+          "systemResponse": "The lifting force falls in the test data.",
+          "insight": "Compare the two trials with the same turns and core."
+        },
+        {
+          "id": "C5",
+          "type": "failure_analysis",
+          "prompt": "The battery becomes weak and current falls to 0.5 A. Give two possible ways to recover the required lifting force without crossing the 1.5 A limit.",
+          "answer": {
+            "type": "multi",
+            "values": [
+              "increase turns",
+              "use iron core"
+            ]
+          },
+          "systemResponse": "Increasing turns and using an iron core can raise lifting force without needing more than the current limit.",
+          "insight": "Look for another control when one control has reached its safe limit."
+        },
+        {
+          "id": "C6",
+          "type": "final_design",
+          "prompt": "Choose turns, current and core so the crane lifts at least 60 N while current stays at or below 1.5 A.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "liftingForce>=60",
+              "current<=1.5",
+              "core='iron'"
+            ]
+          },
+          "systemResponse": "Design accepted when the lifting force and current limits are both met.",
+          "insight": "Use the safest change first when current is limited."
+        }
+      ],
+      "insights": [
+        "Compare one change at a time.",
+        "The core changes the magnetic effect.",
+        "If current cannot rise, change another useful condition.",
+        "Always check the heating limit."
+      ],
+      "solution": {
+        "finalAnswer": "The electromagnet becomes weak mainly when current falls. More turns and an iron core can improve the lifting force without crossing the current limit.",
+        "analysis": "Compare data → find useful controls → test weak-battery case → redesign under a current limit."
+      },
+      "debrief": {
+        "concepts": [
+          "electromagnet",
+          "magnetic field of current",
+          "coil turns",
+          "iron core"
+        ],
+        "skills": [
+          "failure analysis",
+          "pattern recognition",
+          "safe design"
+        ]
+      }
+    },
+    {
+      "id": "PHY-004",
+      "subject": "Physics",
+      "title": "The Flood Sensor Bridge",
+      "domain": "Pressure and Fluids",
+      "difficulty": "Easy",
+      "missionType": "Investigation → What If → Multi-Concept Design",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Use water pressure data to decide where a flood sensor should be placed and how strong its cover must be.",
+      "missionBrief": "A bridge has water-level sensors inside protective boxes. During heavy rain, one sensor cover breaks. The team wants to place the sensor safely and choose a cover that can handle the water pressure.",
+      "resources": [
+        {
+          "fileName": "concept_brief_pressure.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses pressure in liquids and density. The student learns that pressure increases with depth and also depends on the liquid. The task connects pressure to a real sensor design."
+        },
+        {
+          "fileName": "bridge_sensor_report.txt",
+          "fileType": "report",
+          "content": "Sensor cover safe pressure: 20 kPa. Sensor can be placed from 0.5 m to 2.0 m below the water surface."
+        },
+        {
+          "fileName": "water_level_data.csv",
+          "fileType": "data",
+          "content": "depth_m,pressure_kPa\n0.5,5\n1.0,10\n1.5,15\n2.0,20"
+        },
+        {
+          "fileName": "material_note.txt",
+          "fileType": "report",
+          "content": "Fresh water density is about 1000 kg/m^3. A muddy flood water sample is estimated at 1100 kg/m^3."
+        }
+      ],
+      "simulation": {
+        "type": "fluid_pressure_lab",
+        "purpose": "Show how liquid depth and density change pressure.",
+        "controls": [
+          {
+            "id": "depth",
+            "label": "Sensor depth",
+            "min": 0.5,
+            "max": 2,
+            "step": 0.1,
+            "default": 1,
+            "unit": "m"
+          },
+          {
+            "id": "density",
+            "label": "Liquid density",
+            "min": 900,
+            "max": 1200,
+            "step": 50,
+            "default": 1000,
+            "unit": "kg/m³"
+          }
+        ],
+        "outputs": [
+          "pressure",
+          "cover_status"
+        ],
+        "logic": "Use hydrostatic pressure proportional to density, gravitational acceleration and depth. Compare pressure with the cover limit.",
+        "frontend": "Transparent water tank with movable sensor. Depth marker, pressure gauge and cover warning stay visible."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "graph_investigation",
+          "prompt": "From the pressure data, what happens as the sensor moves deeper?",
+          "options": [
+            "Pressure increases",
+            "Pressure decreases",
+            "Pressure stays fixed",
+            "Pressure becomes zero"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Pressure increases"
+          },
+          "systemResponse": "Pressure rises steadily with depth in the given water data.",
+          "insight": "Read the trend before using numbers."
+        },
+        {
+          "id": "C2",
+          "type": "diagnose_claim",
+          "prompt": "An engineer says: 'Only the water level matters; the type of liquid does not matter.' Is this safe?",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "density affects pressure",
+              "same depth can give different pressure"
+            ]
+          },
+          "systemResponse": "The claim is not safe. A denser liquid gives greater pressure at the same depth.",
+          "insight": "Compare two liquids at the same depth."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "The cover can handle 20 kPa. In fresh water, what is the deepest tested position that stays within the limit?",
+          "answer": {
+            "type": "numeric",
+            "value": 2
+          },
+          "systemResponse": "2.0 m is exactly at the 20 kPa limit in the given data.",
+          "insight": "Find the boundary rather than simply choosing the shallowest point."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "The flood water becomes denser while the sensor stays at the same depth. Predict the pressure change and test it.",
+          "answer": {
+            "type": "direction",
+            "value": "increase"
+          },
+          "systemResponse": "Pressure increases when density increases at the same depth.",
+          "insight": "Hold depth fixed and change only density."
+        },
+        {
+          "id": "C5",
+          "type": "connect_concepts",
+          "prompt": "The sensor must work during muddy flood water with density 1100 kg/m³. Should it be placed at the same depth as in fresh water if the cover limit is unchanged?",
+          "answer": {
+            "type": "concept",
+            "value": "shallower"
+          },
+          "systemResponse": "It should be placed shallower because the denser water produces more pressure at the same depth.",
+          "insight": "Keep the pressure limit fixed and change the liquid."
+        },
+        {
+          "id": "C6",
+          "type": "final_design",
+          "prompt": "Choose a sensor depth that keeps pressure below 20 kPa in the 1100 kg/m³ flood water. The sensor must still be at least 0.5 m below the surface.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "depth>=0.5",
+              "pressure<20"
+            ]
+          },
+          "systemResponse": "Design accepted when the sensor is deep enough to work but remains below the pressure limit.",
+          "insight": "This is a two-limit design problem."
+        }
+      ],
+      "insights": [
+        "Pressure changes with depth.",
+        "At the same depth, density can change pressure.",
+        "Keep one condition fixed while testing another.",
+        "Use the safety limit as the boundary."
+      ],
+      "solution": {
+        "finalAnswer": "Liquid pressure increases with depth and density. A denser flood liquid means the sensor must be placed at a shallower safe depth.",
+        "analysis": "Read the depth trend → test density → find the pressure limit → choose a safe sensor position."
+      },
+      "debrief": {
+        "concepts": [
+          "pressure in liquids",
+          "density",
+          "depth",
+          "hydrostatic pressure"
+        ],
+        "skills": [
+          "graph reading",
+          "what-if reasoning",
+          "constraint design"
+        ]
+      }
+    },
+    {
+      "id": "PHY-005",
+      "subject": "Physics",
+      "title": "The Delivery Cart Ramp",
+      "domain": "Motion and Work-Energy",
+      "difficulty": "Easy",
+      "missionType": "Investigation → Prediction → Error Analysis → Design",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Find why a delivery cart stops before reaching the loading platform and choose a safe ramp condition.",
+      "missionBrief": "A warehouse cart is pushed up a ramp. Sometimes it reaches the platform, sometimes it rolls back. The worker wants a repeatable starting condition that reaches the platform without using an unsafe speed.",
+      "resources": [
+        {
+          "fileName": "concept_brief_motion_energy.txt",
+          "fileType": "concept_brief",
+          "content": "This mission connects speed, distance, friction and energy in a simple ramp system. The student must compare predicted and observed motion and find where energy is lost."
+        },
+        {
+          "fileName": "ramp_report.txt",
+          "fileType": "report",
+          "content": "Cart mass: 20 kg. Ramp length: 5 m. Height gain: 1 m. Maximum safe starting speed: 6 m/s."
+        },
+        {
+          "fileName": "trial_data.csv",
+          "fileType": "data",
+          "content": "start_speed_mps,distance_m\n3,2.1\n4,3.4\n5,4.6\n6,5.0"
+        },
+        {
+          "fileName": "surface_note.txt",
+          "fileType": "report",
+          "content": "A rubber mat is added in one trial. It increases the energy lost to friction."
+        }
+      ],
+      "simulation": {
+        "type": "ramp_motion_lab",
+        "purpose": "Show how starting speed, ramp height and friction affect the distance reached.",
+        "controls": [
+          {
+            "id": "startSpeed",
+            "label": "Starting speed",
+            "min": 2,
+            "max": 6,
+            "step": 0.5,
+            "default": 4,
+            "unit": "m/s"
+          },
+          {
+            "id": "height",
+            "label": "Ramp height",
+            "min": 0.5,
+            "max": 1.5,
+            "step": 0.1,
+            "default": 1,
+            "unit": "m"
+          },
+          {
+            "id": "friction",
+            "label": "Surface friction",
+            "min": 0,
+            "max": 0.4,
+            "step": 0.05,
+            "default": 0.1
+          }
+        ],
+        "outputs": [
+          "distance_reached",
+          "final_speed",
+          "energy_lost",
+          "platform_status"
+        ],
+        "logic": "Use kinetic energy at the start, gravitational energy needed for height and friction loss. Stop the cart when available energy is insufficient.",
+        "frontend": "Side-view ramp animation with cart, speed meter, height marker and energy bars. Show why the cart stops."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "pattern_recognition",
+          "prompt": "From the trial data, what happens to distance reached when starting speed increases?",
+          "options": [
+            "It increases",
+            "It decreases",
+            "It stays fixed",
+            "It becomes zero"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "It increases"
+          },
+          "systemResponse": "Higher starting speed lets the cart travel farther.",
+          "insight": "Look at the full data table before choosing."
+        },
+        {
+          "id": "C2",
+          "type": "error_analysis",
+          "prompt": "A worker predicts that increasing starting speed from 3 m/s to 6 m/s will simply double the distance. Does the data support that?",
+          "answer": {
+            "type": "concept",
+            "value": "no"
+          },
+          "systemResponse": "No. The distance does not increase in the same simple ratio as speed.",
+          "insight": "Compare ratios, not just whether both values increase."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "The platform is 5 m away. Which tested starting speed is the first one that reaches it?",
+          "answer": {
+            "type": "numeric",
+            "value": 6
+          },
+          "systemResponse": "6 m/s reaches the 5 m platform in the given trials.",
+          "insight": "Find the first safe tested value that meets the distance requirement."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "If friction is increased while the starting speed stays fixed, predict what happens to the distance reached.",
+          "answer": {
+            "type": "direction",
+            "value": "decrease"
+          },
+          "systemResponse": "More friction removes more mechanical energy, so the cart stops sooner.",
+          "insight": "Ask where the cart's useful mechanical energy goes."
+        },
+        {
+          "id": "C5",
+          "type": "connect_concepts",
+          "prompt": "The platform height is increased while the starting speed stays the same. What should happen to the amount of energy needed to reach it?",
+          "answer": {
+            "type": "direction",
+            "value": "increase"
+          },
+          "systemResponse": "More height needs more gravitational potential energy.",
+          "insight": "Higher position means a larger energy requirement."
+        },
+        {
+          "id": "C6",
+          "type": "final_design",
+          "prompt": "Choose starting speed, ramp height and friction so the cart reaches the platform while starting speed stays at or below 6 m/s. Try to use the lowest starting speed that works.",
+          "answer": {
+            "type": "optimisation",
+            "conditions": [
+              "distance>=5",
+              "startSpeed<=6",
+              "minimise:startSpeed"
+            ]
+          },
+          "systemResponse": "Design accepted when the cart reaches the platform within the speed limit. Best designs use less starting speed when possible.",
+          "insight": "The final task is not only to succeed; it is to succeed with less starting speed."
+        }
+      ],
+      "insights": [
+        "Compare data before calculating.",
+        "Speed and distance do not always change in the same ratio.",
+        "Friction is an energy loss.",
+        "The safest successful design is better than the fastest design."
+      ],
+      "solution": {
+        "finalAnswer": "The cart needs enough starting kinetic energy to cover the height gain and energy lost to friction. Increasing speed helps, while more height or friction makes the task harder.",
+        "analysis": "Read trials → test the simple doubling claim → connect motion to energy → design under a speed limit."
+      },
+      "debrief": {
+        "concepts": [
+          "speed",
+          "kinetic energy",
+          "gravitational potential energy",
+          "friction",
+          "work-energy"
+        ],
+        "skills": [
+          "error analysis",
+          "prediction",
+          "optimisation"
+        ]
+      }
+    },
+    {
+      "id": "ECO-001",
+      "subject": "Economics",
+      "title": "The Empty Lunch Stall",
+      "domain": "Demand and Price",
+      "difficulty": "Easy",
+      "missionType": "Economic Detective → Market Decision → What If",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Find why a school lunch stall is losing sales and choose a price that keeps the stall healthy.",
+      "missionBrief": "A school lunch stall sells fruit bowls. Sales have fallen after the price was increased. A new stall nearby is selling a similar bowl at a lower price. The owner wants to know whether to reduce price.",
+      "resources": [
+        {
+          "fileName": "concept_brief_demand_price.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses price, demand, revenue and competition. The student discovers how buyers react to price instead of being told to apply a formula."
+        },
+        {
+          "fileName": "stall_sales_report.txt",
+          "fileType": "report",
+          "content": "Old price ₹40, old sales 300 bowls/day. Current price ₹50, current sales 210 bowls/day."
+        },
+        {
+          "fileName": "price_test.csv",
+          "fileType": "data",
+          "content": "price,sales\n35,360\n40,300\n45,255\n50,210\n55,170"
+        },
+        {
+          "fileName": "competitor_note.txt",
+          "fileType": "report",
+          "content": "Nearby stall price: ₹45."
+        }
+      ],
+      "simulation": {
+        "type": "market_decision_lab",
+        "purpose": "Show how price changes affect quantity demanded and revenue.",
+        "controls": [
+          {
+            "id": "price",
+            "label": "Selling price",
+            "min": 30,
+            "max": 60,
+            "step": 5,
+            "default": 50
+          },
+          {
+            "id": "advertising",
+            "label": "Advertising level",
+            "min": 0,
+            "max": 2,
+            "step": 1,
+            "default": 0
+          }
+        ],
+        "outputs": [
+          "estimated_demand",
+          "revenue",
+          "market_share",
+          "stall_status"
+        ],
+        "logic": "Demand falls as price rises. Advertising gives a small demand increase. Revenue equals price multiplied by sales. Compare revenue and market share.",
+        "frontend": "Simple shop dashboard with price slider, demand curve, customer count and revenue card."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "economic_detective",
+          "prompt": "Which evidence best supports the idea that the price increase is linked to the sales fall?",
+          "options": [
+            "Price-sales table",
+            "Wall colour",
+            "Stall size",
+            "Opening time"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Price-sales table"
+          },
+          "systemResponse": "The price-sales table directly shows how sales changed at different prices.",
+          "insight": "Choose evidence that can test the claim."
+        },
+        {
+          "id": "C2",
+          "type": "graph_investigation",
+          "prompt": "Look at the price-sales data. What general relationship do you see?",
+          "options": [
+            "Higher price is linked with lower sales",
+            "Higher price is linked with higher sales",
+            "No pattern",
+            "Sales always stay fixed"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Higher price is linked with lower sales"
+          },
+          "systemResponse": "The data show a downward demand pattern.",
+          "insight": "Read the direction of the graph before thinking about calculations."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "At ₹45, the table gives 255 bowls. What is the daily sales value at that price?",
+          "answer": {
+            "type": "numeric",
+            "value": 11475,
+            "unit": "₹"
+          },
+          "systemResponse": "Daily sales value is ₹11,475.",
+          "insight": "Sales value depends on both the price and how many bowls are sold."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "If the stall lowers price from ₹50 to ₹45, should you assume the sales value must increase? Test it in the market lab.",
+          "answer": {
+            "type": "concept",
+            "value": "not_necessarily"
+          },
+          "systemResponse": "A lower price can increase sales but may not increase total sales value enough to help the stall.",
+          "insight": "More customers does not automatically mean more money."
+        },
+        {
+          "id": "C5",
+          "type": "domino_effect",
+          "prompt": "The competitor cuts its price to ₹40. Trace the likely chain for the school stall.",
+          "answer": {
+            "type": "sequence",
+            "value": [
+              "competition_increases",
+              "demand_for_stall_may_fall",
+              "sales_change",
+              "revenue_change"
+            ]
+          },
+          "systemResponse": "The competitor's price changes the market situation, so the stall must reconsider its decision.",
+          "insight": "A business decision happens inside a changing market."
+        },
+        {
+          "id": "C6",
+          "type": "final_decision",
+          "prompt": "Choose a price that keeps daily sales value strong while keeping the price no higher than ₹50 and staying competitive with the nearby stall.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "price<=50",
+              "price<=competitor_price+5",
+              "maximise:revenue"
+            ]
+          },
+          "systemResponse": "Decision accepted when the price is competitive and the revenue target is met.",
+          "insight": "The best price must balance customers, price and competition."
+        }
+      ],
+      "insights": [
+        "Use the price-sales table as evidence.",
+        "More sales does not always mean more revenue.",
+        "Competition changes the decision.",
+        "Test the decision instead of guessing."
+      ],
+      "solution": {
+        "finalAnswer": "The stall's sales fall as price rises. A lower price can bring more customers, but the final choice should be based on both sales and total sales value, while watching competition.",
+        "analysis": "Detect the pattern → test a price change → observe revenue → react to competition → choose a balanced price."
+      },
+      "debrief": {
+        "concepts": [
+          "demand",
+          "price",
+          "revenue",
+          "competition"
+        ],
+        "skills": [
+          "economic detective",
+          "graph reading",
+          "trade-off"
+        ]
+      }
+    },
+    {
+      "id": "ECO-002",
+      "subject": "Economics",
+      "title": "The Village Water Project",
+      "domain": "Government Budget and Opportunity Cost",
+      "difficulty": "Easy",
+      "missionType": "Economic Detective → Budget Decision → Opportunity Cost",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Use a fixed public budget to improve a village while handling trade-offs.",
+      "missionBrief": "A village receives ₹100 lakh for one-year development. The village needs better roads, clean water, a health centre and school repairs. The student must make a budget that meets urgent needs without spending more than the available money.",
+      "resources": [
+        {
+          "fileName": "concept_brief_opportunity_cost.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses a limited budget, choices between uses of money, and the idea that choosing one option means giving up another."
+        },
+        {
+          "fileName": "village_report.txt",
+          "fileType": "report",
+          "content": "Water shortage is severe. Roads are poor. School repairs are needed. The health centre lacks equipment."
+        },
+        {
+          "fileName": "project_costs.csv",
+          "fileType": "data",
+          "content": "project,cost_lakh,benefit_score\nwater,35,90\nroads,45,70\nhealth,30,75\nschool,25,65"
+        },
+        {
+          "fileName": "budget_rule.txt",
+          "fileType": "rule",
+          "content": "Total spending cannot exceed ₹100 lakh. Water project must receive at least ₹25 lakh."
+        }
+      ],
+      "simulation": {
+        "type": "budget_lab",
+        "purpose": "Show how a fixed budget forces choices and creates opportunity cost.",
+        "controls": [
+          {
+            "id": "water",
+            "label": "Water",
+            "min": 25,
+            "max": 50,
+            "step": 5,
+            "default": 35
+          },
+          {
+            "id": "roads",
+            "label": "Roads",
+            "min": 0,
+            "max": 50,
+            "step": 5,
+            "default": 25
+          },
+          {
+            "id": "health",
+            "label": "Health",
+            "min": 0,
+            "max": 40,
+            "step": 5,
+            "default": 20
+          },
+          {
+            "id": "school",
+            "label": "School",
+            "min": 0,
+            "max": 40,
+            "step": 5,
+            "default": 20
+          }
+        ],
+        "outputs": [
+          "total_spending",
+          "remaining_budget",
+          "benefit_score",
+          "water_status",
+          "budget_status"
+        ],
+        "logic": "Add allocations. If total exceeds 100, mark budget invalid. Benefit score depends on each project's funding level. Show which project received less when another receives more.",
+        "frontend": "Four project cards, budget bar and benefit meter. A decision immediately shows what money is left."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "economic_detective",
+          "prompt": "Which project has the strongest evidence that it is an urgent need?",
+          "options": [
+            "Water",
+            "Roads",
+            "Health",
+            "School"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Water"
+          },
+          "systemResponse": "The report says water shortage is severe, and the budget rule also sets a minimum for water.",
+          "insight": "Use both the report and the rule."
+        },
+        {
+          "id": "C2",
+          "type": "constraint_check",
+          "prompt": "The council wants to spend ₹35 lakh on water, ₹35 lakh on roads, ₹20 lakh on health and ₹20 lakh on school. Is this budget possible?",
+          "answer": {
+            "type": "boolean",
+            "value": false
+          },
+          "systemResponse": "No. The total is ₹110 lakh, which is ₹10 lakh above the budget.",
+          "insight": "Add every allocation before judging the plan."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "If ₹35 lakh goes to water and ₹25 lakh to roads, how much remains for the other projects?",
+          "answer": {
+            "type": "numeric",
+            "value": 40,
+            "unit": "lakh"
+          },
+          "systemResponse": "₹40 lakh remains.",
+          "insight": "The total budget is fixed."
+        },
+        {
+          "id": "C4",
+          "type": "opportunity_cost",
+          "prompt": "If the council gives ₹10 lakh more to roads without increasing the total budget, what must happen somewhere else?",
+          "answer": {
+            "type": "concept",
+            "value": "reduce_other_allocation"
+          },
+          "systemResponse": "Another project must lose ₹10 lakh. That lost use is the opportunity cost of the extra road spending.",
+          "insight": "A fixed budget means one choice can reduce another choice."
+        },
+        {
+          "id": "C5",
+          "type": "what_if",
+          "prompt": "What if the water project gives a much larger benefit than expected? Should the council still keep the same allocation? Explain using the benefit data.",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "reconsider allocation",
+              "compare benefits",
+              "budget remains fixed"
+            ]
+          },
+          "systemResponse": "The council can move money toward the higher-benefit use, but it still cannot cross the budget limit.",
+          "insight": "A change in information can change the best decision."
+        },
+        {
+          "id": "C6",
+          "type": "final_decision",
+          "prompt": "Create a budget that stays within ₹100 lakh, gives water at least ₹25 lakh, and gives the highest possible total benefit score from the available data.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "total<=100",
+              "water>=25",
+              "maximise:benefit"
+            ]
+          },
+          "systemResponse": "Budget accepted when all rules are met and the benefit score is maximised.",
+          "insight": "The goal is not to fund everything. It is to use limited money well."
+        }
+      ],
+      "insights": [
+        "Find the urgent need from evidence.",
+        "Check the total budget.",
+        "A fixed budget creates opportunity cost.",
+        "New information can change the best choice."
+      ],
+      "solution": {
+        "finalAnswer": "Because the budget is fixed, more money for one project means less for another. The best plan uses the available money on the strongest mix of needs and benefits while meeting the water rule.",
+        "analysis": "Read needs → check constraints → calculate remaining money → see opportunity cost → optimise the budget."
+      },
+      "debrief": {
+        "concepts": [
+          "scarcity",
+          "budget",
+          "opportunity cost",
+          "public spending"
+        ],
+        "skills": [
+          "trade-off",
+          "constraint solving",
+          "economic decision making"
+        ]
+      }
+    },
+    {
+      "id": "ECO-003",
+      "subject": "Economics",
+      "title": "The Factory with Too Many Workers",
+      "domain": "Production and Cost",
+      "difficulty": "Easy",
+      "missionType": "Economic Detective → Failure Analysis → Optimisation",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Find why adding workers stops helping a small factory and choose a better production plan.",
+      "missionBrief": "A small bakery adds workers to increase daily production. At first production rises quickly. Later, workers get in each other's way and the extra output becomes small. The owner wants a production plan that gives good output without unnecessary cost.",
+      "resources": [
+        {
+          "fileName": "concept_brief_production_cost.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses workers, production, fixed cost, variable cost and the idea that adding more workers to a fixed space may give smaller extra output."
+        },
+        {
+          "fileName": "factory_report.txt",
+          "fileType": "report",
+          "content": "Oven capacity is fixed. One oven can bake only 100 trays per day."
+        },
+        {
+          "fileName": "worker_data.csv",
+          "fileType": "data",
+          "content": "workers,output_trays\n1,30\n2,60\n3,85\n4,100\n5,108\n6,112"
+        },
+        {
+          "fileName": "cost_report.txt",
+          "fileType": "report",
+          "content": "Fixed daily cost ₹3000. Each worker costs ₹1000 per day."
+        }
+      ],
+      "simulation": {
+        "type": "production_lab",
+        "purpose": "Show how output changes as workers are added and how cost changes with worker count.",
+        "controls": [
+          {
+            "id": "workers",
+            "label": "Workers",
+            "min": 1,
+            "max": 6,
+            "step": 1,
+            "default": 3
+          },
+          {
+            "id": "ovenCapacity",
+            "label": "Oven capacity",
+            "min": 80,
+            "max": 120,
+            "step": 10,
+            "default": 100,
+            "unit": "trays"
+          }
+        ],
+        "outputs": [
+          "output",
+          "total_cost",
+          "cost_per_tray",
+          "worker_productivity",
+          "factory_status"
+        ],
+        "logic": "Use the supplied output table as the base model. Increasing oven capacity shifts the point where crowding begins. Total cost = fixed cost + worker cost.",
+        "frontend": "Animated bakery with worker icons around one oven, output counter and cost graph."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "pattern_recognition",
+          "prompt": "When workers rise from 1 to 4, output rises strongly. What happens from 4 to 6 workers?",
+          "options": [
+            "Output still rises but by much smaller amounts",
+            "Output doubles",
+            "Output becomes zero",
+            "Output falls to 30"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Output still rises but by much smaller amounts"
+          },
+          "systemResponse": "The extra output becomes smaller after the oven is near capacity.",
+          "insight": "Look at the change between each row, not only the final output."
+        },
+        {
+          "id": "C2",
+          "type": "failure_analysis",
+          "prompt": "The owner says: 'More workers must always be better because every worker adds output.' What part of the data is missing from this claim?",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "worker cost",
+              "small extra output",
+              "fixed oven capacity"
+            ]
+          },
+          "systemResponse": "The claim ignores the cost of each worker and the falling extra output.",
+          "insight": "A useful output increase can still be a bad business choice."
+        },
+        {
+          "id": "C3",
+          "type": "hidden_numerical",
+          "prompt": "What is the total daily cost when 4 workers are employed?",
+          "answer": {
+            "type": "numeric",
+            "value": 7000,
+            "unit": "₹"
+          },
+          "systemResponse": "Fixed cost ₹3000 + worker cost ₹4000 = ₹7000.",
+          "insight": "Separate costs that stay fixed from costs that change with workers."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "If the oven capacity is increased to 120 trays, which workers are likely to become more useful than before?",
+          "answer": {
+            "type": "concept",
+            "value": "5_and_6"
+          },
+          "systemResponse": "Workers 5 and 6 can become more useful because the oven is no longer stopping output at 100 trays.",
+          "insight": "A change in one resource can change the value of another resource."
+        },
+        {
+          "id": "C5",
+          "type": "connect_concepts",
+          "prompt": "Why can cost per tray rise when more workers are added even though total output also rises?",
+          "answer": {
+            "type": "open",
+            "keyPoints": [
+              "worker cost rises",
+              "extra output becomes small",
+              "fixed cost is spread over output"
+            ]
+          },
+          "systemResponse": "Later workers add cost faster than they add useful output.",
+          "insight": "Compare the extra cost with the extra output."
+        },
+        {
+          "id": "C6",
+          "type": "final_decision",
+          "prompt": "Choose the worker count that gives at least 100 trays while keeping daily cost as low as possible under the current oven capacity.",
+          "answer": {
+            "type": "optimisation",
+            "conditions": [
+              "output>=100",
+              "minimise:totalCost"
+            ]
+          },
+          "systemResponse": "The lowest-cost plan that reaches 100 trays is accepted.",
+          "insight": "The target is enough output, not the largest possible output."
+        }
+      ],
+      "insights": [
+        "Compare extra output, not only total output.",
+        "Include worker cost.",
+        "Fixed capacity can limit the value of more workers.",
+        "Meet the target with the lowest useful cost."
+      ],
+      "solution": {
+        "finalAnswer": "Output rises as workers are added, but the extra output becomes smaller near the fixed oven capacity. More workers also increase cost. The best plan reaches the required output without paying for workers that add little useful output.",
+        "analysis": "Read production pattern → include cost → test capacity change → compare extra output with extra cost → optimise."
+      },
+      "debrief": {
+        "concepts": [
+          "production",
+          "fixed cost",
+          "variable cost",
+          "marginal product idea"
+        ],
+        "skills": [
+          "pattern recognition",
+          "cost analysis",
+          "optimisation"
+        ]
+      }
+    },
+    {
+      "id": "ECO-004",
+      "subject": "Economics",
+      "title": "The Rising Bus Fare",
+      "domain": "Demand and Elasticity",
+      "difficulty": "Easy",
+      "missionType": "Graph Investigation → What If → Market Decision",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Help a city bus service choose a fare change without causing a large fall in passengers.",
+      "missionBrief": "A city bus service needs more money to maintain buses. The service can raise fares, but students and daily workers may reduce travel when fares rise. The team must choose a fare that improves revenue without losing too many passengers.",
+      "resources": [
+        {
+          "fileName": "concept_brief_demand_response.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses demand response to price. Students compare percentage changes in fare and passenger count and discover that some customers are more sensitive to price than others."
+        },
+        {
+          "fileName": "bus_fare_report.txt",
+          "fileType": "report",
+          "content": "Current fare ₹20. Average passengers 20,000/day. The service needs at least ₹4.2 lakh/day in fare revenue."
+        },
+        {
+          "fileName": "fare_test.csv",
+          "fileType": "data",
+          "content": "fare,passengers\n20,20000\n22,18800\n24,17000\n26,14500\n28,11500"
+        },
+        {
+          "fileName": "passenger_groups.txt",
+          "fileType": "report",
+          "content": "Students have fewer alternatives than office workers on the main route. Weekend riders have more alternatives."
+        }
+      ],
+      "simulation": {
+        "type": "demand_graph_lab",
+        "purpose": "Show how passenger count changes with fare and compare groups with different price response.",
+        "controls": [
+          {
+            "id": "fare",
+            "label": "Bus fare",
+            "min": 18,
+            "max": 30,
+            "step": 1,
+            "default": 20
+          },
+          {
+            "id": "group",
+            "label": "Passenger group",
+            "options": [
+              "students",
+              "office_workers",
+              "weekend_riders"
+            ],
+            "default": "students"
+          }
+        ],
+        "outputs": [
+          "passengers",
+          "revenue",
+          "percentage_change_in_passengers",
+          "service_status"
+        ],
+        "logic": "Use the supplied fare-demand table. Apply stronger or weaker demand response by group. Revenue equals fare times passengers.",
+        "frontend": "Demand curve with fare slider, passenger flow animation and revenue meter."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "graph_investigation",
+          "prompt": "The fare rises from ₹20 to ₹24. What happens to passengers in the test data?",
+          "options": [
+            "They fall",
+            "They rise",
+            "They stay the same",
+            "They become zero"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "They fall"
+          },
+          "systemResponse": "Passenger count falls as fare rises.",
+          "insight": "Start with the direction of the graph."
+        },
+        {
+          "id": "C2",
+          "type": "hidden_numerical",
+          "prompt": "At a fare of ₹24, what is the daily fare revenue from the given passenger data?",
+          "answer": {
+            "type": "numeric",
+            "value": 408000,
+            "unit": "₹"
+          },
+          "systemResponse": "Daily fare revenue is ₹4.08 lakh.",
+          "insight": "Revenue depends on both fare and passenger count."
+        },
+        {
+          "id": "C3",
+          "type": "elasticity_discovery",
+          "prompt": "From ₹20 to ₹24, fare rises by 20%. Passenger count falls from 20,000 to 17,000. Is the passenger change smaller or larger than the fare change?",
+          "answer": {
+            "type": "concept",
+            "value": "smaller"
+          },
+          "systemResponse": "Passenger count falls by 15%, which is smaller than the 20% fare increase in this range.",
+          "insight": "Compare percentage changes, not just raw numbers."
+        },
+        {
+          "id": "C4",
+          "type": "what_if",
+          "prompt": "If weekend riders have more alternatives, should you expect them to react more or less to a fare increase than students?",
+          "answer": {
+            "type": "direction",
+            "value": "more"
+          },
+          "systemResponse": "The model gives weekend riders a stronger response because they have more alternatives.",
+          "insight": "Think about how easy it is for a customer to switch."
+        },
+        {
+          "id": "C5",
+          "type": "decision_tradeoff",
+          "prompt": "The service needs at least ₹4.2 lakh/day. Is the highest fare automatically the best choice? Use the demand and revenue data to explain.",
+          "answer": {
+            "type": "concept",
+            "value": "no"
+          },
+          "systemResponse": "A higher fare can reduce passengers enough to reduce revenue.",
+          "insight": "The goal is not the highest price. It is the required service result."
+        },
+        {
+          "id": "C6",
+          "type": "final_decision",
+          "prompt": "Choose a fare that reaches at least ₹4.2 lakh/day while keeping the passenger fall below 15% from the current level.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "revenue>=420000",
+              "passengerDrop<15"
+            ]
+          },
+          "systemResponse": "Decision accepted when both the revenue and passenger conditions are met.",
+          "insight": "Balance income for the service with access for passengers."
+        }
+      ],
+      "insights": [
+        "Read the demand graph.",
+        "Compare percentage changes.",
+        "Customer alternatives matter.",
+        "A higher price can reduce the customer base."
+      ],
+      "solution": {
+        "finalAnswer": "Passenger demand falls as fare rises. The effect depends on the passenger group and available alternatives. A good fare must meet the revenue need without causing too large a fall in passengers.",
+        "analysis": "Read graph → calculate revenue → compare percentage changes → test group response → choose a fare under two limits."
+      },
+      "debrief": {
+        "concepts": [
+          "demand",
+          "price response",
+          "elasticity idea",
+          "revenue"
+        ],
+        "skills": [
+          "graph investigation",
+          "percentage comparison",
+          "trade-off"
+        ]
+      }
+    },
+    {
+      "id": "ECO-005",
+      "subject": "Economics",
+      "title": "The City Food Price Shock",
+      "domain": "Inflation and Economic Decisions",
+      "difficulty": "Easy",
+      "missionType": "Economic Detective → Domino Effect → Policy Decision",
+      "estimatedTimeMinutes": 15,
+      "xp": 100,
+      "coins": 30,
+      "objective": "Respond to a food-price shock while keeping inflation and economic pressure under control.",
+      "missionBrief": "A city faces a sudden rise in food and transport costs after a poor harvest and higher fuel prices. Food prices rise quickly. The city council and central bank want to reduce pressure without causing a large fall in jobs and business activity.",
+      "resources": [
+        {
+          "fileName": "concept_brief_inflation_policy.txt",
+          "fileType": "concept_brief",
+          "content": "This mission uses inflation, demand, production cost and simple policy choices. The student follows a chain of effects and must balance two or more economic goals."
+        },
+        {
+          "fileName": "city_economy_report.txt",
+          "fileType": "report",
+          "content": "Food inflation: 9%. Transport cost: +15%. Household spending on food: +10%. Unemployment: 6%."
+        },
+        {
+          "fileName": "market_report.txt",
+          "fileType": "report",
+          "content": "Vegetable supply is lower after poor rainfall. Fuel prices have also increased."
+        },
+        {
+          "fileName": "policy_options.txt",
+          "fileType": "report",
+          "content": "Options: temporary food supply support, reduce selected taxes, increase interest rate, reduce public spending."
+        }
+      ],
+      "simulation": {
+        "type": "economic_world",
+        "purpose": "Show how an economic shock moves through prices, household spending, business activity and jobs.",
+        "controls": [
+          {
+            "id": "foodSupplySupport",
+            "label": "Food supply support",
+            "min": 0,
+            "max": 20,
+            "step": 5,
+            "default": 0
+          },
+          {
+            "id": "taxLevel",
+            "label": "Selected food tax level",
+            "min": 80,
+            "max": 100,
+            "step": 5,
+            "default": 100
+          },
+          {
+            "id": "interestRate",
+            "label": "Interest rate",
+            "min": 4,
+            "max": 8,
+            "step": 0.5,
+            "default": 5
+          }
+        ],
+        "outputs": [
+          "foodInflation",
+          "overallInflation",
+          "consumerSpending",
+          "businessActivity",
+          "unemployment",
+          "economyStatus"
+        ],
+        "logic": "Food supply support reduces food-price pressure. Lower selected food taxes reduce the final price but reduce public revenue. Higher interest rates reduce demand pressure but can reduce business activity. Apply simple bounded classroom rules, not real-world forecasting.",
+        "frontend": "Economic dashboard with food-price graph, inflation meter, jobs meter and a visible domino-effect chain after each decision."
+      },
+      "challenges": [
+        {
+          "id": "C1",
+          "type": "economic_detective",
+          "prompt": "Which evidence points most directly to the first cause of the food-price rise?",
+          "options": [
+            "Lower food supply",
+            "Higher school attendance",
+            "More road traffic",
+            "Lower phone prices"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Lower food supply"
+          },
+          "systemResponse": "The market report says food supply fell after poor rainfall.",
+          "insight": "Find the earliest event in the cause chain."
+        },
+        {
+          "id": "C2",
+          "type": "domino_effect",
+          "prompt": "Complete the first part of the chain: poor harvest → food supply ↓ → ______ → food prices ↑.",
+          "options": [
+            "shortage pressure",
+            "factory output doubles",
+            "interest rate falls",
+            "population becomes zero"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "shortage pressure"
+          },
+          "systemResponse": "Lower supply creates shortage pressure, which pushes food prices upward.",
+          "insight": "Ask what happens when many buyers face fewer goods."
+        },
+        {
+          "id": "C3",
+          "type": "what_if",
+          "prompt": "If food supply support increases, what should happen first to food-price pressure?",
+          "answer": {
+            "type": "direction",
+            "value": "decrease"
+          },
+          "systemResponse": "Food-price pressure falls in the classroom model.",
+          "insight": "Change the supply-side control before changing the whole economy."
+        },
+        {
+          "id": "C4",
+          "type": "policy_tradeoff",
+          "prompt": "A higher interest rate may reduce demand pressure, but what other problem can it create for businesses?",
+          "options": [
+            "Borrowing can become more costly",
+            "Food supply becomes unlimited",
+            "Transport becomes free",
+            "Workers disappear"
+          ],
+          "answer": {
+            "type": "single",
+            "value": "Borrowing can become more costly"
+          },
+          "systemResponse": "Higher interest rates can make borrowing more costly and reduce business activity.",
+          "insight": "Every policy can have a second effect."
+        },
+        {
+          "id": "C5",
+          "type": "event_response",
+          "prompt": "A new report says fuel prices rise again. Which sectors should be checked first for a second-round effect on prices?",
+          "answer": {
+            "type": "multi",
+            "values": [
+              "transport",
+              "food production",
+              "delivery services"
+            ]
+          },
+          "systemResponse": "Transport and activities that use fuel are checked first because their costs can rise and affect other prices.",
+          "insight": "Follow the shock into sectors that directly use the affected input."
+        },
+        {
+          "id": "C6",
+          "type": "final_decision",
+          "prompt": "Choose a policy mix that brings food inflation below 6%, keeps unemployment below 8%, and does not push business activity into the danger zone. You have three decisions.",
+          "answer": {
+            "type": "constraint",
+            "conditions": [
+              "foodInflation<6",
+              "unemployment<8",
+              "businessActivity>=safe"
+            ]
+          },
+          "systemResponse": "Policy accepted when all three economic conditions are met.",
+          "insight": "Do not focus on one number. Follow the full chain after every decision."
+        }
+      ],
+      "insights": [
+        "Find the first event in the chain.",
+        "Follow supply into prices.",
+        "A policy can have a second effect.",
+        "Check the economy after each decision."
+      ],
+      "solution": {
+        "finalAnswer": "The first pressure comes from lower food supply and higher fuel costs. Supply support can reduce food-price pressure directly, while strong demand-control policies can also reduce activity. The final choice must balance inflation, jobs and business activity.",
+        "analysis": "Detect the first cause → trace the domino effect → test a supply response → compare policy trade-offs → choose a balanced mix."
+      },
+      "debrief": {
+        "concepts": [
+          "inflation",
+          "supply and demand",
+          "production cost",
+          "policy trade-off"
+        ],
+        "skills": [
+          "economic detective",
+          "domino effect",
+          "decision making",
+          "system thinking"
+        ]
+      }
+    }
+  ]
+}
