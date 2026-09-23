@@ -107,6 +107,7 @@ model User {
   streakActivity StreakActivity[]
   badges         UserBadge[]
   feedback       Feedback[]
+  completionReports ProjectCompletionReport[]
   auditEvents    AuditEvent[]
 
   @@index([lastActivityAt])
@@ -157,6 +158,7 @@ model Project {
   currentPublishedVersionId String? @unique @db.Uuid
   progress                UserProjectProgress[]
   investigations          Investigation[]
+  completionReports       ProjectCompletionReport[]
 
   @@index([subjectId, status])
 }
@@ -280,8 +282,25 @@ model SimulationDefinition {
   level         Level?
   variables     SimulationVariable[]
   consequences  SimulationConsequence[]
+  assets        SimulationAsset[]
 
   @@unique([key, version])
+}
+
+
+model SimulationAsset {
+  id           String   @id @default(uuid()) @db.Uuid
+  simulationId String   @db.Uuid
+  assetType    String   @db.VarChar(40)
+  storageKey   String   @db.VarChar(500)
+  status       String   @default("PLACEHOLDER") @db.VarChar(30)
+  mimeType     String?  @db.VarChar(120)
+  checksum     String?  @db.VarChar(128)
+  createdAt    DateTime @default(now())
+
+  simulation SimulationDefinition @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@unique([simulationId, assetType])
 }
 
 model SimulationVariable {
@@ -346,8 +365,10 @@ model Investigation {
   anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
   project         Project          @relation(fields: [projectId], references: [id], onDelete: Restrict)
   projectVersion  ProjectVersion   @relation(fields: [projectVersionId], references: [id], onDelete: Restrict)
+  completionReport ProjectCompletionReport?
   answers         InvestigationAnswer[]
   rewards         RewardLedger[]
+  completionReport ProjectCompletionReport?
 
   @@index([userId, status])
   @@index([anonymousSessionId, status])
@@ -495,6 +516,34 @@ model UserNote {
   updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProjectCompletionReport {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @db.Uuid
+  projectId           String   @db.Uuid
+  investigationId     String   @db.Uuid
+  overallScore        Decimal? @db.Decimal(5, 2)
+  primaryCause        String?
+  keyEvidence         Json?
+  decisions           Json?
+  outcome             Json?
+  skillPerformance    Json?
+  mistakePatterns     Json?
+  strengths           Json?
+  improvementAreas    Json?
+  conceptsToReview    Json?
+  xpEarned            Int      @default(0)
+  coinsEarned         Int      @default(0)
+  recommendedProjectId String?  @db.Uuid
+  createdAt           DateTime @default(now())
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, investigationId])
+  @@index([userId, createdAt])
 }
 
 model Feedback {
