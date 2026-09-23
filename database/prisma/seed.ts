@@ -121,6 +121,10 @@ async function main() {
     await prisma.level.deleteMany({ where: { projectVersionId: version.id } });
     await prisma.caseFile.deleteMany({ where: { projectVersionId: version.id } });
 
+    if (mission.simulation) {
+      await prisma.simulationDefinition.deleteMany({ where: { key: `${mission.id}.${mission.simulation.type}` } });
+    }
+
     const sim = mission.simulation
       ? await prisma.simulationDefinition.create({
           data: {
