@@ -522,7 +522,7 @@ model ProjectCompletionReport {
   id                  String   @id @default(uuid()) @db.Uuid
   userId              String   @db.Uuid
   projectId           String   @db.Uuid
-  investigationId     String   @db.Uuid
+  investigationId     String   @unique @db.Uuid
   overallScore        Decimal? @db.Decimal(5, 2)
   primaryCause        String?
   keyEvidence         Json?
