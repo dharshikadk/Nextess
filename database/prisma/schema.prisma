@@ -109,6 +109,7 @@ model User {
   feedback       Feedback[]
   completionReports ProjectCompletionReport[]
   auditEvents    AuditEvent[]
+  enrollments    SubjectEnrollment[]
 
   @@index([lastActivityAt])
 }
@@ -132,9 +133,29 @@ model Subject {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  projects Project[]
+  projects     Project[]
+  enrollments  SubjectEnrollment[]
 
   @@index([status, ordering])
+}
+
+model SubjectEnrollment {
+  id                String           @id @default(uuid()) @db.Uuid
+  subjectId         String           @db.Uuid
+  userId            String?          @db.Uuid
+  anonymousSessionId String?         @db.Uuid
+  enrolledAt        DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  subject          Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  user             User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousSession AnonymousSession? @relation(fields: [anonymousSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subjectId])
+  @@unique([anonymousSessionId, subjectId])
+  @@index([subjectId])
+  @@index([userId])
+  @@index([anonymousSessionId])
 }
 
 model Project {
