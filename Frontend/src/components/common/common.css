@@ -1,0 +1,61 @@
+.nx-progress {
+  height: 8px;
+  width: 100%;
+  border-radius: var(--radius-pill);
+  background: #08090d;
+  overflow: hidden;
+}
+.nx-progress__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nx-progress--violet .nx-progress__fill {
+  background: linear-gradient(90deg, var(--violet-600), var(--violet-400));
+  box-shadow: 0px 0px 8px rgba(167, 139, 250, 0.6);
+}
+.nx-progress--amber .nx-progress__fill {
+  background: var(--orange-400);
+}
+
+.nx-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.88px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.nx-tag--violet {
+  background: rgba(167, 139, 250, 0.2);
+  color: var(--violet-400);
+  border: 1px solid var(--border-violet-med);
+}
+.nx-tag--amber {
+  background: rgba(251, 191, 36, 0.2);
+  color: var(--amber-400);
+  border: 1px solid var(--border-amber-soft);
+}
+.nx-tag--neutral {
+  background: var(--bg-chip-alt);
+  color: var(--text-muted);
+  border: 1px solid rgba(167, 139, 250, 0.15);
+}
+
+@keyframes nx-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.nx-animate-in {
+  animation: nx-fade-slide-in 420ms ease-out both;
+}
