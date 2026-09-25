@@ -1,0 +1,150 @@
+<!-- Nextess embedded simulation: physics-solar-panel-angle -->
+<div id="nextess-solar-angle-sim" class="nextess-sim" aria-label="Solar panel angle simulation">
+<style>
+#nextess-solar-angle-sim{--bg:#12131b;--deep:#07080c;--card:#181926;--line:rgba(167,139,250,.20);--violet:#a78bfa;--violet2:#8b5cf6;--text:#e2e8f0;--muted:#94a3b8;--green:#5af0b4;--red:#f97386;box-sizing:border-box;width:100%;height:100%;min-height:500px;background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:17px;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:auto}
+#nextess-solar-angle-sim *{box-sizing:border-box}
+#nextess-solar-angle-sim .sim-head{display:flex;align-items:center;justify-content:space-between;height:24px;margin-bottom:8px}
+#nextess-solar-angle-sim .title{display:flex;align-items:center;gap:8px;color:#fff;font-size:16px;font-weight:700}
+#nextess-solar-angle-sim .title-mark{width:17px;height:14px;border:2px solid var(--violet);border-radius:4px;position:relative}
+#nextess-solar-angle-sim .title-mark:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:var(--violet);right:2px;top:2px}
+#nextess-solar-angle-sim .live{display:flex;align-items:center;gap:6px;padding:3px 11px;border:1px solid rgba(167,139,250,.25);background:#181926;border-radius:999px;color:#cebdff;font:700 11px/16.5px ui-monospace,SFMono-Regular,monospace}
+#nextess-solar-angle-sim .dot{width:8px;height:8px;border-radius:50%;background:var(--violet);box-shadow:0 0 8px var(--violet)}
+#nextess-solar-angle-sim .stage{height:218px;border:1px solid var(--line);border-radius:12px;background:var(--deep);position:relative;overflow:hidden;margin-bottom:8px}
+#nextess-solar-angle-sim canvas{width:100%;height:100%;display:block}
+#nextess-solar-angle-sim .overlay{position:absolute;top:9px;left:9px;right:9px;display:flex;justify-content:space-between;pointer-events:none}
+#nextess-solar-angle-sim .pill{padding:3px 9px;border:1px solid rgba(167,139,250,.3);background:rgba(7,8,12,.9);border-radius:4px;color:#cebdff;font:700 11px/16.5px Inter,sans-serif}
+#nextess-solar-angle-sim .pill.status{color:var(--green);border-color:rgba(90,240,180,.25)}
+#nextess-solar-angle-sim .stage-readout{position:absolute;left:9px;right:9px;bottom:8px;display:flex;justify-content:space-between;align-items:end;pointer-events:none}
+#nextess-solar-angle-sim .read-label{font-size:11px;color:var(--muted);line-height:16.5px}
+#nextess-solar-angle-sim .read-value{font:700 16px/24px ui-monospace,SFMono-Regular,monospace;color:#fff}
+#nextess-solar-angle-sim .controls,#nextess-solar-angle-sim .telemetry{background:var(--card);border:1px solid rgba(167,139,250,.15);border-radius:12px;padding:9px;margin-bottom:8px}
+#nextess-solar-angle-sim .section-label{font-size:11px;line-height:16.5px;letter-spacing:.55px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px}
+#nextess-solar-angle-sim .row{margin:7px 0 9px}
+#nextess-solar-angle-sim .row-top{display:flex;align-items:center;justify-content:space-between;font-size:13px;line-height:19.5px}
+#nextess-solar-angle-sim output{font:700 13px/19.5px ui-monospace,SFMono-Regular,monospace;color:var(--violet)}
+#nextess-solar-angle-sim input[type=range]{width:100%;accent-color:var(--violet2);margin:4px 0 0}
+#nextess-solar-angle-sim .mode{display:flex;gap:5px;margin-top:6px}
+#nextess-solar-angle-sim .mode button{flex:1;height:29px;border:1px solid rgba(167,139,250,.18);background:#10111a;color:var(--muted);border-radius:7px;font:700 10px Inter,sans-serif;cursor:pointer}
+#nextess-solar-angle-sim .mode button.active{background:rgba(139,92,246,.20);border-color:rgba(167,139,250,.45);color:#cebdff}
+#nextess-solar-angle-sim .telemetry{background:var(--deep)}
+#nextess-solar-angle-sim .telemetry-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+#nextess-solar-angle-sim .telemetry-head span:first-child{font-size:11px;letter-spacing:.55px;font-weight:700;color:var(--muted)}
+#nextess-solar-angle-sim .telemetry-head span:last-child{font:11px ui-monospace,SFMono-Regular,monospace;color:var(--muted)}
+#nextess-solar-angle-sim .power-bar{height:12px;background:#181926;border:1px solid rgba(167,139,250,.14);border-radius:999px;overflow:hidden}
+#nextess-solar-angle-sim .power-fill{height:100%;width:100%;background:var(--violet2);border-radius:999px;transition:width .15s,background .15s,box-shadow .15s}
+#nextess-solar-angle-sim .metrics{display:flex;justify-content:space-between;gap:10px;padding-top:7px}
+#nextess-solar-angle-sim .metric span{display:block;color:var(--muted);font-size:11px;line-height:16.5px}
+#nextess-solar-angle-sim .metric strong{display:block;color:#fff;font:700 16px/24px ui-monospace,SFMono-Regular,monospace}
+#nextess-solar-angle-sim .metric.right{text-align:right}
+#nextess-solar-angle-sim .note{font-size:10px;color:var(--muted);line-height:15px;margin-top:4px}
+@media(max-width:480px){#nextess-solar-angle-sim{padding:12px}}
+</style>
+
+<div class="sim-head">
+  <div class="title"><span class="title-mark"></span><span>Simulation Sandbox</span></div>
+  <div class="live"><span class="dot"></span>60 FPS Live</div>
+</div>
+
+<div class="note" style="margin:0 0 7px 0">This simulation shows how changing the sunlight angle relative to a solar panel changes the modeled electrical power output.</div>
+
+<div class="stage">
+  <canvas class="scene"></canvas>
+  <div class="overlay">
+    <div class="pill">Solar Panel Angle Test</div>
+    <div class="pill status" data-status>HIGH OUTPUT</div>
+  </div>
+  <div class="stage-readout">
+    <div><div class="read-label">Incidence angle θ</div><div class="read-value" data-angle>0°</div></div>
+    <div style="text-align:right"><div class="read-label">Modeled output</div><div class="read-value" data-power>200 W</div></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="section-label">DYNAMIC PHYSICS INPUTS</div>
+  <label class="row">
+    <div class="row-top"><span>Sunlight angle θ from perpendicular</span><output data-angle-out>0°</output></div>
+    <input data-angle-range type="range" min="0" max="90" step="1" value="0" aria-label="Sunlight angle">
+  </label>
+  <label class="row">
+    <div class="row-top"><span>Panel maximum power</span><output data-pmax>200 W</output></div>
+    <input data-pmax-range type="range" min="100" max="200" step="10" value="200" aria-label="Maximum panel power">
+  </label>
+  <div class="mode">
+    <button data-mode="200" class="active">200 W STATION</button>
+    <button data-mode="100">100 W TEST PANEL</button>
+  </div>
+</div>
+
+<div class="telemetry">
+  <div class="telemetry-head"><span>POWER TELEMETRY</span><span>P = Pmax cos θ</span></div>
+  <div class="power-bar"><div class="power-fill" data-fill></div></div>
+  <div class="metrics">
+    <div class="metric"><span>Power retained</span><strong data-percent>100%</strong></div>
+    <div class="metric right"><span>Station requirement</span><strong data-requirement>≥170 W</strong></div>
+  </div>
+  <div class="note">θ is measured from the panel perpendicular. The model does not include clouds, shading, temperature, dust or electrical losses.</div>
+</div>
+
+<script>
+(()=> {
+  const root=document.getElementById('nextess-solar-angle-sim');
+  if(!root || root.dataset.ready) return; root.dataset.ready="1";
+  const canvas=root.querySelector('.scene'),ctx=canvas.getContext('2d');
+  const angleR=root.querySelector('[data-angle-range]'),pmaxR=root.querySelector('[data-pmax-range]');
+  const angleO=root.querySelector('[data-angle]'),angleOut=root.querySelector('[data-angle-out]');
+  const pmaxO=root.querySelector('[data-pmax]'),powerO=root.querySelector('[data-power]');
+  const fill=root.querySelector('[data-fill]'),percent=root.querySelector('[data-percent]');
+  const status=root.querySelector('[data-status]'),buttons=[...root.querySelectorAll('[data-mode]')];
+  function resize(){const r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);draw()}
+  new ResizeObserver(resize).observe(canvas);
+  function values(){const a=+angleR.value,pm=+pmaxR.value,p=pm*Math.cos(a*Math.PI/180);return {a,pm,p}}
+  function update(){
+    const v=values(),ratio=v.p/v.pm;
+    angleO.textContent=v.a+'°';angleOut.textContent=v.a+'°';pmaxO.textContent=v.pm+' W';powerO.textContent=v.p.toFixed(1)+' W';
+    percent.textContent=Math.round(ratio*100)+'%';
+    fill.style.width=(ratio*100)+'%';
+    const good=v.pm===200 ? v.p>=170 : v.p>=85;
+    status.textContent=good?'HIGH OUTPUT':'LOW OUTPUT';status.style.color=good?'#5af0b4':'#f97386';
+    status.style.borderColor=good?'rgba(90,240,180,.25)':'rgba(249,115,134,.3)';
+    fill.style.background=good?'#8b5cf6':'#f97386';fill.style.boxShadow=good?'0 0 10px rgba(139,92,246,.35)':'0 0 10px rgba(249,115,134,.3)';
+    draw()
+  }
+  function draw(){
+    const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle='rgba(167,139,250,.07)';ctx.lineWidth=1;
+    for(let x=0;x<w;x+=45){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+    for(let y=0;y<h;y+=38){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+    const v=values(),cx=w*.52,cy=h*.62,len=Math.min(w*.48,250),ang=-Math.PI/2+v.a*Math.PI/180;
+    const dx=Math.cos(ang)*len/2,dy=Math.sin(ang)*len/2;
+    const sunDirX=0.32, sunDirY=0.95;
+    ctx.strokeStyle='rgba(255,214,102,.58)';ctx.lineWidth=2;
+    for(let i=-3;i<=3;i++){
+      const offset=i*18;
+      const sx=cx+offset-155*sunDirX, sy=cy+offset*.18-155*sunDirY;
+      const ex=cx+offset+35*sunDirX, ey=cy+offset*.18+35*sunDirY;
+      ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.fillStyle='#ffd666';ctx.beginPath();ctx.arc(sx,sy,3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#ffd666';ctx.font='700 10px Inter,sans-serif';
+    ctx.fillText('SUNLIGHT RAYS',12,h-16);
+    ctx.strokeStyle='rgba(167,139,250,.35)';ctx.setLineDash([5,5]);ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx,cy-100);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle='#a78bfa';ctx.lineWidth=9;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx-dx,cy-dy);ctx.lineTo(cx+dx,cy+dy);ctx.stroke();
+    ctx.strokeStyle='rgba(226,232,240,.35)';ctx.lineWidth=1;
+    for(let i=-2;i<=2;i++){const ox=(dx/2)*i/2,oy=(dy/2)*i/2;ctx.beginPath();ctx.moveTo(cx-dx+ox,cy-dy+oy);ctx.lineTo(cx+dx+ox,cy+dy+oy);ctx.stroke()}
+    ctx.strokeStyle='#5af0b4';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,44,-Math.PI/2,ang,ang>-Math.PI/2);ctx.stroke();
+    ctx.fillStyle='#5af0b4';ctx.font='700 11px ui-monospace,monospace';ctx.fillText('θ = '+v.a+'°',cx+49,cy-35);
+    ctx.fillStyle='#94a3b8';ctx.font='10px ui-monospace,monospace';ctx.fillText('perpendicular',cx+7,cy-104);
+    ctx.fillStyle='#e2e8f0';ctx.font='700 10px ui-monospace,monospace';ctx.fillText('P = '+v.p.toFixed(1)+' W',Math.max(8,cx-42),cy+55);
+    ctx.fillStyle='rgba(255,214,102,.12)';ctx.beginPath();ctx.arc(48,48,27,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffd666';ctx.beginPath();ctx.arc(48,48,12,0,Math.PI*2);ctx.fill();
+  }
+  angleR.addEventListener('input',update);pmaxR.addEventListener('input',update);
+  buttons.forEach(b=>b.addEventListener('click',()=>{
+    const m=+b.dataset.mode;pmaxR.value=m;buttons.forEach(x=>x.classList.toggle('active',x===b));update()
+  }));
+  update();
+})();
+</script>
+</div>
