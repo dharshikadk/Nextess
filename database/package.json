@@ -8,7 +8,8 @@
     "format": "prisma format",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed:v2": "tsx prisma/seed-v2.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0"
