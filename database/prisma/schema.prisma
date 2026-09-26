@@ -63,6 +63,18 @@ enum FeedbackStatus {
   RESOLVED
 }
 
+enum ProfileType {
+  STUDENT
+  WORKING_PROFESSIONAL
+  OTHER
+}
+
+enum LeagueStatus {
+  SCHEDULED
+  OPEN
+  CLOSED
+}
+
 enum ActorType {
   USER
   ANONYMOUS
@@ -95,8 +107,16 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   lastActivityAt DateTime?
+  profileType ProfileType @default(STUDENT)
+  profession String? @db.VarChar(150)
+  educationStage String? @db.VarChar(30)
+  schoolClass String? @db.VarChar(50)
+  fieldOfStudy String? @db.VarChar(100)
 
   settings       UserSetting?
+  sessions       AuthSession[]
+  leagueEntries  LeagueParticipant[]
+  directiveClaims DirectiveClaim[]
   investigations Investigation[]
   answers        InvestigationAnswer[]
   notes          UserNote[]
@@ -113,6 +133,14 @@ model User {
 
   @@index([lastActivityAt])
 }
+
+
+model AuthSession { id String @id @default(uuid()) @db.Uuid userId String @db.Uuid tokenHash String @unique @db.VarChar(128) createdAt DateTime @default(now()) lastActivityAt DateTime @default(now()) expiresAt DateTime user User @relation(fields:[userId], references:[id], onDelete:Cascade) @@index([userId, expiresAt]) }
+model LeagueCycle { id String @id @default(uuid()) @db.Uuid name String @db.VarChar(100) status LeagueStatus @default(SCHEDULED) startsAt DateTime endsAt DateTime winnerUserId String? @db.Uuid createdAt DateTime @default(now()) participants LeagueParticipant[] @@index([status, startsAt, endsAt]) }
+model LeagueParticipant { id String @id @default(uuid()) @db.Uuid cycleId String @db.Uuid userId String @db.Uuid kp Int @default(0) streakDays Int @default(0) joinedAt DateTime @default(now()) updatedAt DateTime @updatedAt cycle LeagueCycle @relation(fields:[cycleId], references:[id], onDelete:Cascade) user User @relation(fields:[userId], references:[id], onDelete:Cascade) @@unique([cycleId,userId]) @@index([cycleId,kp]) }
+model DailyQuote { id String @id @default(uuid()) @db.Uuid dateKey String @unique @db.VarChar(10) quote String source String @db.VarChar(150) category String @db.VarChar(60) }
+model DailyDirective { id String @id @default(uuid()) @db.Uuid title String @db.VarChar(160) description String rewardXp Int @default(0) rewardCoins Int @default(0) ordering Int @default(0) active Boolean @default(true) claims DirectiveClaim[] }
+model DirectiveClaim { id String @id @default(uuid()) @db.Uuid directiveId String @db.Uuid userId String @db.Uuid claimDate DateTime createdAt DateTime @default(now()) directive DailyDirective @relation(fields:[directiveId], references:[id], onDelete:Cascade) user User @relation(fields:[userId], references:[id], onDelete:Cascade) @@unique([directiveId,userId,claimDate]) @@index([userId,claimDate]) }
 
 model UserSetting {
   id        String   @id @default(uuid()) @db.Uuid
