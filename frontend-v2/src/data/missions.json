@@ -1,0 +1,864 @@
+{
+  "contentPackageVersion": 1,
+  "projects": [
+    {
+      "key": "physics-bike-braking",
+      "subject": "physics",
+      "version": 1,
+      "title": "The Bicycle That Would Not Stop",
+      "difficulty": "Easy",
+      "estimatedLength": "20-25 minutes",
+      "problemType": "engineering-diagnosis",
+      "role": "Junior Safety Investigator",
+      "mission": "A delivery rider finds that a bicycle takes much longer to stop when carrying a heavy box and moving faster. Investigate why the stopping distance changes and decide how the rider can stay within a safe stopping distance.",
+      "learningCapsule": {
+        "title": "Motion Energy and Braking",
+        "sections": [
+          {
+            "title": "What happens when a moving object stops?",
+            "content": "A moving bicycle has kinetic energy. When the brakes are applied, this energy has to be removed. It mainly changes into heat in the brake system and tyres. A bicycle with more kinetic energy needs more braking work to stop."
+          },
+          {
+            "title": "What changes kinetic energy?",
+            "content": "Kinetic energy depends on mass and speed. KE = 1/2 mv², where m is mass in kg and v is speed in m/s. Speed is squared. If speed doubles, kinetic energy becomes four times larger when mass stays the same."
+          },
+          {
+            "title": "Simple example",
+            "content": "For a 20 kg object moving at 5 m/s, KE = 1/2 × 20 × 5² = 250 J. If its speed becomes 10 m/s, KE = 1/2 × 20 × 10² = 1000 J."
+          },
+          {
+            "title": "Braking",
+            "content": "With the same braking system, more kinetic energy generally means more work is needed and the stopping distance can become larger. Speed and load both matter when checking braking safety."
+          }
+        ]
+      },
+      "levels": [
+        {
+          "number": 1,
+          "title": "The First Test",
+          "questions": [
+            {
+              "number": 1,
+              "type": "structured-choice",
+              "prompt": "A bicycle and rider have the same total mass in two tests. In the second test the speed is doubled. Which quantity changes strongly because of the speed change?",
+              "options": [
+                "Kinetic energy",
+                "Mass",
+                "Wheel radius",
+                "Brake lever length"
+              ],
+              "hints": [
+                "Which quantity describes the energy of a moving object?",
+                "Check which variable is squared in KE = 1/2 mv²."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "The bicycle and rider have a total mass of 50 kg and move at 4 m/s. Find the kinetic energy.",
+              "unit": "J",
+              "tolerance": 0.1,
+              "hints": [
+                "Use KE = 1/2 mv².",
+                "Square the speed before multiplying."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "what-if",
+              "prompt": "The same 50 kg bicycle and rider now move at 8 m/s. How many times is the kinetic energy compared with the 4 m/s case?",
+              "options": [
+                "2 times",
+                "4 times",
+                "8 times",
+                "The same"
+              ],
+              "hints": [
+                "Compare the speeds first.",
+                "The speed term is squared."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 2,
+          "title": "The Heavy Box",
+          "questions": [
+            {
+              "number": 1,
+              "type": "data-analysis",
+              "prompt": "Two tests use the same speed of 6 m/s. Test A has a total mass of 50 kg. Test B has a total mass of 75 kg. Which test has more kinetic energy?",
+              "options": [
+                "Test A",
+                "Test B",
+                "Both are equal",
+                "There is not enough information"
+              ],
+              "hints": [
+                "Keep speed fixed and compare mass.",
+                "Mass is part of KE = 1/2 mv²."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "A loaded bicycle has mass 75 kg and speed 6 m/s. Find its kinetic energy.",
+              "unit": "J",
+              "tolerance": 0.1,
+              "hints": [
+                "Substitute 75 kg and 6 m/s.",
+                "6² = 36."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "structured-choice",
+              "prompt": "The rider says, 'The bicycle is safe because the speed did not change.' The load increased from 50 kg to 75 kg. Which statement is correct?",
+              "options": [
+                "The load does not matter.",
+                "The load increases kinetic energy at the same speed.",
+                "Only the wheel size matters.",
+                "Kinetic energy becomes zero."
+              ],
+              "hints": [
+                "Ask what happens when mass increases while speed stays fixed.",
+                "Mass is part of the kinetic-energy formula."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 3,
+          "title": "Safe Route Decision",
+          "questions": [
+            {
+              "number": 1,
+              "type": "quantitative-investigation",
+              "prompt": "The bicycle brake system can safely remove at most 1600 J of kinetic energy. A 75 kg bicycle and rider are moving at 6 m/s. Is the condition within the limit?",
+              "options": [
+                "Yes",
+                "No"
+              ],
+              "hints": [
+                "Calculate KE first.",
+                "Compare it with 1600 J."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "For the same 75 kg bicycle and rider, find the greatest speed that gives exactly 1600 J of kinetic energy. Give the answer to 2 decimal places.",
+              "unit": "m/s",
+              "tolerance": 0.02,
+              "hints": [
+                "Set KE equal to the limit.",
+                "Rearrange to find v."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "engineering-decision",
+              "prompt": "Which route condition stays below the 1600 J braking limit?",
+              "options": [
+                "75 kg at 6.8 m/s",
+                "75 kg at 6.5 m/s",
+                "80 kg at 6.5 m/s",
+                "90 kg at 6.2 m/s"
+              ],
+              "hints": [
+                "Calculate KE for each option.",
+                "The selected condition must be below 1600 J."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        }
+      ],
+      "requiredEvidence": {
+        "required": true,
+        "instruction": "Read every required file and use its information while solving the mission. Files are part of the task, not optional background reading.",
+        "maxFiles": 5,
+        "bundleId": "physics-bike-braking_evidence_bundle",
+        "files": [
+          {
+            "fileName": "braking_test_report.txt",
+            "type": "report",
+            "purpose": "Read test conditions and braking limit.",
+            "content": "Bicycle+rider: 50 kg; loaded: 75 kg; speeds: 4, 8, 6 m/s; max safe braking energy: 1600 J; same braking system."
+          },
+          {
+            "fileName": "route_conditions.csv",
+            "type": "data",
+            "purpose": "Use for final safety decision.",
+            "content": "condition,mass_kg,speed_m_per_s\nA,75,6.8\nB,75,6.5\nC,80,6.5\nD,90,6.2"
+          },
+          {
+            "fileName": "mechanic_note.txt",
+            "type": "field-note",
+            "purpose": "Read the mechanic observation.",
+            "content": "Same braking system in every test. Rider reports harder stopping after adding load or increasing speed."
+          }
+        ]
+      },
+      "requiredSimulation": {
+        "required": true,
+        "fileName": "bicycle_braking_simulation.html",
+        "description": "Interactive physics simulation: sliders for mass and speed; animate bicycle braking; display kinetic energy, relative stopping-distance indicator and safe/over-limit status.",
+        "integrationComment": "// SIMULATION: simulate bicycle_braking_simulation.html before solving. Change mass and speed and observe kinetic energy and stopping-distance changes."
+      }
+    },
+    {
+      "key": "physics-solar-panel-angle",
+      "subject": "physics",
+      "version": 1,
+      "title": "The Solar Panel That Lost Power",
+      "difficulty": "Easy",
+      "estimatedLength": "20-25 minutes",
+      "problemType": "investigation",
+      "role": "Solar Station Technician",
+      "mission": "A small solar-powered charging station produces less electrical power than expected. The panel and battery are working, so the team suspects that the direction of incoming sunlight is affecting output. Investigate the effect of angle and choose a useful setup.",
+      "learningCapsule": {
+        "title": "Light, Surface Area and Solar Power",
+        "sections": [
+          {
+            "title": "Why does panel direction matter?",
+            "content": "A solar panel receives energy from sunlight. A larger effective area facing incoming light receives more of that light. When light arrives farther from the useful perpendicular direction, less light is received effectively."
+          },
+          {
+            "title": "Simple model",
+            "content": "For a flat surface receiving light at an angle θ from the perpendicular, the simple model is P = Pmax cos θ. θ is measured from the perpendicular. At θ = 0°, power is maximum."
+          },
+          {
+            "title": "Example",
+            "content": "If Pmax = 100 W and θ = 60°, then P = 100 × cos 60° = 50 W."
+          },
+          {
+            "title": "Important",
+            "content": "Do not confuse the angle of the panel with θ unless the situation defines them as the same. Real output can also depend on clouds, temperature, shading, dust and electrical losses."
+          }
+        ]
+      },
+      "levels": [
+        {
+          "number": 1,
+          "title": "Find the Lost Power",
+          "questions": [
+            {
+              "number": 1,
+              "type": "structured-choice",
+              "prompt": "A panel gives maximum output when sunlight travels along the panel's perpendicular direction. What is θ?",
+              "options": [
+                "0°",
+                "30°",
+                "60°",
+                "90°"
+              ],
+              "hints": [
+                "The perpendicular is the reference direction.",
+                "No angle away from the perpendicular means 0°."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "A panel can produce 120 W at θ = 0°. If θ = 60°, use P = Pmax cos θ to find the power.",
+              "unit": "W",
+              "tolerance": 0.5,
+              "hints": [
+                "cos 60° = 0.5.",
+                "Multiply maximum power by 0.5."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "structured-choice",
+              "prompt": "Which angle gives more modeled power for the same panel: θ = 20° or θ = 70°?",
+              "options": [
+                "20°",
+                "70°",
+                "Both are equal",
+                "Neither"
+              ],
+              "hints": [
+                "Compare how close each angle is to 0°.",
+                "Cosine decreases from 0° toward 90°."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 2,
+          "title": "Test the Panel",
+          "questions": [
+            {
+              "number": 1,
+              "type": "data-analysis",
+              "prompt": "A 100 W panel gives 100 W at 0°, 87 W at 30°, and 51 W at 60°. Which measurement is closest to the simple cosine model?",
+              "options": [
+                "30° → 87 W",
+                "60° → 51 W",
+                "Both are equally far",
+                "Neither"
+              ],
+              "hints": [
+                "Calculate the model value for each angle.",
+                "Compare measured and model values."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "Using the same 100 W panel, estimate the modeled output at θ = 30°. Give the answer to 1 decimal place.",
+              "unit": "W",
+              "tolerance": 0.2,
+              "hints": [
+                "cos 30° ≈ 0.866.",
+                "Multiply by 100 W."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "structured-choice",
+              "prompt": "The team sees lower output on a cloudy day even though the angle is unchanged. What should they conclude?",
+              "options": [
+                "Angle is the only factor.",
+                "The simple angle model does not include every real-world factor.",
+                "The panel must be broken.",
+                "Cosine no longer exists."
+              ],
+              "hints": [
+                "Look at what changed while the angle stayed the same.",
+                "A model can describe one important factor without describing everything."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 3,
+          "title": "Choose the Setup",
+          "questions": [
+            {
+              "number": 1,
+              "type": "numerical",
+              "prompt": "A 200 W panel is receiving sunlight at θ = 60°. Find the modeled power.",
+              "unit": "W",
+              "tolerance": 0.5,
+              "hints": [
+                "cos 60° = 0.5.",
+                "Use P = Pmax cos θ."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "engineering-decision",
+              "prompt": "The station needs at least 170 W from a 200 W panel. Which angles are acceptable under the simple model?",
+              "options": [
+                "Only 0°",
+                "Only 30°",
+                "0° and 30°",
+                "60° and 80°"
+              ],
+              "hints": [
+                "Calculate or estimate the output for each option.",
+                "The requirement is at least 170 W."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "structured-choice",
+              "prompt": "Why should the team still check the panel in real sunlight after choosing an angle from the model?",
+              "options": [
+                "The model ignores factors such as cloud cover and panel losses.",
+                "Formulas never work.",
+                "Angle has no effect.",
+                "The panel produces power without sunlight."
+              ],
+              "hints": [
+                "Think about what the model does not contain.",
+                "A simple model is not a complete real-world description."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        }
+      ],
+      "requiredEvidence": {
+        "required": true,
+        "instruction": "Read every required file and use its information while solving the mission. Files are part of the task, not optional background reading.",
+        "maxFiles": 5,
+        "bundleId": "physics-solar-panel-angle_evidence_bundle",
+        "files": [
+          {
+            "fileName": "solar_station_report.txt",
+            "type": "report",
+            "purpose": "Read maximum output and measured values.",
+            "content": "Maximum output at theta=0: 100 W; measured: 30 deg=87 W; 60 deg=51 W; same sunlight."
+          },
+          {
+            "fileName": "panel_angle_tests.csv",
+            "type": "data",
+            "purpose": "Use angle/output data.",
+            "content": "theta_deg,measured_power_W\n0,100\n30,87\n60,51"
+          },
+          {
+            "fileName": "technician_note.txt",
+            "type": "field-note",
+            "purpose": "Read theta definition and model limits.",
+            "content": "Theta is between incoming sunlight and panel perpendicular. Clouds, shading, temperature, dust and electrical losses are not in the simple model."
+          },
+          {
+            "fileName": "charging_station_requirement.txt",
+            "type": "requirement",
+            "purpose": "Use final output requirement.",
+            "content": "A 200 W panel needs at least 170 W under the simplified angle model."
+          }
+        ]
+      },
+      "requiredSimulation": {
+        "required": true,
+        "fileName": "solar_panel_angle_simulation.html",
+        "description": "Interactive physics simulation: rotate panel/light direction from theta 0–90 degrees; show light rays, angle and modeled power P=Pmax cos(theta); include 200 W mode.",
+        "integrationComment": "// SIMULATION: simulate solar_panel_angle_simulation.html before solving. Explore angle changes and observe modeled power."
+      }
+    },
+    {
+      "key": "economics-canteen-price-change",
+      "subject": "economics",
+      "version": 1,
+      "title": "The Canteen Price Problem",
+      "difficulty": "Easy",
+      "estimatedLength": "20-25 minutes",
+      "problemType": "market-investigation",
+      "role": "Canteen Market Analyst",
+      "mission": "A school canteen raises the price of a popular snack. Sales fall, but the canteen is unsure whether the price increase improved total revenue. Investigate the data and help the canteen choose a price.",
+      "learningCapsule": {
+        "title": "Price, Demand and Revenue",
+        "sections": [
+          {
+            "title": "Demand and quantity demanded",
+            "content": "Demand describes how much consumers are willing and able to buy at different prices. Quantity demanded is the amount bought at one particular price. When other conditions stay the same, a higher price usually leads to a lower quantity demanded for an ordinary good."
+          },
+          {
+            "title": "Revenue",
+            "content": "Total Revenue = Price × Quantity Sold."
+          },
+          {
+            "title": "Example",
+            "content": "If a canteen sells 100 sandwiches at ₹20, revenue is ₹2000. If the price becomes ₹25 and sales fall to 80, revenue is ₹2000. A higher price does not automatically mean higher revenue."
+          },
+          {
+            "title": "Using data",
+            "content": "Do not look only at price or only at quantity. Compare both together when checking revenue."
+          }
+        ]
+      },
+      "levels": [
+        {
+          "number": 1,
+          "title": "Read the Sales Data",
+          "questions": [
+            {
+              "number": 1,
+              "type": "data-analysis",
+              "prompt": "The canteen records ₹20 → 100 sandwiches, ₹25 → 80 sandwiches, ₹30 → 60 sandwiches. What pattern is shown?",
+              "options": [
+                "Quantity sold falls as price rises.",
+                "Quantity sold rises as price rises.",
+                "Price and quantity do not change.",
+                "Quantity sold is always zero."
+              ],
+              "hints": [
+                "Read price and quantity together.",
+                "Look at the direction of both changes."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "At ₹20, the canteen sells 100 sandwiches. Find total revenue.",
+              "unit": "₹",
+              "tolerance": 0,
+              "hints": [
+                "Use Total Revenue = Price × Quantity Sold.",
+                "Multiply 20 by 100."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "numerical",
+              "prompt": "At ₹25, the canteen sells 80 sandwiches. Find total revenue.",
+              "unit": "₹",
+              "tolerance": 0,
+              "hints": [
+                "Multiply the new price by the new quantity.",
+                "Compare with the ₹20 case."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 2,
+          "title": "Find the Better Price",
+          "questions": [
+            {
+              "number": 1,
+              "type": "data-analysis",
+              "prompt": "Using ₹20 → 100 units, ₹25 → 80 units, ₹30 → 60 units, which prices give the highest revenue?",
+              "options": [
+                "₹20 only",
+                "₹25 only",
+                "₹20 and ₹25",
+                "₹30 only"
+              ],
+              "hints": [
+                "Calculate revenue for all three prices.",
+                "Two prices can have the same revenue."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "structured-choice",
+              "prompt": "The manager says, '₹30 gives more money per sandwich, so it must give more total revenue.' What is wrong?",
+              "options": [
+                "Total revenue also depends on how many sandwiches are sold.",
+                "Price never affects quantity.",
+                "Revenue is always equal to cost.",
+                "Quantity sold does not matter."
+              ],
+              "hints": [
+                "Look at the revenue formula.",
+                "Ask what happens to quantity when price rises."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "what-if",
+              "prompt": "Suppose the price stays at ₹25 but sales increase from 80 to 100 sandwiches. What is the new revenue?",
+              "unit": "₹",
+              "tolerance": 0,
+              "hints": [
+                "The price is still ₹25.",
+                "Only quantity changes to 100."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 3,
+          "title": "Make the Canteen Decision",
+          "questions": [
+            {
+              "number": 1,
+              "type": "numerical",
+              "prompt": "Expected sales are ₹22 → 95 sandwiches, ₹25 → 86 sandwiches, ₹28 → 70 sandwiches. Find revenue at ₹22.",
+              "unit": "₹",
+              "tolerance": 0,
+              "hints": [
+                "Use price × quantity.",
+                "22 × 95 = 2090."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "data-analysis",
+              "prompt": "Using the same survey, which option gives the highest expected revenue?",
+              "options": [
+                "₹22",
+                "₹25",
+                "₹28"
+              ],
+              "hints": [
+                "Calculate all three revenues.",
+                "Do not choose only by highest price or highest quantity."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "decision",
+              "prompt": "The canteen wants the highest expected revenue from the three tested prices. Which price should it choose?",
+              "options": [
+                "₹22",
+                "₹25",
+                "₹28"
+              ],
+              "hints": [
+                "Use the revenue results from the previous question.",
+                "Choose the option that meets the stated goal."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        }
+      ],
+      "requiredEvidence": {
+        "required": true,
+        "instruction": "Read every required file and use its information while solving the mission. Files are part of the task, not optional background reading.",
+        "maxFiles": 5,
+        "bundleId": "economics-canteen-price-change_evidence_bundle",
+        "files": [
+          {
+            "fileName": "canteen_sales_report.txt",
+            "type": "report",
+            "purpose": "Read observed price and sales data.",
+            "content": "Price ₹20->100 sandwiches; ₹25->80; ₹30->60; comparable periods."
+          },
+          {
+            "fileName": "price_forecast.csv",
+            "type": "data",
+            "purpose": "Use expected sales for final decision.",
+            "content": "price_rupees,expected_quantity\n22,95\n25,86\n28,70"
+          },
+          {
+            "fileName": "manager_note.txt",
+            "type": "field-note",
+            "purpose": "Read decision goal.",
+            "content": "Compare expected total revenue across listed prices; consider both price and quantity."
+          }
+        ]
+      },
+      "requiredSimulation": {
+        "required": true,
+        "fileName": "canteen_revenue_graph.html",
+        "description": "Interactive economics graph: price selector, downward demand graph, and revenue graph highlighting selected price.",
+        "integrationComment": "// SIMULATION: simulate canteen_revenue_graph.html before solving. Select prices and observe quantity and revenue together."
+      }
+    },
+    {
+      "key": "economics-bus-fare-demand",
+      "subject": "economics",
+      "version": 1,
+      "title": "The Bus Fare Decision",
+      "difficulty": "Easy",
+      "estimatedLength": "20-25 minutes",
+      "problemType": "decision-policy-selection",
+      "role": "Public Transport Data Analyst",
+      "mission": "A city bus service wants to change its fare. The operator wants more revenue, but the city also wants to keep enough passengers using the service. Use passenger data to compare the choices.",
+      "learningCapsule": {
+        "title": "Demand, Price Changes and Trade-offs",
+        "sections": [
+          {
+            "title": "Price and demand",
+            "content": "For many ordinary services, a higher price leads to a lower quantity demanded when other conditions stay the same. Some users may reduce trips, switch to another option or travel less."
+          },
+          {
+            "title": "Revenue",
+            "content": "Revenue = Price × Number of Trips."
+          },
+          {
+            "title": "Trade-off",
+            "content": "A decision can have more than one goal. A bus operator may want high revenue, while the city may also require a minimum number of passenger trips. A good decision must satisfy the stated conditions."
+          },
+          {
+            "title": "Example",
+            "content": "If a ₹10 fare produces 1000 trips, revenue is ₹10,000. If a ₹12 fare produces 850 trips, revenue is ₹10,200. Revenue increased, but passenger trips fell."
+          }
+        ]
+      },
+      "levels": [
+        {
+          "number": 1,
+          "title": "Understand the Fare Data",
+          "questions": [
+            {
+              "number": 1,
+              "type": "data-analysis",
+              "prompt": "A bus operator records ₹10 → 1000 trips, ₹12 → 850 trips, ₹15 → 650 trips. What happens to passenger trips as fare rises?",
+              "options": [
+                "Trips fall.",
+                "Trips rise.",
+                "Trips stay the same.",
+                "Trips become zero at every fare."
+              ],
+              "hints": [
+                "Compare the three trip counts.",
+                "Read the data as fare changes."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "At a fare of ₹12, there are 850 passenger trips. Find total fare revenue.",
+              "unit": "₹",
+              "tolerance": 0,
+              "hints": [
+                "Multiply fare by number of trips.",
+                "12 × 850 = 10,200."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "structured-choice",
+              "prompt": "Which statement is supported by the data?",
+              "options": [
+                "A higher fare always gives lower revenue.",
+                "A higher fare can reduce trips while revenue may still rise.",
+                "Passenger trips are not affected by fare.",
+                "Revenue depends only on passenger trips."
+              ],
+              "hints": [
+                "Calculate revenue at ₹10 and ₹12.",
+                "Trips and revenue can move differently."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 2,
+          "title": "Add a City Rule",
+          "questions": [
+            {
+              "number": 1,
+              "type": "structured-choice",
+              "prompt": "The city requires at least 800 passenger trips per day. Which tested fare fails this rule?",
+              "options": [
+                "₹10",
+                "₹12",
+                "₹15",
+                "None"
+              ],
+              "hints": [
+                "Compare each trip count with 800.",
+                "Values below 800 fail."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "numerical",
+              "prompt": "The operator can choose between ₹10 and ₹12 because both meet the minimum passenger rule. How much higher is the revenue at ₹12 than at ₹10?",
+              "unit": "₹",
+              "tolerance": 0,
+              "hints": [
+                "Calculate both revenues or use the values already found.",
+                "Subtract the ₹10 revenue from the ₹12 revenue."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "decision",
+              "prompt": "If the only goals are to meet at least 800 trips and maximize revenue among the tested options, which fare should be selected?",
+              "options": [
+                "₹10",
+                "₹12",
+                "₹15"
+              ],
+              "hints": [
+                "Remove options that fail the city rule first.",
+                "Then compare revenue."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        },
+        {
+          "number": 3,
+          "title": "A New Competitor",
+          "questions": [
+            {
+              "number": 1,
+              "type": "data-analysis",
+              "prompt": "A new shared-van service starts charging ₹8 for a similar trip. The bus operator notices fewer passengers at the same bus fare. What is the most direct economic change?",
+              "options": [
+                "Passengers have a new alternative.",
+                "The bus route becomes longer automatically.",
+                "The bus fare becomes zero.",
+                "The number of buses must become zero."
+              ],
+              "hints": [
+                "Ask what changed for passengers.",
+                "Look at the new service and its price."
+              ]
+            },
+            {
+              "number": 2,
+              "type": "structured-choice",
+              "prompt": "Which new evidence would be most useful before making another fare decision?",
+              "options": [
+                "Passenger trips at different bus fares after the competitor entered",
+                "The colour of the buses",
+                "The driver's favourite route",
+                "The number of seats in an unrelated train"
+              ],
+              "hints": [
+                "Choose evidence directly connected to bus demand and fare.",
+                "The competitor changed passenger choices."
+              ]
+            },
+            {
+              "number": 3,
+              "type": "decision",
+              "prompt": "The city still requires at least 800 trips, but the old demand data may no longer be valid. What should the operator do before selecting a new fare?",
+              "options": [
+                "Use the old data without checking.",
+                "Collect updated fare-and-trip data.",
+                "Choose the highest fare automatically.",
+                "Ignore passenger numbers."
+              ],
+              "hints": [
+                "The market condition changed.",
+                "Old data may not describe the new market."
+              ]
+            }
+          ],
+          "evidenceUse": "Read the mission evidence files before answering this level.",
+          "simulationUse": "Use the required mission simulation before answering this level."
+        }
+      ],
+      "requiredEvidence": {
+        "required": true,
+        "instruction": "Read every required file and use its information while solving the mission. Files are part of the task, not optional background reading.",
+        "maxFiles": 5,
+        "bundleId": "economics-bus-fare-demand_evidence_bundle",
+        "files": [
+          {
+            "fileName": "bus_fare_report.txt",
+            "type": "report",
+            "purpose": "Read original fare/passenger data.",
+            "content": "₹10->1000 trips; ₹12->850; ₹15->650; minimum 800 trips/day."
+          },
+          {
+            "fileName": "competitor_update.txt",
+            "type": "report",
+            "purpose": "Read market change before final questions.",
+            "content": "Shared van entered at ₹8 for similar trip; fewer bus passengers observed; no new complete fare-trip dataset yet."
+          },
+          {
+            "fileName": "bus_fare_data.csv",
+            "type": "data",
+            "purpose": "Use original observations for calculations.",
+            "content": "fare_rupees,passenger_trips\n10,1000\n12,850\n15,650"
+          },
+          {
+            "fileName": "city_policy_note.txt",
+            "type": "policy-note",
+            "purpose": "Use passenger minimum as constraint.",
+            "content": "Bus service must maintain at least 800 passenger trips/day."
+          }
+        ]
+      },
+      "requiredSimulation": {
+        "required": true,
+        "fileName": "bus_fare_demand_dashboard.html",
+        "description": "Interactive economics graph: fare slider updates trips/revenue; 800-trip constraint line; competitor toggle shifts demand curve.",
+        "integrationComment": "// SIMULATION: simulate bus_fare_demand_dashboard.html before solving. Explore original data, then switch on competitor."
+      }
+    }
+  ]
+}
