@@ -1,0 +1,6 @@
+{
+  "name": "Nextess — Kinetic STEM Learning Platform",
+  "description": "Nextess transforms STEM education through interactive physics simulations, narrative crisis missions, and gamified 3-day sprint leagues.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
