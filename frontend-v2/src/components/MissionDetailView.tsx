@@ -66,6 +66,12 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
     );
   }
 
+  const openStage = (stage:number) => {
+    localStorage.setItem('nextess_selected_mission', mission.id);
+    localStorage.setItem('nextess_mission_stage', String(stage));
+    onNavigate('mission-chamber');
+  };
+
   return (
     <div className="flex flex-col w-full pb-20">
       <div className="flex flex-col gap-3 mb-6 pt-2">
@@ -111,34 +117,37 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-violet-400 text-[20px]">stairs</span>
-              <span className={`font-headline-sm text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Mission Level Ladder</span>
+              <span className={`font-headline-sm text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Mission Stage Ladder</span>
             </div>
-            <span className="font-mono text-xs text-slate-400">NODE CHAIN: {String(mission.levels.length).padStart(2, '0')} UNITS</span>
+            <span className="font-mono text-xs text-slate-400">NODE CHAIN: {String(mission.levels.length + 2).padStart(2, '0')} UNITS</span>
           </div>
 
           <div className="relative flex flex-col gap-4">
             <div className="absolute left-7 top-8 bottom-8 w-0.5 bg-slate-700/30 z-0" />
-            {mission.levels.map((level) => (
-              <div key={level.number} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border transition-all ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
-                <div className={`w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50`}>
-                  <span className="font-mono text-xs font-bold">{String(level.number).padStart(2, '0')}</span>
+            {[
+              { stage:1, label:'Stage 01', title:'Mission Brief', meta:'Understand the mission objective before starting.' },
+              { stage:2, label:'Stage 02', title:'Learning Capsule', meta:'Review the concepts needed for the investigation.' },
+            ].map((stage) => (
+              <button key={stage.stage} onClick={() => openStage(stage.stage)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
+                <div className="w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50"><span className="font-mono text-xs font-bold">{String(stage.stage).padStart(2,'0')}</span></div>
+                <div className="flex flex-col flex-1 gap-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2"><div><span className="font-mono text-[11px] font-bold text-violet-400 uppercase">{stage.label}</span><span className={`ml-2 font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{stage.title}</span></div><span className="px-2 py-0.5 rounded bg-slate-700/30 text-slate-400 font-mono text-[10px] font-semibold border border-slate-500/10">OPEN</span></div>
+                  <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{stage.meta}</p>
                 </div>
+              </button>
+            ))}
+            {mission.levels.map((level) => (
+              <button key={level.number} onClick={() => openStage(level.number + 2)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
+                <div className="w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50"><span className="font-mono text-xs font-bold">{String(level.number + 2).padStart(2, '0')}</span></div>
                 <div className="flex flex-col flex-1 gap-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono text-[11px] font-bold text-violet-400 uppercase">Level {level.number}</span>
-                      <span className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{level.title}</span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-slate-700/30 text-slate-400 font-mono text-[10px] font-semibold border border-slate-500/10">NOT STARTED</span>
+                    <div className="flex items-center gap-2 min-w-0"><span className="font-mono text-[11px] font-bold text-violet-400 uppercase">Level {level.number}</span><span className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{level.title}</span></div>
+                    <span className="px-2 py-0.5 rounded bg-slate-700/30 text-slate-400 font-mono text-[10px] font-semibold border border-slate-500/10">OPEN</span>
                   </div>
                   <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{level.questions.length} questions • {level.evidenceUse || 'Use the mission data provided for this level.'}</p>
-                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono text-slate-400">
-                    <span>{level.simulationUse ? 'Simulation required' : 'No simulation requirement specified'}</span>
-                    <span>•</span>
-                    <span>Questions are served by the mission system when connected.</span>
-                  </div>
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono text-slate-400"><span>{level.simulationUse ? 'Simulation required' : 'No simulation requirement specified'}</span><span>•</span><span>Click to open the mission stage.</span></div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
