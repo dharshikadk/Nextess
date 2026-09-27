@@ -1,0 +1,336 @@
+##Use the provided Nextess logo video as a normal frontend asset.
+
+Prefer a structure similar to:
+
+frontend-v2/
+├── public/
+│   └── branding/
+│       └── nextess-loading.mp4
+
+The exact location may be adapted to the existing repository structure if there is already an established asset convention.
+
+IMPORTANT:
+
+The video must be referenced through a centralized configuration or reusable component rather than hardcoded throughout multiple pages.
+
+For example:
+
+const NEXTESS_LOADING_VIDEO = "/branding/nextess-loading.mp4";
+
+or an equivalent existing project convention.
+
+This is important because the video may be replaced in the future.
+
+If the file name/path changes, there should ideally be only one place that needs to be updated.
+
+Do Not Build Around a Fixed Timer
+
+Do NOT simply do:
+
+show video for 3 seconds
+→ hide video
+→ show application
+
+The loading screen must be controlled primarily by actual application readiness.
+
+The video may finish before the application is ready, or the application may become ready before the video finishes.
+
+Handle both cases gracefully.
+
+Conceptually:
+
+Loading screen visible
+        ↓
+Video plays
+        +
+Application initializes
+        ↓
+Wait until required initialization is complete
+        ↓
+Transition to application
+Do not artificially delay the application just to make the video play longer than necessary.
+
+##Initial Application Load
+When the user opens Nextess for the first time:
+Nextess logo/video
+        ↓
+Initialize application
+        ↓
+Restore/create anonymous session if required
+        ↓
+Initialize required frontend state
+        ↓
+Load essential application configuration/data
+        ↓
+Application ready
+        ↓
+Fade/transition into Nextess
+This must work with the existing Nextess anonymous exploration flow.
+The user should not be forced to log in merely because the loading screen is being displayed.
+The current product flow remains:
+Open Nextess
+→ Start exploring
+→ Experience UI/UX
+→ Try projects/missions
+→ Decide whether to create an account
+
+Do not introduce a login gate.
+
+## Refresh Behavior
+
+When the user refreshes the Nextess application, the branded loading experience should appear again while the application is initializing.
+
+The refresh experience should:
+
+display the Nextess logo/video
+initialize the application normally
+restore the appropriate anonymous/authenticated session
+restore necessary application state
+transition smoothly back to the application
+
+Do not reset legitimate user progress merely because the page was refreshed.
+
+## Longer Loading Operations
+
+Where appropriate, create the loading component so it can also support longer application operations.
+
+Examples:
+
+Loading mission...
+Preparing investigation...
+Loading simulation...
+Preparing your workspace...
+Almost ready...
+
+Use actual loading state rather than fake progress.
+
+The component should be reusable rather than creating separate implementations for every page.
+
+For example:
+
+<NextessLoadingScreen
+    message="Preparing your investigation..."
+/>
+
+The exact API should follow the existing frontend architecture.
+
+## User-Facing Messaging
+
+The loading experience should reassure the user that Nextess is working.
+
+Avoid wording such as:
+
+DO NOT CLOSE THE APP
+WAIT
+PLEASE DON'T LEAVE
+
+unless technically necessary.
+
+Prefer short, positive messages such as:
+
+Getting Nextess ready...
+Preparing your workspace...
+Loading your mission...
+Preparing your investigation...
+Almost ready...
+
+The message should not imply that the application is broken or stuck.
+
+Do not unnecessarily display a long message while the logo animation is playing.
+
+## Reusable Component
+
+Create one reusable loading-screen component rather than duplicating loading UI throughout the application.
+
+It should be capable of handling:
+
+initial application loading
+refresh/startup
+mission loading
+other legitimate longer frontend loading states where appropriate
+
+Keep the component independent from specific mission IDs, subjects, projects, or pages.
+
+For example:
+
+NextessLoadingScreen
+        ↓
+Reusable by
+├── Application bootstrap
+├── Mission loading
+├── Simulation loading
+└── Other legitimate loading states
+
+Do not create separate hardcoded loading screens for Physics, Economics, or individual missions.
+
+## Video Behavior
+
+Implement the video in a way that works reliably across modern browsers.
+
+Consider:
+
+autoplay restrictions
+muted playback
+playsInline
+responsive sizing
+graceful fallback if video playback fails
+accessibility
+reduced-motion preferences where appropriate
+
+The loading screen must still function if the browser cannot autoplay or render the video.
+
+The application must never become permanently blocked because the video failed to load.
+
+If the video cannot play, provide an appropriate static/logo fallback and continue application initialization.
+
+## Performance
+
+The loading experience must not unnecessarily make Nextess slower.
+
+Optimize appropriately:
+
+avoid loading the video repeatedly for every small API request
+do not block the application indefinitely because of the video
+avoid huge uncompressed video files
+keep the loading component lightweight
+use the appropriate video format/encoding supported by the project
+preload only when justified by the startup experience
+
+Do not introduce a large JavaScript dependency merely to display the video.
+
+## Smooth Transition
+
+When the application becomes ready, transition from the loading screen into the main UI smoothly.
+
+For example:
+
+Logo/loading screen
+       ↓
+short fade
+       ↓
+Nextess application
+
+Avoid abrupt removal that causes visual flashing.
+
+The transition should also avoid exposing an uninitialized/blank application underneath the loading screen.
+
+## Architecture Integration
+
+Before implementing anything:
+
+Inspect the existing frontend architecture.
+Inspect existing routing.
+Inspect existing application bootstrap/startup logic.
+Inspect existing loading states.
+Inspect existing asset conventions.
+Inspect existing API/session initialization.
+Reuse existing mechanisms where appropriate.
+Do not create a parallel application initialization architecture if one already exists.
+
+Integrate the loading experience into the existing Nextess frontend rather than rebuilding the application's startup system.
+
+## Future Video Replacement
+
+The logo video is expected to change in the future.
+
+Design the implementation so that replacing:
+
+nextess-loading.mp4
+
+with another compatible video does not require rewriting React components or application logic.
+
+Ideally the replacement should only require replacing the asset while preserving the same asset reference.
+
+If configuration is necessary, centralize it.
+
+Do NOT embed the binary video data directly into JavaScript/TypeScript source code.
+
+## Do Not Hardcode Application Content
+
+Do not hardcode:
+
+mission IDs
+subject IDs
+project IDs
+page-specific loading logic
+individual mission names
+Physics/Economics-specific loading components
+
+The loading system must remain generic and reusable as Nextess grows.
+
+## Accessibility
+
+Ensure the loading experience does not create accessibility problems.
+
+Consider:
+
+appropriate accessible text
+reduced-motion preferences
+keyboard usability
+video playback behavior
+users who cannot see the animation
+users with slow connections
+
+If reduced motion is requested, provide a simpler static logo/loading experience instead of forcing the animated video.
+
+## Error/Fallback Behavior
+
+The application must never remain stuck on the loading screen because of:
+
+video loading failure
+video playback failure
+missing optional branding asset
+temporary media/network issue
+
+Application readiness and branding-media availability must be treated separately.
+
+If the video fails:
+
+Video failure
+↓
+Static Nextess logo/fallback
+↓
+Continue application initialization
+↓
+Open application normally
+17. Testing
+
+Test at minimum:
+
+Startup
+Fresh application load
+Normal application initialization
+Slow network
+Fast network
+Refresh
+Browser refresh
+Anonymous user refresh
+Authenticated user refresh
+Existing application state restoration
+Video
+Video loads correctly
+Video autoplay works where permitted
+Autoplay is blocked
+Video file fails to load
+Video finishes before application initialization
+Application becomes ready before video finishes
+Accessibility
+Reduced-motion preference
+Keyboard navigation
+Screen-reader accessible loading state
+Responsive behavior
+Desktop
+Tablet
+Mobile
+Regression
+
+Verify that adding the loading screen does not break:
+
+routing
+anonymous exploration
+authentication
+mission navigation
+API communication
+simulations
+persistent progress
+existing frontend functionality
