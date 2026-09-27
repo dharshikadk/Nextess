@@ -99,7 +99,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                 className={`relative z-10 w-full flex ${left ? 'justify-start pl-4 md:pl-16' : 'justify-end pr-4 md:pr-16'} mb-20`}
               >
                 <button
-                  onClick={() => setSelectedKey(mission.key)}
+                  onClick={() => setSelectedKey(mission.id)}
                   onDoubleClick={() => openMission(mission)}
                   className="group relative flex items-center gap-4 text-left"
                   aria-label={`Select mission ${mission.title}`}
@@ -180,7 +180,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                   {(selectedMission.currentPublishedVersion?.levels || []).map((level) => (
                     <div key={level.levelNumber} className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="min-w-0">
-                        <span className="font-mono text-[9px] text-violet-400">LEVEL {level.number}</span>
+                        <span className="font-mono text-[9px] text-violet-400">LEVEL {level.levelNumber}</span>
                         <span className={`block text-xs font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{level.title}</span>
                       </div>
                       <span className="font-mono text-[9px] text-slate-500 shrink-0">{level.questions.length} questions</span>
