@@ -17,10 +17,12 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
   const [filter, setFilter] = useState<'all' | 'active' | 'soon'>('all');
   const [preRegistered, setPreRegistered] = useState<Record<string, boolean>>({});
   const [catalogue, setCatalogue] = useState<Record<string, any[]>>({});
+  const [futureSubjects, setFutureSubjects] = useState<any[]>([]);
   useEffect(() => {
     let cancelled = false;
     api.subjects().then(async ({subjects}:any) => {
       const active = (subjects || []).filter((s:any) => s.status === 'ACTIVE');
+      if (!cancelled) setFutureSubjects((subjects || []).filter((s:any) => s.status === 'FUTURE'));
       const pairs = await Promise.all(active.map(async (subject:any) => [subject.key.toLowerCase(), (await api.projects(subject.id)).projects || []]));
       if (!cancelled) setCatalogue(Object.fromEntries(pairs));
     }).catch(() => { if (!cancelled) onShowToast('Subject catalogue could not be loaded from the server.'); });
@@ -31,17 +33,7 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
   const physicsCount = physicsMissions.length;
   const economicsCount = economicsMissions.length;
 
-  const toggleRegister = (id: string, name: string) => {
-    setPreRegistered((prev) => {
-      const next = !prev[id];
-      if (next) {
-        onShowToast(`Pre-registered for ${name}! +50 Early Access XP reserved.`);
-      } else {
-        onShowToast(`Cancelled pre-registration for ${name}.`);
-      }
-      return { ...prev, [id]: next };
-    });
-  };
+  const toggleRegister = (_id: string, name: string) => onShowToast(`${name} is reserved in the database as a future subject. Mission content is not published yet.`);
 
   return (
     <div className="flex flex-col w-full pb-16">
@@ -297,166 +289,4 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
         </section>
       )}
 
-      {/* Upcoming Disciplines Section */}
-      {(filter === 'all' || filter === 'soon') && (
-        <section className="flex flex-col gap-4 mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-slate-400 text-[22px]">hourglass_top</span>
-              <h2 className={`font-headline-sm text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                UPCOMING RESEARCH DISCIPLINES
-              </h2>
-            </div>
-            <span className="text-xs font-mono text-slate-400">4 In Pipeline</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {/* Card 1: Chemistry */}
-            <div
-              className={`flex flex-col justify-between p-4 rounded-2xl border transition-all ${
-                isDark ? 'bg-[#12131b] border-violet-500/20 hover:border-violet-400/40' : 'bg-emerald-50/70 border-emerald-200'
-              }`}
-            >
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      isDark ? 'bg-[#181926] text-violet-400' : 'bg-white text-emerald-600 shadow-sm'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[22px]">science</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className={`font-headline-sm text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Molecular Chemistry &amp; Reaction Kinetics
-                  </h4>
-                  <span className="font-mono text-[11px] text-slate-400">Prerequisite: Classical Physics</span>
-                </div>
-                <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Calibrate dynamic electron densities in 3D chambers, balance stoichiometric catalysts, and prevent runaway exothermic reactor breaches.
-                </p>
-                <div
-                  className={`p-2 rounded-lg text-xs flex items-center gap-1.5 ${
-                    isDark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700 shadow-xs'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[14px] text-amber-500">inventory_2</span>
-                  <span>14 Lab Crises • 3D Orbital Sandbox</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: CRISPR Genetics */}
-            <div
-              className={`flex flex-col justify-between p-4 rounded-2xl border transition-all ${
-                isDark ? 'bg-[#12131b] border-violet-500/20 hover:border-violet-400/40' : 'bg-blue-50/70 border-blue-200'
-              }`}
-            >
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      isDark ? 'bg-[#181926] text-teal-400' : 'bg-white text-blue-600 shadow-sm'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[22px]">biotech</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className={`font-headline-sm text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Evolutionary Biology &amp; CRISPR Genetics
-                  </h4>
-                  <span className="font-mono text-[11px] text-slate-400">Prerequisite: Foundation Biology</span>
-                </div>
-                <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Direct CRISPR sequence splicing simulations, model stochastic allele frequency drift, and engineer resistant pathogen cascades.
-                </p>
-                <div
-                  className={`p-2 rounded-lg text-xs flex items-center gap-1.5 ${
-                    isDark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700 shadow-xs'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[14px] text-amber-500">inventory_2</span>
-                  <span>19 Genetic Playgrounds • Synthetic Bio</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Macro Geopolitics */}
-            <div
-              className={`flex flex-col justify-between p-4 rounded-2xl border transition-all ${
-                isDark ? 'bg-[#12131b] border-violet-500/20 hover:border-violet-400/40' : 'bg-amber-50/70 border-amber-200'
-              }`}
-            >
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      isDark ? 'bg-[#181926] text-amber-400' : 'bg-white text-amber-600 shadow-sm'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[22px]">public</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className={`font-headline-sm text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Macro History &amp; Geopolitics
-                  </h4>
-                  <span className="font-mono text-[11px] text-slate-400">Prerequisite: Quantitative Economics</span>
-                </div>
-                <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Resolve dynamic civilization collapse nodes, trade embargo chokepoints, and resource distribution crises across centuries of conflict.
-                </p>
-                <div
-                  className={`p-2 rounded-lg text-xs flex items-center gap-1.5 ${
-                    isDark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700 shadow-xs'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[14px] text-amber-500">inventory_2</span>
-                  <span>12 Historical Nodes • War Game</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Climatology */}
-            <div
-              className={`flex flex-col justify-between p-4 rounded-2xl border transition-all ${
-                isDark ? 'bg-[#12131b] border-violet-500/20 hover:border-violet-400/40' : 'bg-rose-50/70 border-rose-200'
-              }`}
-            >
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      isDark ? 'bg-[#181926] text-rose-400' : 'bg-white text-rose-600 shadow-sm'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[22px]">tsunami</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className={`font-headline-sm text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Geophysical Geography &amp; Climatology
-                  </h4>
-                  <span className="font-mono text-[11px] text-slate-400">Prerequisite: Fluid Mechanics</span>
-                </div>
-                <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Simulate tectonic plate stress faults, real-time oceanic conveyor currents, and prevent runaway seismic subduction failures.
-                </p>
-                <div
-                  className={`p-2 rounded-lg text-xs flex items-center gap-1.5 ${
-                    isDark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700 shadow-xs'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[14px] text-amber-500">inventory_2</span>
-                  <span>8 Simulations • Atmospheric GIS</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-    </div>
-  );
-};
+      {(filter === 'all' || filter === 'soon') && (\n        <section className="flex flex-col gap-4 mb-8">\n          <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="material-symbols-outlined text-slate-400 text-[22px]">hourglass_top</span><h2 className={isDark ? 'font-headline-sm text-base font-bold tracking-tight text-white' : 'font-headline-sm text-base font-bold tracking-tight text-slate-900'}>UPCOMING RESEARCH DISCIPLINES</h2></div><span className="text-xs font-mono text-slate-400">{futureSubjects.length} In Pipeline</span></div>\n          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">\n            {futureSubjects.map((subject:any, index:number) => <div key={subject.id} className={isDark ? 'flex flex-col justify-between p-4 rounded-2xl border bg-[#12131b] border-violet-500/20' : 'flex flex-col justify-between p-4 rounded-2xl border bg-white border-slate-200'}><div className="flex flex-col gap-2.5"><div className={isDark ? 'w-10 h-10 rounded-xl flex items-center justify-center bg-[#181926] text-violet-400' : 'w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 text-violet-600'}><span className="material-symbols-outlined text-[22px]">{['science','biotech','public','public'][index % 4]}</span></div><div><h4 className={isDark ? 'font-headline-sm text-sm font-bold text-white' : 'font-headline-sm text-sm font-bold text-slate-900'}>{subject.displayName}</h4><span className="font-mono text-[11px] text-slate-400">Future subject placeholder</span></div><p className="text-xs leading-relaxed text-slate-400">Reserved in the Nextess database. Mission content and subject-specific systems will be published later.</p><div className={isDark ? 'p-2 rounded-lg text-xs bg-[#181926] text-slate-300' : 'p-2 rounded-lg text-xs bg-slate-50 text-slate-600'}><span className="font-mono">Status: {subject.status}</span></div></div></div>)}\n          </div>\n        </section>\n      )}
