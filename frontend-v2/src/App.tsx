@@ -50,6 +50,7 @@ export default function App() {
       const me=await api.me();
       if(!me?.user) throw new Error('guest');
       const d=await api.dashboard();
+      try { const setting = await api.settings(); if (setting?.settings?.theme === 'light' || setting?.settings?.theme === 'dark') setTheme(setting.settings.theme); } catch {}
       const u=d.user;
       setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,streakDays:d?.streakDays??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',isGuest:false,badgesCount:d?.badgesCount??0}));
       setActiveProgress(d?.activeProgress||[]);
@@ -94,6 +95,7 @@ export default function App() {
 
   const handleSetTheme = (newTheme: ThemeMode) => {
     setTheme(newTheme);
+    if (!stats.isGuest) api.updateSettings({theme:newTheme}).catch(()=>setToastMessage('Theme could not be synchronized with the server.'));
   };
 
   const handleAwardKP=(_amount:number)=>refresh();
