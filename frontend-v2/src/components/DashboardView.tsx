@@ -9,6 +9,8 @@ interface DashboardViewProps {
   onClaimSurge: () => void;
   dailyQuote?: {quote:string;source:string}|null;
   directives?: Array<{id:string;title:string;description:string;rewardXp:number;rewardCoins:number;claimed:boolean}>;
+  activeProgress?: Array<{projectId:string;title:string;status:string;progressPercent:number}>;
+  leaderboard?: {opened?:boolean;entries?:Array<{rank:number;userId:string;name:string;username:string;kp:number;streakDays:number}>};
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -19,6 +21,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onClaimSurge,
   dailyQuote,
   directives = [],
+  activeProgress = [],
+  leaderboard = { opened:false, entries:[] },
 }) => {
   const isDark = theme === 'dark';
 
