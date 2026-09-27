@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
+import { api } from '../api';
 
 interface SettingsViewProps {
   theme: ThemeMode;
@@ -42,14 +43,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     e.preventDefault();
     if (!feedbackText.trim()) return;
 
+    if (stats.isGuest) {
+      onOpenAuth();
+      onShowToast('Sign in to send feedback that can be associated with your account.');
+      return;
+    }
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setFeedbackSent(true);
-      setFeedbackText('');
-      onAwardKP(20);
-      onShowToast('Research dispatch received! +20 KP added to your telemetry.');
-    }, 700);
+    api.feedback(selectedFocus, feedbackText.trim())
+      .then(() => {
+        setFeedbackSent(true);
+        setFeedbackText('');
+        onShowToast('Feedback sent to Nextess.');
+      })
+      .catch((e:any) => onShowToast(e?.message || 'Unable to send feedback.'))
+      .finally(() => setIsSubmitting(false));
   };
 
   const toggleFaq = (idx: number) => {
