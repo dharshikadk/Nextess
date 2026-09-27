@@ -69,6 +69,7 @@ export default function App() {
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
     }
   };
+  useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { let mounted = true; refresh().finally(() => { if (mounted) setAppReady(true); }); return () => { mounted = false; }; }, []);
   // Synchronize document element class with current theme
   useEffect(() => {
