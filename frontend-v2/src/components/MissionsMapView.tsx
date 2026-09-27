@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import missionPackage from '../data/missions.json';
+import { api } from '../api';
 
 interface MissionsMapViewProps {
   theme: ThemeMode;
@@ -9,7 +9,7 @@ interface MissionsMapViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type Mission = typeof missionPackage.projects[number];
+type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string}[]}|null; levelsCount:number; };
 
 export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   theme,
@@ -17,15 +17,36 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   onShowToast,
 }) => {
   const isDark = theme === 'dark';
-  const missions = missionPackage.projects as Mission[];
-  const [selectedKey, setSelectedKey] = useState(missions[0]?.key ?? '');
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [selectedKey, setSelectedKey] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { subjects } = await api.subjects();
+        const active = (subjects || []).filter((s:any) => s.status === 'ACTIVE');
+        const responses = await Promise.all(active.map((s:any) => api.projects(s.id)));
+        const rows = responses.flatMap((r:any) => r.projects || []) as Mission[];
+        if (!cancelled) {
+          setMissions(rows);
+          setSelectedKey(rows[0]?.id || '');
+        }
+      } catch {
+        if (!cancelled) {
+          setMissions([]);
+          onShowToast('Published mission catalogue could not be loaded from the server.');
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [onShowToast]);
   const selectedMission = useMemo(
-    () => missions.find((mission) => mission.key === selectedKey) ?? missions[0],
+    () => missions.find((mission) => mission.id === selectedKey) ?? missions[0],
     [missions, selectedKey],
   );
 
   const openMission = (mission: Mission) => {
-    localStorage.setItem('nextess_selected_mission', mission.key);
+    localStorage.setItem('nextess_selected_mission', mission.id);
     onNavigate('mission-detail');
   };
 
@@ -70,11 +91,11 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
 
           {missions.map((mission, index) => {
             const left = index % 2 === 0;
-            const selected = mission.key === selectedKey;
+            const selected = mission.id === selectedKey;
             const number = String(index + 1).padStart(2, '0');
             return (
               <div
-                key={mission.key}
+                key={mission.id}
                 className={`relative z-10 w-full flex ${left ? 'justify-start pl-4 md:pl-16' : 'justify-end pr-4 md:pr-16'} mb-20`}
               >
                 <button
@@ -109,9 +130,9 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                       {mission.title}
                     </span>
                     <div className={`flex items-center gap-2 mt-1.5 text-xs text-slate-400 font-mono ${!left ? 'justify-end' : ''}`}>
-                      <span className="text-violet-400 font-semibold">{mission.difficulty}</span>
+                      <span className="text-violet-400 font-semibold">{mission.currentPublishedVersion?.contentMetadata?.difficulty || 'Published'}</span>
                       <span>•</span>
-                      <span>{mission.levels.length} levels</span>
+                      <span>{mission.levelsCount} levels</span>
                     </div>
                   </div>
                 </button>
@@ -130,7 +151,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                     <span className="px-2 py-0.5 rounded-full bg-violet-600/20 text-violet-300 border border-violet-400/30 font-mono text-[10px] font-bold uppercase tracking-wider">
                       Mission File
                     </span>
-                    <span className="font-mono text-[10px] text-slate-400">{selectedMission.subject.toUpperCase()}</span>
+                    <span className="font-mono text-[10px] text-slate-400">{selectedMission.subject.displayName.toUpperCase()}</span>
                   </div>
                   <h2 className={`font-headline-md text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedMission.title}</h2>
                 </div>
@@ -153,10 +174,10 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider">Levels in File</span>
-                  <span className="font-mono text-[10px] text-violet-400">{selectedMission.levels.length} levels</span>
+                  <span className="font-mono text-[10px] text-violet-400">{selectedMission.levelsCount} levels</span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {selectedMission.levels.map((level) => (
+                  {[] .map((level) => (
                     <div key={level.number} className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="min-w-0">
                         <span className="font-mono text-[9px] text-violet-400">LEVEL {level.number}</span>
