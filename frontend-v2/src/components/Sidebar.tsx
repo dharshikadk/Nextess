@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <img
             alt="Nextess Logo"
             className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
-            src="https://lh3.googleusercontent.com/aida/AEtjO1VHhb_MudE9FPV61pMhJoPx4xmVwPpVRx6EsZrgy6t1w-88OHluiIIOfln6XmYyxQ-icyezm9px0xql5qXe6ZOPQ5er9ayXHFQxh216xNOOlqBOC1VeL7qbesT2Q4DhMVtniCHgvrmknXSO4WfZqqSdtkMPFCjZtEkDfXZ3zWNzZIwAwFrjCf9X7MAriVMcxAynhHvjx0b9BPFvDabJ5f_3OtaRFw1IwqDOZNJruQsU0-N4WXnheAXsQw"
+            src="/branding/NextessLogopic.png"
           />
           <div className="flex flex-col">
             <span

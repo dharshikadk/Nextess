@@ -20,6 +20,7 @@ import { AboutView } from './components/AboutView';
 import { CadetAuthModal } from './components/CadetAuthModal';
 import { EditProfileModal } from './components/EditProfileModal';
 import { Toast } from './components/Toast';
+import { NextessLoadingScreen } from './components/NextessLoadingScreen';
 
 export default function App() {
   // Theme State (Dark Mode default as per screens, with pastel daylight mode available)
@@ -43,6 +44,9 @@ export default function App() {
   const [badges,setBadges]=useState<any[]>([]);
   const [activeProgress,setActiveProgress]=useState<any[]>([]);
   const [leaderboard,setLeaderboard]=useState<any>({opened:false,entries:[]});
+  const [appReady, setAppReady] = useState(false);
+  const [showStartAnimation, setShowStartAnimation] = useState(false);
+  const [startAnimationReady, setStartAnimationReady] = useState(false);
 
   const refresh=async()=>{
     try{const q=await api.quote();setQuote(q.quote||null)}catch{setQuote(null)}
@@ -66,7 +70,7 @@ export default function App() {
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
     }
   };
-  useEffect(()=>{refresh()},[]);
+  useEffect(() => { let mounted = true; refresh().finally(() => { if (mounted) setAppReady(true); }); return () => { mounted = false; }; }, []);
   // Synchronize document element class with current theme
   useEffect(() => {
     const root = document.documentElement;
@@ -103,7 +107,8 @@ export default function App() {
 
   const handleSaveProfile=(name:string,handle:string,userClass:string,college:string,profession:string)=>{api.updateProfile({name,schoolClass:userClass,fieldOfStudy:college,profession}).then(()=>{setToastMessage('Profile updated successfully.');refresh()}).catch(e=>setToastMessage(e.message))};
 
-  const handleAuthSuccess=()=>{refresh();setToastMessage('Account synchronized with Nextess.')};
+  const handleAuthSuccess = async () => { setStartAnimationReady(false); setShowStartAnimation(true); await refresh(); setStartAnimationReady(true); setToastMessage('Account synchronized with Nextess.'); };
+  const handleStartAnimationComplete = () => { if (startAnimationReady) setShowStartAnimation(false); };
 
   const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 
