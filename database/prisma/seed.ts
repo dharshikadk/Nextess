@@ -118,6 +118,7 @@ async function main() {
       }
     });
 
+    await prisma.simulationDefinition.deleteMany({ where: { key: { startsWith: `${mission.key}.level-` } } });
     await prisma.caseFile.deleteMany({ where: { projectVersionId: version.id } });
     await prisma.level.deleteMany({ where: { projectVersionId: version.id } });
 
