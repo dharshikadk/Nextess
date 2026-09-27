@@ -90,6 +90,7 @@ model AnonymousSession {
   expiresAt      DateTime
 
   investigations Investigation[]
+  subjectEnrollments SubjectEnrollment[]
 
   @@index([expiresAt])
   @@index([lastActivityAt])
@@ -419,7 +420,6 @@ model Investigation {
   completionReport ProjectCompletionReport?
   answers         InvestigationAnswer[]
   rewards         RewardLedger[]
-  completionReport ProjectCompletionReport?
 
   @@index([userId, status])
   @@index([anonymousSessionId, status])
