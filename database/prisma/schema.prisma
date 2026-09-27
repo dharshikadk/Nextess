@@ -218,6 +218,7 @@ model ProjectVersion {
   version        Int
   status         VersionStatus @default(DRAFT)
   contentChecksum String       @db.VarChar(128)
+  contentMetadata Json?
   publishedAt    DateTime?
   retiredAt      DateTime?
   createdAt      DateTime      @default(now())
@@ -310,6 +311,7 @@ model CaseFile {
   content          String?
   storageKey       String?  @db.VarChar(500)
   displayMode      String   @db.VarChar(40)
+  metadata         Json?
   ordering         Int
   createdAt        DateTime @default(now())
 
