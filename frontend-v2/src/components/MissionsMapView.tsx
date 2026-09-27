@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
 import { api } from '../api';
 
