@@ -46,7 +46,6 @@ export default function App() {
   const [leaderboard,setLeaderboard]=useState<any>({opened:false,entries:[]});
   const [appReady, setAppReady] = useState(false);
   const [showStartAnimation, setShowStartAnimation] = useState(false);
-  const [startAnimationReady, setStartAnimationReady] = useState(false);
 
   const refresh=async()=>{
     try{const q=await api.quote();setQuote(q.quote||null)}catch{setQuote(null)}
@@ -107,8 +106,8 @@ export default function App() {
 
   const handleSaveProfile=(name:string,handle:string,userClass:string,college:string,profession:string)=>{api.updateProfile({name,schoolClass:userClass,fieldOfStudy:college,profession}).then(()=>{setToastMessage('Profile updated successfully.');refresh()}).catch(e=>setToastMessage(e.message))};
 
-  const handleAuthSuccess = async () => { setStartAnimationReady(false); setShowStartAnimation(true); await refresh(); setStartAnimationReady(true); setToastMessage('Account synchronized with Nextess.'); };
-  const handleStartAnimationComplete = () => { if (startAnimationReady) setShowStartAnimation(false); };
+  const handleAuthSuccess = () => { setShowStartAnimation(true); refresh(); setToastMessage('Account synchronized with Nextess.'); };
+  const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
   const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 

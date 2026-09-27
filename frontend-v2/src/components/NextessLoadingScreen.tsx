@@ -13,7 +13,7 @@ export const NextessLoadingScreen: React.FC<NextessLoadingScreenProps> = ({ mode
   if (!visible) return null;
   return <div className={'nextess-loading-screen' + (isStart ? ' nextess-start-screen' : '')} role="status" aria-live="polite" aria-label={message || (isStart ? 'Starting Nextess' : 'Loading Nextess')}>
     <div className="nextess-loading-content">
-      {!videoFailed ? <video ref={videoRef} className="nextess-loading-video" src={isStart ? NEXTESS_START_VIDEO : NEXTESS_LOADING_VIDEO} autoPlay muted playsInline loop={!isStart} preload="auto" onEnded={isStart ? onVideoComplete : undefined} onError={() => setVideoFailed(true)} /> : <img className="nextess-loading-fallback" src={NEXTESS_LOGO_IMAGE} alt="Nextess" />}
+      {!videoFailed ? <video ref={videoRef} className="nextess-loading-video" src={isStart ? NEXTESS_START_VIDEO : NEXTESS_LOADING_VIDEO} autoPlay muted playsInline loop={!isStart} preload="auto" onEnded={isStart ? onVideoComplete : undefined} onError={() => { setVideoFailed(true); if (isStart) onVideoComplete?.(); }} /> : <img className="nextess-loading-fallback" src={NEXTESS_LOGO_IMAGE} alt="Nextess" />}
       {message && <span className="nextess-loading-message">{message}</span>}
     </div>
   </div>;
