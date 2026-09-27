@@ -114,6 +114,9 @@ export default function App() {
   const isDark = theme === 'dark';
 
   return (
+    <>
+      <NextessLoadingScreen mode="loading" visible={!appReady} message="Getting Nextess ready..." />
+      <NextessLoadingScreen mode="start" visible={showStartAnimation} onVideoComplete={handleStartAnimationComplete} />
     <div
       className={`min-h-screen transition-colors duration-300 ${
         isDark ? 'bg-[#0d0e14] text-slate-200' : 'bg-[#f8f9fe] text-slate-800'
@@ -315,5 +318,6 @@ export default function App() {
 
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
+    </>
   );
 }
