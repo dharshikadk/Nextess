@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import missionPackage from '../data/missions.json';
+import { api } from '../api';
 
 interface MissionDetailViewProps {
   theme: ThemeMode;
@@ -9,20 +9,51 @@ interface MissionDetailViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type Mission = typeof missionPackage.projects[number];
+type Mission = any;
 
 export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onNavigate, onShowToast }) => {
   const isDark = theme === 'dark';
   const [missionKey, setMissionKey] = useState<string | null>(null);
+  const [mission, setMission] = useState<Mission | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMissionKey(localStorage.getItem('nextess_selected_mission') || missionPackage.projects[0]?.key || null);
-  }, []);
+    const id = localStorage.getItem('nextess_selected_mission');
+    setMissionKey(id);
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    api.project(id).then((r:any) => {
+      if (cancelled) return;
+      const p = r.project;
+      const metadata = p.currentPublishedVersion?.contentMetadata || {};
+      setMission({
+        ...p,
+        version: p.currentPublishedVersion?.version,
+        difficulty: metadata.difficulty,
+        estimatedLength: metadata.estimatedLength,
+        learningCapsule: metadata.learningCapsule,
+        requiredEvidence: metadata.requiredEvidence,
+        requiredSimulation: metadata.requiredSimulation,
+        levels: (p.currentPublishedVersion?.levels || []).map((level:any) => ({
+          ...level,
+          number: level.levelNumber,
+          evidenceUse: level.debrief?.evidenceUse,
+          simulationUse: level.debrief?.simulationUse,
+          questions: level.questions || []
+        }))
+      });
+    }).catch(() => {
+      if (!cancelled) onShowToast('Published mission data could not be loaded from the server.');
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [onShowToast]);
 
-  const mission = useMemo(
-    () => missionPackage.projects.find((item) => item.key === missionKey) as Mission | undefined,
-    [missionKey],
-  );
+  if (loading) return <div className="flex flex-col w-full pb-20"><div className={`rounded-2xl p-6 border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}><p className="text-sm text-slate-400">Loading published mission...</p></div></div>;
 
   if (!mission) {
     return (
@@ -44,7 +75,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
               <span className="material-symbols-outlined text-[16px]">folder_open</span><span>Missions</span>
             </button>
             <span className="text-slate-600 font-mono text-[11px]">/</span>
-            <button onClick={() => onNavigate('missions-map')} className="hover:text-violet-400 transition-colors">{mission.subject}</button>
+            <button onClick={() => onNavigate('missions-map')} className="hover:text-violet-400 transition-colors">{mission.subject?.displayName || mission.subject}</button>
             <span className="text-slate-600 font-mono text-[11px]">/</span>
             <span className="text-violet-400 font-semibold font-mono">Mission File</span>
           </div>
