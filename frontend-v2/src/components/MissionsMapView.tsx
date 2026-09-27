@@ -9,7 +9,7 @@ interface MissionsMapViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string}[]}|null; levelsCount:number; };
+type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string;levelNumber:number;title:string;questions:{id:string}[]}[]}|null; levelsCount:number; };
 
 export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   theme,
@@ -177,8 +177,8 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                   <span className="font-mono text-[10px] text-violet-400">{selectedMission.levelsCount} levels</span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {[] .map((level) => (
-                    <div key={level.number} className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
+                  {(selectedMission.currentPublishedVersion?.levels || []).map((level) => (
+                    <div key={level.levelNumber} className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="min-w-0">
                         <span className="font-mono text-[9px] text-violet-400">LEVEL {level.number}</span>
                         <span className={`block text-xs font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{level.title}</span>
