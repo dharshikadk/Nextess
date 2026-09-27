@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
 import { API_BASE } from '../api';
 
@@ -14,6 +14,8 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
   const isDark = theme === 'dark';
   const missionId = localStorage.getItem('nextess_selected_mission') || '';
   const stage = Number(localStorage.getItem('nextess_mission_stage') || '1');
+  useEffect(() => { const handler = (event: MessageEvent) => { if (event.data?.type === 'NEXTESS_MISSION_UPDATED') window.dispatchEvent(new Event('nextess-mission-updated')); if (event.data?.type === 'NEXTESS_MISSION_EXIT') onNavigate('mission-detail'); }; window.addEventListener('message', handler); return () => window.removeEventListener('message', handler); }, [onNavigate]);
+
   const src = useMemo(() => {
     const params = new URLSearchParams({ missionId, stage: String(Number.isFinite(stage) ? stage : 1), apiBase: API_BASE });
     return '/mission-stages-ui.html?' + params.toString();
