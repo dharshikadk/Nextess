@@ -206,10 +206,10 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
           </div>
 
           <button
-            onClick={() => onShowToast('Mission execution is not built yet. The mission file and ladder are ready for the mission/backend implementation.')}
+            onClick={() => openStage(1)}
             className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
           >
-            Mission Execution — Coming Soon
+            Open Mission Stages
           </button>
         </div>
       </div>
