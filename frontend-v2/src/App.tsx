@@ -37,9 +37,35 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sessionBannerDismissed, setSessionBannerDismissed] = useState(false);
 
-  const [stats,setStats]=useState<UserStats>({kp:0,coins:0,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
-  const [quote,setQuote]=useState<any>(null); const [directives,setDirectives]=useState<any[]>([]); const [badges,setBadges]=useState<any[]>([]);
-  const refresh=async()=>{try{const q=await api.quote();setQuote(q.quote)}catch{} try{const d=await api.dashboard();const u=d.user;if(u)setStats(prev=>({...prev,kp:u.xp,coins:u.coins,streakDays:d.streakDays,level:u.level,name:u.name,handle:'@'+u.username,userClass:u.schoolClass||u.gradeClass||'',college:u.fieldOfStudy||'',profession:u.profession||'',isGuest:false,badgesCount:d.badgesCount}));const [ds,bs]=await Promise.all([api.directives(),api.badges()]);setDirectives(ds.directives||[]);setBadges(bs.badges||[])}catch{}}; useEffect(()=>{refresh()},[]);
+  const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
+  const [quote,setQuote]=useState<any>(null);
+  const [directives,setDirectives]=useState<any[]>([]);
+  const [badges,setBadges]=useState<any[]>([]);
+  const [activeProgress,setActiveProgress]=useState<any[]>([]);
+  const [leaderboard,setLeaderboard]=useState<any>({opened:false,entries:[]});
+
+  const refresh=async()=>{
+    try{const q=await api.quote();setQuote(q.quote||null)}catch{setQuote(null)}
+    try{
+      const me=await api.me();
+      if(!me?.user) throw new Error('guest');
+      const d=await api.dashboard();
+      const u=d.user;
+      setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,streakDays:d?.streakDays??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',isGuest:false,badgesCount:d?.badgesCount??0}));
+      setActiveProgress(d?.activeProgress||[]);
+      const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
+      setDirectives(ds?.directives||[]);
+      setBadges(bs?.badges||[]);
+      setLeaderboard(lb||{opened:false,entries:[]});
+    }catch{
+      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',isGuest:true,badgesCount:0}));
+      setActiveProgress([]);
+      setDirectives([]);
+      setBadges([]);
+      try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
+    }
+  };
+  useEffect(()=>{refresh()},[]);
   // Synchronize document element class with current theme
   useEffect(() => {
     const root = document.documentElement;
@@ -77,7 +103,7 @@ export default function App() {
 
   const handleAuthSuccess=()=>{refresh();setToastMessage('Account synchronized with Nextess.')};
 
-  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>setStats(prev=>({...prev,isGuest:true,kp:0,coins:0,streakDays:0,name:'Guest Cadet',handle:''})))};
+  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 
   const isDark = theme === 'dark';
 
@@ -119,6 +145,8 @@ export default function App() {
                 onClaimSurge={handleClaimSurge}
                 dailyQuote={quote}
                 directives={directives}
+                activeProgress={activeProgress}
+                leaderboard={leaderboard}
               />
             )}
 
@@ -209,7 +237,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Floating Unsaved Laboratory Session Banner for Guests */}
+      {/* Floating guest exploration banner — contains no progress claims. */}
       {stats.isGuest && !sessionBannerDismissed && (
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-xl z-40 transition-all duration-300">
           <div
@@ -249,7 +277,7 @@ export default function App() {
                   </span>
                 </div>
                 <p className={`text-[11px] mt-0.5 line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Your {stats.kp.toLocaleString()} KP and {stats.streakDays}-day streak progress are temporarily held in local cache. Sign in to sync with global cloud telemetry.
+                  You are exploring Nextess as a guest. Create an account when you want your learning activity and rewards to be associated with a real user account.
                 </p>
               </div>
               <button
