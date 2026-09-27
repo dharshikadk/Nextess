@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '../api';
 import { ActivePage, ThemeMode } from '../types';
 
 interface DisciplinesViewProps {
@@ -15,6 +16,20 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
   const isDark = theme === 'dark';
   const [filter, setFilter] = useState<'all' | 'active' | 'soon'>('all');
   const [preRegistered, setPreRegistered] = useState<Record<string, boolean>>({});
+  const [catalogue, setCatalogue] = useState<Record<string, any[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    api.subjects().then(async ({subjects}:any) => {
+      const active = (subjects || []).filter((s:any) => s.status === 'ACTIVE');
+      const pairs = await Promise.all(active.map(async (subject:any) => [subject.key.toLowerCase(), (await api.projects(subject.id)).projects || []]));
+      if (!cancelled) setCatalogue(Object.fromEntries(pairs));
+    }).catch(() => { if (!cancelled) onShowToast('Subject catalogue could not be loaded from the server.'); });
+    return () => { cancelled = true; };
+  }, [onShowToast]);
+  const physicsMissions = catalogue.physics || [];
+  const economicsMissions = catalogue.economics || [];
+  const physicsCount = physicsMissions.length;
+  const economicsCount = economicsMissions.length;
 
   const toggleRegister = (id: string, name: string) => {
     setPreRegistered((prev) => {
@@ -147,17 +162,17 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
                 >
                   <div className="flex flex-col py-1">
                     <span className={`font-mono text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      28
+                      {physicsCount}
                     </span>
                     <span className="text-[10px] text-slate-400">Missions</span>
                   </div>
                   <div className="flex flex-col py-1 border-x border-slate-700/20">
-                    <span className="font-mono text-sm text-violet-400 font-bold">Lvl 5</span>
+                    <span className="font-mono text-sm text-violet-400 font-bold">Published</span>
                     <span className="text-[10px] text-slate-400">Mastery</span>
                   </div>
                   <div className="flex flex-col py-1">
-                    <span className="font-mono text-sm text-amber-400 font-bold">1,420</span>
-                    <span className="text-[10px] text-slate-400">KP of 2,100</span>
+                    <span className="font-mono text-sm text-amber-400 font-bold">{physicsMissions.filter((m:any)=>m.status==="PUBLISHED").length}</span>
+                    <span className="text-[10px] text-slate-400">Published now</span>
                   </div>
                 </div>
 
@@ -171,11 +186,11 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-[10px] text-slate-400 leading-none">Current Objective</span>
                     <span className={`text-xs font-semibold truncate mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Next: Mission 02 — Gravitational Slingshot (Unlocked)
+                      {physicsMissions[0]?.title || "No published mission"}
                     </span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-violet-600/20 text-violet-300 font-mono text-[10px] font-bold">
-                    +140 KP
+                    Published
                   </span>
                 </div>
               </div>
@@ -230,17 +245,17 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
                 >
                   <div className="flex flex-col py-1">
                     <span className={`font-mono text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      19
+                      {economicsCount}
                     </span>
                     <span className="text-[10px] text-slate-400">Missions</span>
                   </div>
                   <div className="flex flex-col py-1 border-x border-slate-700/20">
-                    <span className="font-mono text-sm text-emerald-400 font-bold">Lvl 4</span>
+                    <span className="font-mono text-sm text-emerald-400 font-bold">Published</span>
                     <span className="text-[10px] text-slate-400">Mastery</span>
                   </div>
                   <div className="flex flex-col py-1">
-                    <span className="font-mono text-sm text-emerald-300 font-bold">380</span>
-                    <span className="text-[10px] text-slate-400">KP of 1,600</span>
+                    <span className="font-mono text-sm text-emerald-300 font-bold">{economicsMissions.filter((m:any)=>m.status==="PUBLISHED").length}</span>
+                    <span className="text-[10px] text-slate-400">Published now</span>
                   </div>
                 </div>
 
@@ -254,11 +269,11 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-[10px] text-slate-400 leading-none">Current Objective</span>
                     <span className={`text-xs font-semibold truncate mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Next: Mission 01 — Stochastic Arbitrage &amp; Spread Dampers
+                      {economicsMissions[0]?.title || "No published mission"}
                     </span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
-                    +120 KP
+                    Published
                   </span>
                 </div>
               </div>
@@ -266,7 +281,7 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
               {/* Action Button */}
               <div className="pt-4 mt-3 border-t border-slate-700/20">
                 <button
-                  onClick={() => onShowToast('Economics Track Mission 01 will unlock in the next research cycle!')}
+                  onClick={() => onNavigate('missions-map')}
                   className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
                     isDark
                       ? 'bg-[#1e1f30] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white'
