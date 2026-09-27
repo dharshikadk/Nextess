@@ -5,25 +5,16 @@ import path from "node:path";
 
 const prisma = new PrismaClient();
 
-type MissionPackage = {
-  contentVersion: string;
-  missions: Array<any>;
-};
+type MissionPackage = { contentPackageVersion: number; projects: any[] };
 
-const sourcePath = path.resolve(__dirname, "../content/nextess_10_missions.json");
+const sourcePath = path.resolve(__dirname, "../content/nextess_missions(4).json");
 
 function mimeType(fileName: string): string {
   const ext = path.extname(fileName).toLowerCase();
   return ({
-    ".txt": "text/plain",
-    ".csv": "text/csv",
-    ".json": "application/json",
-    ".html": "text/html",
-    ".svg": "image/svg+xml",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".pdf": "application/pdf"
+    ".txt": "text/plain", ".csv": "text/csv", ".json": "application/json",
+    ".html": "text/html", ".svg": "image/svg+xml", ".png": "image/png",
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".pdf": "application/pdf"
   } as Record<string, string>)[ext] ?? "application/octet-stream";
 }
 
@@ -34,12 +25,13 @@ function displayMode(fileType: string): string {
   return "report";
 }
 
-function slugify(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
 function checksum(value: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function estimatedMinutes(value: unknown): number | null {
+  const match = String(value ?? "").match(/(\d+)\s*(?:-|–)\s*(\d+)/);
+  return match ? Number(match[2]) : null;
 }
 
 async function main() {
@@ -58,39 +50,38 @@ async function main() {
   for (const subject of subjects) {
     const row = await prisma.subject.upsert({
       where: { key: subject.key },
-      update: subject,
+      update: { displayName: subject.displayName, status: subject.status, ordering: subject.ordering },
       create: subject
     });
     subjectMap.set(subject.displayName.toLowerCase(), row.id);
   }
 
-  for (const mission of pkg.missions) {
+  for (const mission of pkg.projects) {
     const subjectId = subjectMap.get(String(mission.subject).toLowerCase());
     if (!subjectId) throw new Error(`Unknown subject: ${mission.subject}`);
 
-    const slug = slugify(`${mission.id}-${mission.title}`);
     const project = await prisma.project.upsert({
-      where: { slug },
+      where: { slug: mission.key },
       update: {
         subjectId,
         title: mission.title,
-        mission: mission.objective ?? mission.missionBrief,
+        mission: mission.mission,
         role: mission.role ?? null,
         priority: mission.priority ?? null,
-        problemType: mission.missionType ?? null,
-        estimatedLengthMinutes: mission.estimatedTimeMinutes ?? null,
+        problemType: mission.problemType ?? null,
+        estimatedLengthMinutes: estimatedMinutes(mission.estimatedLength),
         status: "PUBLISHED",
         anonymousAccess: true
       },
       create: {
         subjectId,
-        slug,
+        slug: mission.key,
         title: mission.title,
-        mission: mission.objective ?? mission.missionBrief,
+        mission: mission.mission,
         role: mission.role ?? null,
         priority: mission.priority ?? null,
-        problemType: mission.missionType ?? null,
-        estimatedLengthMinutes: mission.estimatedTimeMinutes ?? null,
+        problemType: mission.problemType ?? null,
+        estimatedLengthMinutes: estimatedMinutes(mission.estimatedLength),
         status: "PUBLISHED",
         anonymousAccess: true
       }
@@ -98,156 +89,150 @@ async function main() {
 
     const contentChecksum = checksum(mission);
     const version = await prisma.projectVersion.upsert({
-      where: { projectId_version: { projectId: project.id, version: 1 } },
+      where: { projectId_version: { projectId: project.id, version: mission.version ?? 1 } },
       update: {
         status: "PUBLISHED",
         contentChecksum,
+        contentMetadata: {
+          difficulty: mission.difficulty ?? null,
+          estimatedLength: mission.estimatedLength ?? null,
+          learningCapsule: mission.learningCapsule ?? null,
+          requiredEvidence: mission.requiredEvidence ?? null,
+          requiredSimulation: mission.requiredSimulation ?? null
+        },
         publishedAt: new Date()
       },
       create: {
         projectId: project.id,
-        version: 1,
+        version: mission.version ?? 1,
         status: "PUBLISHED",
         contentChecksum,
+        contentMetadata: {
+          difficulty: mission.difficulty ?? null,
+          estimatedLength: mission.estimatedLength ?? null,
+          learningCapsule: mission.learningCapsule ?? null,
+          requiredEvidence: mission.requiredEvidence ?? null,
+          requiredSimulation: mission.requiredSimulation ?? null
+        },
         publishedAt: new Date()
       }
     });
+
+    await prisma.caseFile.deleteMany({ where: { projectVersionId: version.id } });
+    await prisma.level.deleteMany({ where: { projectVersionId: version.id } });
 
     await prisma.project.update({
       where: { id: project.id },
       data: { currentPublishedVersionId: version.id }
     });
 
-    await prisma.level.deleteMany({ where: { projectVersionId: version.id } });
-    await prisma.caseFile.deleteMany({ where: { projectVersionId: version.id } });
-
-    if (mission.simulation) {
-      await prisma.simulationDefinition.deleteMany({ where: { key: `${mission.id}.${mission.simulation.type}` } });
-    }
-
-    const sim = mission.simulation
-      ? await prisma.simulationDefinition.create({
-          data: {
-            key: `${mission.id}.${mission.simulation.type}`,
-            version: 1,
-            rendererKey: mission.simulation.type,
-            purpose: mission.simulation.purpose,
-            configuration: {
-              outputs: mission.simulation.outputs ?? [],
-              states: mission.simulation.states ?? [],
-              logic: mission.simulation.logic ?? null,
-              frontend: mission.simulation.frontend ?? null
-            },
-            assets: {
-              create: {
-                assetType: "INTERACTIVE_SIMULATION",
-                storageKey: `simulations/${mission.id}/v1/index.html`,
-                status: "PLACEHOLDER",
-                mimeType: "text/html"
-              }
-            },
-            variables: {
-              create: (mission.simulation.controls ?? []).map((control: any) => ({
-                variableKey: control.id,
-                label: control.label,
-                valueType: Array.isArray(control.options) ? "enum" : "number",
-                minValue: typeof control.min === "number" ? control.min : undefined,
-                maxValue: typeof control.max === "number" ? control.max : undefined,
-                stepValue: typeof control.step === "number" ? control.step : undefined,
-                defaultValue: control.default,
-                unit: control.unit ?? null,
-                options: control.options ?? undefined
-              }))
-            },
-            consequences: {
-              create: (mission.simulation.states ?? []).map((state: string, index: number) => ({
-                code: state.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase(),
-                label: state,
-                ruleDefinition: { source: "mission-definition", state },
-                ordering: index
-              }))
-            }
-          }
-        })
-      : null;
-
-    const level = await prisma.level.create({
-      data: {
-        projectVersionId: version.id,
-        levelNumber: 1,
-        title: "Mission Challenges",
-        learningObjectives: mission.debrief?.concepts ?? [],
-        debrief: mission.debrief ?? null,
-        rewardXp: mission.xp ?? 0,
-        rewardCoins: mission.coins ?? 0,
-        simulationDefinitionId: sim?.id ?? null
-      }
-    });
-
-    for (const [index, resource] of (mission.resources ?? []).entries()) {
+    for (const [index, resource] of (mission.requiredEvidence?.files ?? []).entries()) {
       await prisma.caseFile.create({
         data: {
           projectVersionId: version.id,
           name: resource.fileName,
           mimeType: mimeType(resource.fileName),
           content: resource.content ?? null,
-          displayMode: displayMode(resource.fileType),
-          ordering: index + 1,
-          storageKey: `mission-files/${mission.id}/${resource.fileName}`
+          storageKey: `mission-files/${mission.key}/${resource.fileName}`,
+          displayMode: displayMode(resource.type),
+          metadata: {
+            type: resource.type ?? null,
+            purpose: resource.purpose ?? null,
+            bundleId: mission.requiredEvidence?.bundleId ?? null
+          },
+          ordering: index + 1
         }
       });
     }
 
-    for (const [index, challenge] of (mission.challenges ?? []).entries()) {
-      const answer = challenge.answer ?? {};
-      const question = await prisma.question.create({
-        data: {
-          levelId: level.id,
-          questionNumber: index + 1,
-          questionType: challenge.type,
-          prompt: challenge.prompt,
-          inputSchema: {
-            answerType: answer.type ?? null,
-            unit: answer.unit ?? null,
-            tolerance: answer.tolerance ?? null
-          },
-          evaluationDefinition: {
-            answer,
-            insight: challenge.insight ?? null
-          },
-          consequenceDefinition: challenge.systemResponse
-            ? { response: challenge.systemResponse }
-            : null,
-          explanation: challenge.systemResponse ?? null,
-          ordering: index + 1,
-          options: {
-            create: (challenge.options ?? []).map((option: string, optionIndex: number) => ({
-              optionKey: String.fromCharCode(65 + optionIndex),
-              optionText: option,
-              evaluationData: { imported: true }
-            }))
-          },
-          hints: challenge.insight
-            ? {
+    for (const levelData of mission.levels ?? []) {
+      const simulation = mission.requiredSimulation
+        ? await prisma.simulationDefinition.create({
+            data: {
+              key: `${mission.key}.level-${levelData.number}`,
+              version: mission.version ?? 1,
+              rendererKey: "mission-file",
+              purpose: mission.requiredSimulation.description,
+              frontendNotes: mission.requiredSimulation.integrationComment ?? null,
+              configuration: {
+                fileName: mission.requiredSimulation.fileName,
+                description: mission.requiredSimulation.description,
+                required: true
+              },
+              assets: {
                 create: {
-                  level: 1,
-                  text: challenge.insight,
-                  xpCost: 0,
-                  coinCost: 0
+                  assetType: "INTERACTIVE_SIMULATION",
+                  storageKey: `simulations/${mission.key}/v${mission.version ?? 1}/${mission.requiredSimulation.fileName}`,
+                  status: "PLACEHOLDER",
+                  mimeType: "text/html"
                 }
               }
-            : undefined,
-          rules: {
-            create: {
-              ruleKey: `imported-${challenge.id}`,
-              evaluatorVersion: "1.0",
-              definition: answer,
-              enabled: true
             }
-          }
+          })
+        : null;
+
+      const level = await prisma.level.create({
+        data: {
+          projectVersionId: version.id,
+          levelNumber: levelData.number,
+          title: levelData.title,
+          learningObjectives: levelData.learningObjectives ?? null,
+          completionRules: { requiredQuestions: (levelData.questions ?? []).length },
+          debrief: {
+            evidenceUse: levelData.evidenceUse ?? null,
+            simulationUse: levelData.simulationUse ?? null
+          },
+          simulationDefinitionId: simulation?.id ?? null
         }
       });
-      void question;
+
+      for (const [index, q] of (levelData.questions ?? []).entries()) {
+        const answer = q.answer;
+        const question = await prisma.question.create({
+          data: {
+            levelId: level.id,
+            questionNumber: q.number ?? index + 1,
+            questionType: q.type,
+            prompt: q.prompt,
+            inputSchema: {
+              unit: q.unit ?? null,
+              tolerance: q.tolerance ?? null,
+              hasOptions: Array.isArray(q.options) && q.options.length > 0
+            },
+            evaluationDefinition: {
+              answer,
+              tolerance: q.tolerance ?? null
+            },
+            consequenceDefinition: {},
+            explanation: q.explanation ?? null,
+            ordering: q.number ?? index + 1,
+            options: {
+              create: (q.options ?? []).map((option: string, optionIndex: number) => ({
+                optionKey: String.fromCharCode(65 + optionIndex),
+                optionText: option,
+                evaluationData: { value: option }
+              }))
+            },
+            hints: {
+              create: (q.hints ?? []).map((hint: string, hintIndex: number) => ({
+                level: hintIndex + 1,
+                text: hint,
+                xpCost: 0,
+                coinCost: 0
+              }))
+            },
+            rules: {
+              create: {
+                ruleKey: `mission-${mission.key}-level-${levelData.number}-question-${q.number ?? index + 1}`,
+                evaluatorVersion: "v2",
+                definition: { answer, tolerance: q.tolerance ?? null },
+                enabled: true
+              }
+            }
+          }
+        });
+        void question;
+      }
     }
   }
 
@@ -266,14 +251,40 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${pkg.missions.length} missions, 6 subject records, future subject placeholders, simulation placeholders, and baseline badges.`);
+  const directives = [
+    ["00000000-0000-0000-0000-000000000001", "Complete one investigation", "Finish one mission investigation today.", 60, 10, 0],
+    ["00000000-0000-0000-0000-000000000002", "Review one concept", "Use a saved report or completed level for review.", 40, 5, 1],
+    ["00000000-0000-0000-0000-000000000003", "Run one simulation", "Change a variable and record the observed consequence.", 30, 10, 2]
+  ] as const;
+
+  for (const [id, title, description, rewardXp, rewardCoins, ordering] of directives) {
+    await prisma.dailyDirective.upsert({
+      where: { id },
+      update: { title, description, rewardXp, rewardCoins, ordering, active: true },
+      create: { id, title, description, rewardXp, rewardCoins, ordering, active: true }
+    });
+  }
+
+  const quotes = [
+    ["The important thing is not to stop questioning.", "Albert Einstein", "science"],
+    ["An investment in knowledge pays the best interest.", "Benjamin Franklin", "economics"],
+    ["Thinking is the hardest work there is.", "Henry Ford", "engineering"]
+  ] as const;
+  for (const [index, [quote, source, category]] of quotes.entries()) {
+    const dateKey = `2099-01-${String(index + 1).padStart(2, "0")}`;
+    await prisma.dailyQuote.upsert({
+      where: { dateKey },
+      update: { quote, source, category },
+      create: { dateKey, quote, source, category }
+    });
+  }
+
+  console.log(`Seeded ${pkg.projects.length} published missions, 6 subjects, mission metadata/resources/simulation placeholders, directives, quotes and badges.`);
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+}).finally(async () => {
+  await prisma.$disconnect();
+});
