@@ -31,6 +31,9 @@ const first=await request('/v1/investigations/'+start.body.investigationId+'/ans
 expect(first.response.ok&&['CORRECT','INCORRECT'].includes(first.body.result),'answer evaluation failed');
 const replay=await request('/v1/investigations/'+start.body.investigationId+'/answers',init);
 expect(replay.response.ok&&replay.body.replayed===true,'answer retry was not idempotent');
+const concurrent=await Promise.all([request('/v1/investigations/'+start.body.investigationId+'/answers',init),request('/v1/investigations/'+start.body.investigationId+'/answers',init)]);
+expect(concurrent.every(x=>x.response.ok),'concurrent idempotent submissions failed');
+expect(new Set(concurrent.map(x=>x.body.answerId)).size===1,'concurrent idempotent submissions created multiple answers');
 expect(replay.body.answerId===first.body.answerId,'answer retry created another answer');
 const cookieB=await register('smoke-b-'+unique);
 const cross=await request('/v1/investigations/'+start.body.investigationId,{headers:{Cookie:cookieB}});
