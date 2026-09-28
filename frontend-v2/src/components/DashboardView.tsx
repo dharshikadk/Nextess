@@ -165,7 +165,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            ['biotech','Molecular Chemistry'],['genetics','Evolutionary Biology'],['public','History'],['public','Geography']
+            ['science','Physical & Synthetic Chemistry'],['genetics','Evolutionary Biology'],['public','History'],['public','Geography']
           ].map(([icon,title]) => (
             <div key={title} className={`flex flex-col justify-between rounded-2xl p-4 border shadow-sm ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
               <div><span className={`flex h-9 w-9 items-center justify-center rounded-lg border ${isDark ? 'bg-[#181926] text-violet-400 border-violet-500/20' : 'bg-slate-50 text-violet-600 border-slate-200'}`}><span className="material-symbols-outlined text-[20px]">{icon}</span></span><h3 className={`font-headline-sm text-sm font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h3><p className="text-xs mt-1 text-slate-500">Coming soon.</p></div>
