@@ -14,10 +14,12 @@ const stageCount=()=>2+levels().length+1;
 const stageLabel=()=>state.stage===1?'MISSION BRIEF':state.stage===2?'LEARNING CAPSULE':state.stage===stageCount()?'MISSION COMPLETE':'LEVEL '+state.level;
 const simUrl=()=>{
  const sim=currentLevel()?.simulation;
- const file=sim?.configuration?.fileName;
+ const file=String(sim?.configuration?.fileName||'').trim();
  if(!file)return '';
- if(/^https?:\/\//.test(file))return file;
- return '/'+file;
+ if(/^https?:\/\//i.test(file))return '';
+ const safe=file.replace(/^\/+/, '');
+ if(!/^[A-Za-z0-9._/-]+$/.test(safe))return '';
+ return '/'+safe;
 };
 const files=()=>state.investigation?.projectVersion?.caseFiles||meta().requiredEvidence?.files||[];
 const fileAt=()=>files()[state.fileIndex]||files()[0];
