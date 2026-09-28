@@ -145,7 +145,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
                 </div>
               </button>
             ))}
-            {mission.levels.map((level) => (
+            {mission.levels.map((level: any) => (
               <button key={level.number} onClick={() => openStage(level.number + 2)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
                 <div className="w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50"><span className="font-mono text-xs font-bold">{String(level.number + 2).padStart(2, '0')}</span></div>
                 <div className="flex flex-col flex-1 gap-1 min-w-0">
@@ -182,7 +182,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
             </div>
             <h3 className="text-sm font-bold text-violet-400">{mission.learningCapsule.title}</h3>
             <div className="mt-3 flex flex-col gap-2">
-              {mission.learningCapsule.sections.map((section) => (
+              {mission.learningCapsule.sections.map((section: any) => (
                 <div key={section.title} className={`p-3 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-xs font-semibold">{section.title}</span>
                   <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{section.content}</p>
@@ -198,7 +198,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
             </div>
             <p className="text-xs text-slate-400 mb-2">{mission.requiredEvidence?.instruction}</p>
             <div className="flex flex-col gap-2">
-              {(mission.requiredEvidence?.files || []).map((file) => (
+              {(mission.requiredEvidence?.files || []).map((file: any) => (
                 <div key={file.fileName} className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-emerald-500/15' : 'bg-emerald-50 border-emerald-200'}`}>
                   <div className="text-xs font-semibold">{file.fileName}</div>
                   <div className="text-[10px] text-slate-400 mt-0.5">{file.purpose}</div>
