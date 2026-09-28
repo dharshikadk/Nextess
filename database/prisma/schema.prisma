@@ -439,6 +439,7 @@ model InvestigationAnswer {
   evaluatorVersion String  @db.VarChar(40)
   consequenceCode String?  @db.VarChar(60)
   feedbackData    Json?
+  idempotencyKey   String?  @unique @db.VarChar(180)
   submittedAt     DateTime @default(now())
 
   investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)

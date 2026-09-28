@@ -117,3 +117,8 @@ The Database AI owns:
 - content storage structures
 
 Frontend, Backend, Content and Simulation AIs must treat this directory as a contract and report genuine capability gaps instead of silently changing it.
+
+
+## Runtime mission integrity
+
+`InvestigationAnswer.idempotencyKey` is the database boundary for retry-safe answer submissions. Published mission versions remain the runtime source of truth; frontend navigation state is not authoritative.
