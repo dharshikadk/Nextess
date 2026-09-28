@@ -15,29 +15,38 @@ async function learner(req:R,res:express.Response,createGuest=false){if(req.user
  const levelProgress=req.userId?await prisma.userLevelProgress.findMany({where:{userId:req.userId,level:{projectVersionId:p.currentPublishedVersion?.id}},orderBy:{levelId:'asc'}}):[];
  res.json({project:p,progress,levelProgress});
 });
-app.post('/v1/projects/:projectId/start',auth,async(req:R,res)=>{
+app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,true);
+ if(!identity)return fail(res,'SESSION_ERROR','Unable to establish a learner session.',500);
  const p=await prisma.project.findUnique({where:{id:req.params.projectId},include:{currentPublishedVersion:true}});
- if(!p?.currentPublishedVersion)return fail(res,'NOT_FOUND','Published project not found.',404);
- const existing=await prisma.investigation.findFirst({where:{userId:req.userId!,projectId:p.id,status:'IN_PROGRESS'},orderBy:{startedAt:'desc'}});
- if(existing)return res.json({investigationId:existing.id,replayed:false,resumed:true});
- const progress=await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:req.userId!,projectId:p.id}});
- const replayed=progress?.status==='COMPLETED';
+ if(!p?.currentPublishedVersion||p.status!=='PUBLISHED')return fail(res,'NOT_FOUND','Published project not found.',404);
+ if(identity.anonymous&&!p.anonymousAccess)return fail(res,'AUTH_REQUIRED','Sign in to start this mission.',401);
+ const whereIdentity=identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId};
+ const existing=await prisma.investigation.findFirst({where:{...whereIdentity,projectId:p.id,status:'IN_PROGRESS'},orderBy:{startedAt:'desc'}});
+ if(existing)return res.json({investigationId:existing.id,replayed:false,resumed:true,anonymous:identity.anonymous});
+ const progress=identity.userId?await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:identity.userId,projectId:p.id}}}):null;
+ const replayed=Boolean(identity.userId&&progress?.status==='COMPLETED');
+ const firstLevel=await prisma.level.findFirst({where:{projectVersionId:p.currentPublishedVersion.id},orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'},take:1}}});
+ if(!firstLevel?.questions[0])return fail(res,'MISSION_INVALID','Published mission has no startable task.',409);
  try{
   const inv=await prisma.$transaction(async tx=>{
    if(replayed){
-    const u=await tx.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}});
+    const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
     if(!u||u.xp<20||u.coins<15)throw new Error('INSUFFICIENT_FUNDS');
     const stamp=crypto.randomUUID();
-    await tx.user.update({where:{id:req.userId!},data:{xp:{decrement:20},coins:{decrement:15},lastActivityAt:new Date()}});
-    await tx.rewardLedger.create({data:{userId:req.userId!,sourceId:p.id,rewardType:RewardType.XP,amount:-20,reasonCode:'MISSION_REVIEW',idempotencyKey:'mission-review:'+p.id+':'+stamp+':xp'}});
-    await tx.rewardLedger.create({data:{userId:req.userId!,sourceId:p.id,rewardType:RewardType.COINS,amount:-15,reasonCode:'MISSION_REVIEW',idempotencyKey:'mission-review:'+p.id+':'+stamp+':coins'}});
+    await tx.user.update({where:{id:identity.userId!},data:{xp:{decrement:20},coins:{decrement:15},lastActivityAt:new Date()}});
+    await tx.rewardLedger.create({data:{userId:identity.userId!,sourceId:p.id,rewardType:RewardType.XP,amount:-20,reasonCode:'MISSION_REVIEW',idempotencyKey:'mission-review:'+p.id+':'+stamp+':xp'}});
+    await tx.rewardLedger.create({data:{userId:identity.userId!,sourceId:p.id,rewardType:RewardType.COINS,amount:-15,reasonCode:'MISSION_REVIEW',idempotencyKey:'mission-review:'+p.id+':'+stamp+':coins'}});
    }
-   const created=await tx.investigation.create({data:{userId:req.userId!,projectId:p.id,projectVersionId:p.currentPublishedVersion!.id,status:'IN_PROGRESS'}});
-   await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:req.userId!,projectId:p.id}},update:{status:'IN_PROGRESS',currentLevelId:null,currentQuestionId:null,progressPercent:0,completedAt:null,lastActivityAt:new Date()},create:{userId:req.userId!,projectId:p.id,status:'IN_PROGRESS',progressPercent:0,lastActivityAt:new Date()}});
+   const created=await tx.investigation.create({data:{projectId:p.id,projectVersionId:p.currentPublishedVersion!.id,userId:identity.userId??undefined,anonymousSessionId:identity.anonymousSessionId??undefined,currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,status:'IN_PROGRESS'}});
+   if(identity.userId)await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId,projectId:p.id}},update:{status:'IN_PROGRESS',currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,progressPercent:0,completedAt:null,lastActivityAt:new Date()},create:{userId:identity.userId,projectId:p.id,status:'IN_PROGRESS',currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,progressPercent:0,lastActivityAt:new Date()}});
    return created;
   });
-  res.status(201).json({investigationId:inv.id,replayed});
- }catch(e:any){if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Reviewing a completed mission costs 20 KP and 15 coins.',409);return fail(res,'INTERNAL_ERROR','Unable to start mission.',500)}
+  res.status(201).json({investigationId:inv.id,replayed,anonymous:identity.anonymous});
+ }catch(e:any){
+  if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Reviewing a completed mission costs 20 KP and 15 coins.',409);
+  return fail(res,'INTERNAL_ERROR','Unable to start mission.',500);
+ }
 });
 app.get('/v1/investigations/:id',auth,async(req:R,res)=>{
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!},include:{project:true,projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'},select:{id:true,questionNumber:true,questionType:true,prompt:true,inputSchema:true,options:{orderBy:{optionKey:'asc'}},hints:{orderBy:{level:'asc'}}}},simulation:{include:{assets:true,variables:{orderBy:{variableKey:'asc'}},consequences:{orderBy:{ordering:'asc'}}}}}},caseFiles:{orderBy:{ordering:'asc'}}}},answers:{orderBy:{submittedAt:'asc'},select:{id:true,questionId:true,attemptNumber:true,result:true,feedbackData:true,submittedAt:true}}}});
