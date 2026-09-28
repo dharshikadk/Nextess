@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import { API_BASE } from '../api';
-import missionsPackage from '../data/missions.json';
+import { API_BASE, api } from '../api';
 
 interface MissionChamberViewProps {
   theme: ThemeMode;
@@ -16,13 +15,20 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
   const missionId = localStorage.getItem('nextess_selected_mission') || '';
   const parsedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
   const stage = Number.isInteger(parsedStage) && parsedStage > 0 ? parsedStage : 1;
+  const [mission, setMission] = useState<any|null>(null);
+  const [loading, setLoading] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const mission = useMemo(
-    () => missionsPackage.projects.find((project) => project.key === missionId),
-    [missionId],
-  );
-  const stageIsValid = Boolean(mission && (stage === 1 || stage === 2 || mission.levels?.some((level) => level.number + 2 === stage)));
+  const stageIsValid = Boolean(mission && (stage === 1 || stage === 2 || mission.currentPublishedVersion?.levels?.some((level:any) => level.levelNumber + 2 === stage)));
   const effectiveStage = stageIsValid ? stage : 1;
+
+  useEffect(() => {
+    let cancelled=false;
+    if(!missionId){setLoading(false);return;}
+    api.project(missionId).then((result:any)=>{
+      if(!cancelled)setMission(result.project||null);
+    }).catch(()=>{if(!cancelled)setMission(null)}).finally(()=>{if(!cancelled)setLoading(false)});
+    return ()=>{cancelled=true};
+  },[missionId]);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -54,6 +60,10 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
     const params = new URLSearchParams({ missionId, stage: String(effectiveStage), apiBase: API_BASE });
     return '/mission-stages-ui.html?' + params.toString();
   }, [missionId, effectiveStage]);
+
+  if (loading) {
+    return <div className="flex flex-col w-full pb-20"><div className={`rounded-2xl p-6 border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}><p className="text-sm text-slate-400">Loading mission stage...</p></div></div>;
+  }
 
   if (!missionId || !mission) {
     return (
