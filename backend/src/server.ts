@@ -157,24 +157,33 @@ app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
   return fail(res,'INTERNAL_ERROR','Unable to reveal hint.',500);
  }
 });
-app.post('/v1/investigations/:id/reveal-answer',auth,async(req:R,res)=>{
- const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!}});
+app.post('/v1/investigations/:id/reveal-answer',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
- const base='reveal:'+inv.id+':'+q.id;
+ const def:any=q.evaluationDefinition||{},base='reveal:'+inv.id+':'+q.id,state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
+ if(!identity.userId){
+  if(state.reveals?.[q.id])return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:{xp:0,coins:0},anonymous:true});
+  await prisma.investigation.update({where:{id:inv.id},data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}});
+  return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:false,balances:{xp:0,coins:0},anonymous:true});
+ }
  const already=await prisma.rewardLedger.findFirst({where:{idempotencyKey:base+':xp'}});
- const def:any=q.evaluationDefinition||{};
- if(already)return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:await prisma.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}})});
+ if(already)return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
  try{
   await prisma.$transaction(async tx=>{
-   const updated=await tx.user.updateMany({where:{id:req.userId!,xp:{gte:5},coins:{gte:2}},data:{xp:{decrement:5},coins:{decrement:2},lastActivityAt:new Date()}});
+   const updated=await tx.user.updateMany({where:{id:identity.userId!,xp:{gte:5},coins:{gte:2}},data:{xp:{decrement:5},coins:{decrement:2},lastActivityAt:new Date()}});
    if(updated.count!==1)throw new Error('INSUFFICIENT_FUNDS');
-   await tx.rewardLedger.create({data:{userId:req.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-5,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':xp'}});
-   await tx.rewardLedger.create({data:{userId:req.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-2,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':coins'}});
+   await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-5,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':xp'}});
+   await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-2,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':coins'}});
   });
-  res.json({answer:def.answer,explanation:q.explanation,cost:{xp:5,coins:2},balances:await prisma.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}})});
- }catch(e:any){if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Revealing an answer costs 5 KP and 2 coins.',409);if(e?.code==='P2002')return fail(res,'REVEAL_ALREADY_USED','The answer has already been revealed for this question.',409);return fail(res,'INTERNAL_ERROR','Unable to reveal answer.',500)}
+  res.json({answer:def.answer,explanation:q.explanation,cost:{xp:5,coins:2},balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
+ }catch(e:any){
+  if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Revealing an answer costs 5 KP and 2 coins.',409);
+  if(e?.code==='P2002')return fail(res,'REVEAL_ALREADY_USED','The answer has already been revealed for this question.',409);
+  return fail(res,'INTERNAL_ERROR','Unable to reveal answer.',500);
+ }
 });
 app.post('/v1/investigations/:id/complete',auth,async(req:R,res)=>{
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!},include:{projectVersion:{include:{levels:{include:{questions:true}}}},project:true}});
