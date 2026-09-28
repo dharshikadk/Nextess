@@ -125,17 +125,41 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
    return res.json({result:existingAnswer.result,answerId:existingAnswer.id,feedbackData:existingAnswer.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
  }
  const evaluation=evaluateChallenge({type:q.questionType,value:incoming,definition:(q.evaluationDefinition||{}) as any});
- const attempts=await prisma.investigationAnswer.count({where:{investigationId:inv.id,questionId:q.id}})+1;
- let answer;
- try{
-   answer=await prisma.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer??{},normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
- }catch(e:any){
-   if(e?.code==='P2002'){
-     const replay=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
-     if(replay){const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};return res.json({result:replay.result,answerId:replay.id,feedbackData:replay.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});}
-   }
-   throw e;
- }
+ let answer:any;
+let penalty={xp:0,coins:0};
+try{
+  const outcome=await serializableTransaction(async tx=>{
+    const attempts=await tx.investigationAnswer.count({where:{investigationId:inv.id,questionId:q.id}})+1;
+    const created=await tx.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer??{},normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
+    let appliedPenalty={xp:0,coins:0};
+    if(!evaluation.correct&&identity.userId){
+      const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
+      if(!u)throw new Error('USER_NOT_FOUND');
+      const xpPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.xp,Math.max(0,u.xp));
+      const coinPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.coins,Math.max(0,u.coins));
+      if(xpPenalty||coinPenalty){
+        await tx.user.update({where:{id:identity.userId!},data:{...(xpPenalty?{xp:{decrement:xpPenalty}}:{}),...(coinPenalty?{coins:{decrement:coinPenalty}}:{}),lastActivityAt:new Date()}});
+        if(xpPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-xpPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+created.id+':xp'}});
+        if(coinPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-coinPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+created.id+':coins'}});
+        appliedPenalty={xp:xpPenalty,coins:coinPenalty};
+      }
+    }
+    return {answer:created,penalty:appliedPenalty};
+  });
+  answer=outcome.answer;
+  penalty=outcome.penalty;
+}catch(e:any){
+  if(e?.code==='P2002'){
+    const replay=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
+    if(replay){
+      const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
+      const wrongXp=identity.userId?await prisma.rewardLedger.findFirst({where:{idempotencyKey:'wrong:'+replay.id+':xp'},select:{amount:true}}):null;
+      const wrongCoins=identity.userId?await prisma.rewardLedger.findFirst({where:{idempotencyKey:'wrong:'+replay.id+':coins'},select:{amount:true}}):null;
+      return res.json({result:replay.result,answerId:replay.id,feedbackData:replay.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:Math.abs(Number(wrongXp?.amount||0)),coins:Math.abs(Number(wrongCoins?.amount||0))},levelPenalty:{xp:0,coins:0},netChange:{xp:-Math.abs(Number(wrongXp?.amount||0)),coins:-Math.abs(Number(wrongCoins?.amount||0))},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
+    }
+  }
+  return fail(res,'CONFLICT','The answer submission could not be safely committed. Retry with the same Idempotency-Key.',409);
+}
  let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},penalty={xp:0,coins:0},levelPenalty={xp:0,coins:0};
  if(!evaluation.correct&&identity.userId){
   try{await prisma.$transaction(async tx=>{
