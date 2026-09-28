@@ -22,6 +22,7 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
     [missionId],
   );
   const stageIsValid = Boolean(mission && (stage === 1 || stage === 2 || mission.levels?.some((level) => level.number + 2 === stage)));
+  const effectiveStage = stageIsValid ? stage : 1;
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -50,11 +51,11 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
   }, [missionId, mission, stageIsValid]);
 
   const src = useMemo(() => {
-    const params = new URLSearchParams({ missionId, stage: String(Number.isFinite(stage) ? stage : 1), apiBase: API_BASE });
+    const params = new URLSearchParams({ missionId, stage: String(effectiveStage), apiBase: API_BASE });
     return '/mission-stages-ui.html?' + params.toString();
-  }, [missionId, stage]);
+  }, [missionId, effectiveStage]);
 
-  if (!missionId || !mission || !stageIsValid) {
+  if (!missionId || !mission) {
     return (
       <div className="flex flex-col w-full pb-20">
         <div className={`rounded-2xl p-6 border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
