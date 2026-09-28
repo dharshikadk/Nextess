@@ -93,7 +93,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
         <div className={`flex items-center gap-2 self-start md:self-auto px-4 py-2 rounded-xl border ${isDark ? 'bg-[#12131b] border-violet-500/30 text-white shadow-md' : 'bg-white border-violet-200 text-slate-800 shadow-sm'}`}>
           <span className="material-symbols-outlined text-[20px] text-violet-400">science</span>
           <div className="flex flex-col text-left">
-            <span className="font-mono text-xs font-bold leading-tight">Mission Catalogue</span>
+            <span className="font-mono text-xs font-bold leading-tight">{selectedSubject?.displayName || 'Mission Catalogue'}</span>
             <span className="text-[10px] text-slate-400">{missions.length} published mission files</span>
           </div>
         </div>
