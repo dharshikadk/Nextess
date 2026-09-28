@@ -53,7 +53,8 @@ async function main() {
       update: { displayName: subject.displayName, status: subject.status, ordering: subject.ordering },
       create: subject
     });
-    subjectMap.set(subject.displayName.toLowerCase(), row.id);
+    const subjectKey = subject.displayName.toLowerCase();
+    subjectMap.set(subjectKey, row.id);
   }
 
   for (const mission of pkg.projects) {
