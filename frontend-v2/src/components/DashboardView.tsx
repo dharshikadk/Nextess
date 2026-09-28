@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '../api';
 import { ActivePage, ThemeMode, UserStats } from '../types';
 
 interface DashboardViewProps {
@@ -24,6 +25,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   leaderboard = {opened:false, entries:[]},
 }) => {
   const isDark = theme === 'dark';
+  const [futureSubjects, setFutureSubjects] = useState<Array<{ id: string; displayName: string }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.subjects()
+      .then((result: any) => {
+        if (!cancelled) {
+          setFutureSubjects(
+            (result.subjects || [])
+              .filter((subject: any) => subject.status === 'FUTURE')
+              .sort((a: any, b: any) => a.ordering - b.ordering),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFutureSubjects([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex flex-col w-full pb-16">
@@ -164,11 +186,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div><div className="flex items-center gap-2"><span className="h-3.5 w-1 bg-violet-500 rounded-full shadow-[0_0_8px_rgba(167,139,250,0.5)]" /><h2 className={`font-headline-lg text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Future Subjects</h2></div><p className="text-xs text-slate-400 mt-1">Reserved subject slots are shown without invented mission content.</p></div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            ['science','Physical & Synthetic Chemistry'],['genetics','Evolutionary Biology'],['public','History'],['public','Geography']
-          ].map(([icon,title]) => (
-            <div key={title} className={`flex flex-col justify-between rounded-2xl p-4 border shadow-sm ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
-              <div><span className={`flex h-9 w-9 items-center justify-center rounded-lg border ${isDark ? 'bg-[#181926] text-violet-400 border-violet-500/20' : 'bg-slate-50 text-violet-600 border-slate-200'}`}><span className="material-symbols-outlined text-[20px]">{icon}</span></span><h3 className={`font-headline-sm text-sm font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h3><p className="text-xs mt-1 text-slate-500">Coming soon.</p></div>
+          {(futureSubjects.length ? futureSubjects : [
+            { id: 'fallback-chemistry', displayName: 'Physical & Synthetic Chemistry' },
+            { id: 'fallback-biology', displayName: 'Evolutionary Biology' },
+            { id: 'fallback-history', displayName: 'History' },
+            { id: 'fallback-geography', displayName: 'Geography' },
+          ]).map((subject, index) => (
+            <div key={subject.id} className={`flex flex-col justify-between rounded-2xl p-4 border shadow-sm ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
+              <div>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg border ${isDark ? 'bg-[#181926] text-violet-400 border-violet-500/20' : 'bg-slate-50 text-violet-600 border-slate-200'}`}>
+                  <span className="material-symbols-outlined text-[20px]">{['science','biotech','account_balance','public'][index % 4]}</span>
+                </span>
+                <h3 className={`font-headline-sm text-sm font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{subject.displayName}</h3>
+                <p className="text-xs mt-1 text-slate-500">Coming soon.</p>
+              </div>
             </div>
           ))}
         </div>
