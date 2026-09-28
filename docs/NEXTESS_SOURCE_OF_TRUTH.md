@@ -707,3 +707,8 @@ The task/question layer is extensible per subject.
 **Physics, Economics, Chemistry, Biology, Geography and History may use different task/question types and different renderers.**
 
 Everything else should be shared wherever it genuinely can be.
+
+
+## Mission runtime integrity
+
+Published database mission versions determine authoritative mission progression. Frontend local stage values are navigation hints only. Answer submissions use scoped idempotency keys to prevent duplicate authoritative answer/reward effects.
