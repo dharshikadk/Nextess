@@ -56,70 +56,78 @@ app.get('/v1/investigations/:id',optionalAuth,async(req:R,res)=>{
  const user=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
  res.json({investigation:inv,balances:user,anonymous:identity.anonymous});
 });
-app.post('/v1/investigations/:id/answers',auth,async(req:R,res)=>{
- const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
+app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,false);
+ if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+ if(!req.body||req.body.answer===undefined)return fail(res,'VALIDATION_ERROR','An answer is required.');
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
- const def:any=q.evaluationDefinition||{};
+ if(inv.currentQuestionId&&inv.currentQuestionId!==q.id)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
  const incoming=req.body.answer?.value??req.body.answer?.text??req.body.answer;
  if(incoming===undefined||incoming===null||String(incoming).trim()==='')return fail(res,'VALIDATION_ERROR','An answer is required.');
- let correct=false;
- if(typeof def.answer==='number')correct=Number.isFinite(Number(incoming))&&Math.abs(Number(incoming)-def.answer)<=Number(def.tolerance??0);
- else if(def.answer!==undefined)correct=String(incoming).trim().toLowerCase()===String(def.answer).trim().toLowerCase();
+ const evaluation=evaluateChallenge({type:q.questionType,value:incoming,definition:(q.evaluationDefinition||{}) as any});
  const attempts=await prisma.investigationAnswer.count({where:{investigationId:inv.id,questionId:q.id}})+1;
- const a=await prisma.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:req.userId!,attemptNumber:attempts,answerPayload:req.body.answer??{},normalizedAnswer:{value:incoming},result:correct?'CORRECT':'INCORRECT',evaluatorVersion:'v2',feedbackData:correct?{message:'Correct.'}:{message:'Not correct. Try again.'}}});
+ const answer=await prisma.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,answerPayload:req.body.answer??{},normalizedAnswer:{value:evaluation.normalizedAnswer},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
  let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},penalty={xp:0,coins:0},levelPenalty={xp:0,coins:0};
- if(!correct){
-  try{
-   await prisma.$transaction(async tx=>{
-    const u=await tx.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}});
-    if(!u)return;
-    const xpPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.xp,Math.max(0,u.xp));
-    const coinPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.coins,Math.max(0,u.coins));
-    if(xpPenalty===0&&coinPenalty===0)return;
-    await tx.user.update({where:{id:req.userId!},data:{...(xpPenalty?{xp:{decrement:xpPenalty}}:{}),...(coinPenalty?{coins:{decrement:coinPenalty}}:{}),lastActivityAt:new Date()}});
-    if(xpPenalty)await tx.rewardLedger.create({data:{userId:req.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-xpPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+a.id+':xp'}});
-    if(coinPenalty)await tx.rewardLedger.create({data:{userId:req.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-coinPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+a.id+':coins'}});
-    penalty={xp:xpPenalty,coins:coinPenalty};
-   });
-  }catch(e){ /* answer remains recorded; the penalty is best-effort and never blocks answering */ }
+ if(!evaluation.correct&&identity.userId){
+  try{await prisma.$transaction(async tx=>{
+   const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
+   if(!u)return;
+   const xpPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.xp,Math.max(0,u.xp));
+   const coinPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.coins,Math.max(0,u.coins));
+   if(xpPenalty===0&&coinPenalty===0)return;
+   await tx.user.update({where:{id:identity.userId!},data:{...(xpPenalty?{xp:{decrement:xpPenalty}}:{}),...(coinPenalty?{coins:{decrement:coinPenalty}}:{}),lastActivityAt:new Date()}});
+   if(xpPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-xpPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+answer.id+':xp'}});
+   if(coinPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-coinPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+answer.id+':coins'}});
+   penalty={xp:xpPenalty,coins:coinPenalty};
+  });}catch(e){/* The answer remains recorded even if a non-critical penalty write fails. */}
  }
- if(correct){
+ if(evaluation.correct){
   const level=inv.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
   if(level){
    const ids=level.questions.map((x:any)=>x.id);
    const rows=await prisma.investigationAnswer.findMany({where:{investigationId:inv.id,questionId:{in:ids}},orderBy:{submittedAt:'desc'}});
    const latest=new Map<string,any>();for(const row of rows)if(!latest.has(row.questionId))latest.set(row.questionId,row);
    levelCompleted=ids.length>0&&ids.every((id:string)=>latest.get(id)?.result==='CORRECT');
+   const nextQuestion=level.questions.find((x:any)=>!latest.has(x.id)||latest.get(x.id)?.result!=='CORRECT');
    if(levelCompleted){
     const finalLevel=level.levelNumber===inv.projectVersion.levels.length;
-    reward=await prisma.$transaction(async tx=>{
-     const r=await rewardMissionLevel(tx,req.userId!,inv.id,level.id,finalLevel);
-     await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:req.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:req.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date()}});
-     const percent=Math.round(level.levelNumber/inv.projectVersion.levels.length*100);
-     if(finalLevel){
-      missionCompleted=true;
-      await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:req.userId!,projectId:inv.projectId}},update:{status:'COMPLETED',progressPercent:100,completedAt:new Date(),currentLevelId:null,currentQuestionId:null,lastActivityAt:new Date()},create:{userId:req.userId!,projectId:inv.projectId,status:'COMPLETED',progressPercent:100,completedAt:new Date(),lastActivityAt:new Date()}});
-      await tx.investigation.update({where:{id:inv.id},data:{status:'COMPLETED',completedAt:new Date(),lastActivityAt:new Date(),currentLevelId:level.id,currentQuestionId:q.id}});
-     }else{
-      const next=inv.projectVersion.levels.find((l:any)=>l.levelNumber===level.levelNumber+1);
-      await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:req.userId!,projectId:inv.projectId}},update:{status:'IN_PROGRESS',progressPercent:percent,currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()},create:{userId:req.userId!,projectId:inv.projectId,status:'IN_PROGRESS',progressPercent:percent,currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
-      await tx.investigation.update({where:{id:inv.id},data:{currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
-     }
-     return r;
-    });
-    const levelPenaltyRows=await prisma.rewardLedger.findMany({where:{userId:req.userId!,investigationId:inv.id,sourceId:{in:ids},reasonCode:'MISSION_WRONG_ANSWER'},select:{rewardType:true,amount:true}});
-    levelPenalty={
-     xp:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.XP).reduce((s:number,x:any)=>s+Number(x.amount),0)),
-     coins:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((s:number,x:any)=>s+Number(x.amount),0))
-    };
+    if(identity.userId){
+     reward=await prisma.$transaction(async tx=>{
+      const r=await rewardMissionLevel(tx,identity.userId!,inv.id,level.id,finalLevel);
+      await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
+      if(finalLevel){
+       missionCompleted=true;
+       await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId!,projectId:inv.projectId}},update:{status:'COMPLETED',progressPercent:100,completedAt:new Date(),currentLevelId:null,currentQuestionId:null,lastActivityAt:new Date()},create:{userId:identity.userId!,projectId:inv.projectId,status:'COMPLETED',progressPercent:100,completedAt:new Date(),lastActivityAt:new Date()}});
+       await tx.investigation.update({where:{id:inv.id},data:{status:'COMPLETED',completedAt:new Date(),lastActivityAt:new Date(),currentLevelId:level.id,currentQuestionId:q.id}});
+      }else{
+       const next=inv.projectVersion.levels.find((l:any)=>l.levelNumber===level.levelNumber+1);
+       await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId!,projectId:inv.projectId}},update:{status:'IN_PROGRESS',progressPercent:Math.round(level.levelNumber/inv.projectVersion.levels.length*100),currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()},create:{userId:identity.userId!,projectId:inv.projectId,status:'IN_PROGRESS',progressPercent:Math.round(level.levelNumber/inv.projectVersion.levels.length*100),currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
+       await tx.investigation.update({where:{id:inv.id},data:{currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
+      }
+      return r;
+     });
+    }else{
+     const next=inv.projectVersion.levels.find((l:any)=>l.levelNumber===level.levelNumber+1);
+     missionCompleted=finalLevel;
+     await prisma.investigation.update({where:{id:inv.id},data:finalLevel?{status:'COMPLETED',completedAt:new Date(),currentLevelId:level.id,currentQuestionId:q.id,lastActivityAt:new Date()}:{currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
+    }
+    if(identity.userId){
+     const levelPenaltyRows=await prisma.rewardLedger.findMany({where:{userId:identity.userId!,investigationId:inv.id,sourceId:{in:ids},reasonCode:'MISSION_WRONG_ANSWER'},select:{rewardType:true,amount:true}});
+     levelPenalty={xp:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.XP).reduce((sum:number,x:any)=>sum+Number(x.amount),0)),coins:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((sum:number,x:any)=>sum+Number(x.amount),0))};
+    }
+   }else if(nextQuestion){
+    const nextIndex=level.questions.findIndex((x:any)=>x.id===nextQuestion.id);
+    await prisma.investigation.update({where:{id:inv.id},data:{currentLevelId:level.id,currentQuestionId:nextQuestion.id,lastActivityAt:new Date()}});
+    if(identity.userId)await prisma.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'IN_PROGRESS',currentQuestionId:nextQuestion.id,completedQuestions:Math.max(0,nextIndex),totalQuestions:ids.length},create:{userId:identity.userId!,levelId:level.id,status:'IN_PROGRESS',currentQuestionId:nextQuestion.id,completedQuestions:Math.max(0,nextIndex),totalQuestions:ids.length}});
    }
   }
  }
- const user=await prisma.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}});
- res.json({result:a.result,answerId:a.id,feedbackData:a.feedbackData,levelCompleted,missionCompleted,reward,penalty,levelPenalty,netChange:{xp:reward.xp-levelPenalty.xp,coins:reward.coins-levelPenalty.coins},balances:user});
+ const user=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):null;
+ res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:answer.id,feedbackData:evaluation.feedback,levelCompleted,missionCompleted,reward,penalty,levelPenalty,netChange:{xp:reward.xp-levelPenalty.xp,coins:reward.coins-levelPenalty.coins},balances:user??{xp:0,coins:0},anonymous:identity.anonymous});
 });
 app.post('/v1/investigations/:id/hints',auth,async(req:R,res)=>{
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!}});
