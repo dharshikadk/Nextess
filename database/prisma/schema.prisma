@@ -187,7 +187,17 @@ model DailyDirective {
   active Boolean @default(true)
   claims DirectiveClaim[]
 }
-model DirectiveClaim { id String @id @default(uuid()) @db.Uuid directiveId String @db.Uuid userId String @db.Uuid claimDate DateTime createdAt DateTime @default(now()) directive DailyDirective @relation(fields:[directiveId], references:[id], onDelete:Cascade) user User @relation(fields:[userId], references:[id], onDelete:Cascade) @@unique([directiveId,userId,claimDate]) @@index([userId,claimDate]) }
+model DirectiveClaim {
+  id String @id @default(uuid()) @db.Uuid
+  directiveId String @db.Uuid
+  userId String @db.Uuid
+  claimDate DateTime
+  createdAt DateTime @default(now())
+  directive DailyDirective @relation(fields:[directiveId], references:[id], onDelete:Cascade)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@unique([directiveId,userId,claimDate])
+  @@index([userId,claimDate])
+}
 
 model UserSetting {
   id        String   @id @default(uuid()) @db.Uuid
