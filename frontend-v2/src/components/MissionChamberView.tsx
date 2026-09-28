@@ -83,7 +83,7 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
         onClick={() => { onShowToast('Mission chamber closed.'); onNavigate('mission-detail'); }}
         className="mt-3 self-start px-4 py-2 rounded-xl border border-violet-500/20 bg-[#181926] text-slate-300 text-xs font-semibold"
       >
-        Back to Mission File
+        Back to Mission
       </button>
     </div>
   );
