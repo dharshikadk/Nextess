@@ -117,3 +117,10 @@ The Database AI owns:
 - content storage structures
 
 Frontend, Backend, Content and Simulation AIs must treat this directory as a contract and report genuine capability gaps instead of silently changing it.
+
+
+## Runtime mission integrity
+
+Published mission versions remain the runtime source of truth. Content JSON is seed/import content; frontend mission pages consume the database through the API.
+
+The `InvestigationAnswer.idempotencyKey` field is a unique, optional persistence boundary used by the backend to make answer submissions safe to retry without duplicating the answer-side reward/penalty effects. Apply migrations before starting the API.
