@@ -115,3 +115,20 @@ Every release candidate should verify:
 12. duplicate submission/reward idempotency
 13. simulation asset loading
 14. end-to-end mission progression
+
+
+## Mission execution integrity additions
+
+The mission execution API is data-driven and uses the published ProjectVersion referenced by each Investigation. The frontend may retain navigation state locally, but authoritative level/question progression is read from the Investigation returned by the backend.
+
+### Answer submission idempotency
+
+`POST /v1/investigations/:id/answers` requires an `Idempotency-Key` header for state-changing submissions. The key is scoped to the learner/session and persisted with the answer. A retry with the same key returns the original answer record with `replayed: true` and does not grant or deduct rewards again.
+
+### Server authority
+
+The backend validates investigation ownership, published mission version, question membership and current-question availability before evaluating an answer. Correctness, progression and rewards are never accepted from client-provided flags.
+
+### Runtime verification
+
+CI runs a seeded PostgreSQL smoke test covering subject/mission discovery, published-version consistency, mission start, investigation retrieval, answer evaluation, idempotent retry, cross-user authorization, invalid question rejection and daily quote availability.
