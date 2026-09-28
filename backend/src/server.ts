@@ -185,13 +185,26 @@ app.post('/v1/investigations/:id/reveal-answer',optionalAuth,async(req:R,res)=>{
   return fail(res,'INTERNAL_ERROR','Unable to reveal answer.',500);
  }
 });
-app.post('/v1/investigations/:id/complete',auth,async(req:R,res)=>{
- const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!},include:{projectVersion:{include:{levels:{include:{questions:true}}}},project:true}});
+app.post('/v1/investigations/:id/complete',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{include:{questions:true}}}},project:true}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='COMPLETED')return fail(res,'INCOMPLETE','Complete every level correctly before finishing the investigation.',409);
+ if(identity.anonymous)return res.json({completed:true,report:null,anonymous:true});
  const totalXp=inv.projectVersion.levels.reduce((sum:number,l:any)=>sum+(l.levelNumber===inv.projectVersion.levels.length?20:5),0);
  const totalCoins=inv.projectVersion.levels.reduce((sum:number,l:any)=>sum+(l.levelNumber===inv.projectVersion.levels.length?10:2),0);
- const report=await prisma.projectCompletionReport.upsert({where:{investigationId:inv.id},update:{},create:{userId:req.userId!,projectId:inv.projectId,investigationId:inv.id,overallScore:100,xpEarned:totalXp,coinsEarned:totalCoins}});
+ const report=await prisma.projectCompletionReport.upsert({where:{investigationId:inv.id},update:{},create:{userId:identity.userId!,projectId:inv.projectId,investigationId:inv.id,overallScore:100,xpEarned:totalXp,coinsEarned:totalCoins}});
  res.json({completed:true,report});
+});
+app.post('/v1/investigations/:id/simulation-state',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
+ if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ const simulationId=String(req.body?.simulationId||'');
+ if(!simulationId||!req.body?.state||typeof req.body.state!=='object'||Array.isArray(req.body.state))return fail(res,'VALIDATION_ERROR','simulationId and an object state are required.');
+ const currentState:any=inv.state&&typeof inv.state==='object'?inv.state:{};
+ const nextState={...currentState,simulations:{...(currentState.simulations||{}),[simulationId]:req.body.state}};
+ await prisma.investigation.update({where:{id:inv.id},data:{state:nextState,lastActivityAt:new Date()}});
+ res.json({saved:true,simulationId,state:req.body.state});
 });
 app.listen(port,()=>console.log('Nextess API listening on '+port));
