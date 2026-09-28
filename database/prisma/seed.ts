@@ -53,7 +53,8 @@ async function main() {
       update: { displayName: subject.displayName, status: subject.status, ordering: subject.ordering },
       create: subject
     });
-    subjectMap.set(subject.key.toLowerCase(), row.id);\n    subjectMap.set(subject.displayName.toLowerCase(), row.id);
+    subjectMap.set(subject.key.toLowerCase(), row.id);
+    subjectMap.set(subject.displayName.toLowerCase(), row.id);
   }
 
   for (const mission of pkg.projects) {
@@ -297,7 +298,8 @@ async function main() {
     ["I hear and I forget. I see and I remember. I do and I understand.", "Confucius", "learning"],
     ["It does not matter how slowly you go as long as you do not stop.", "Confucius", "success"],
     ["The journey of a thousand miles begins with one step.", "Lao Tzu", "success"],
-    ["A person who never made a mistake never tried anything new.", "Albert Einstein", "success"],\n    ["The best way to have a good idea is to have a lot of ideas.", "Linus Pauling", "chemistry"]
+    ["A person who never made a mistake never tried anything new.", "Albert Einstein", "success"],
+    ["The best way to have a good idea is to have a lot of ideas.", "Linus Pauling", "chemistry"]
   ] as const;
   await prisma.dailyQuote.deleteMany({});
   for (const [index, [quote, source, category]] of quotes.entries()) {
