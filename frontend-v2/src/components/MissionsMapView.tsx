@@ -269,6 +269,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
             </div>
           )}
         </div>
+      </div>
       )}
 
       {futureSubjects.length > 0 && (
