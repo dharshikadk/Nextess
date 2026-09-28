@@ -115,3 +115,8 @@ Every release candidate should verify:
 12. duplicate submission/reward idempotency
 13. simulation asset loading
 14. end-to-end mission progression
+
+
+## Mission execution integrity additions
+
+Published ProjectVersion data is the runtime source of truth for Mission Chamber state. Answer submissions require an `Idempotency-Key`; the scoped key is persisted with the answer and a retry returns `replayed: true` without duplicating reward/penalty effects.
