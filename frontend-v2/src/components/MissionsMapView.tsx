@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import { api } from '../api';
+import missionsPackage from '../data/missions.json';
 
 interface MissionsMapViewProps {
   theme: ThemeMode;
@@ -20,32 +20,55 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedKey, setSelectedKey] = useState('');
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { subjects } = await api.subjects();
-        const active = (subjects || []).filter((s:any) => s.status === 'ACTIVE');
-        const responses = await Promise.all(active.map((s:any) => api.projects(s.id)));
-        const rows = responses.flatMap((r:any) => r.projects || []) as Mission[];
-        if (!cancelled) {
-          setMissions(rows);
-          setSelectedKey(rows[0]?.id || '');
-        }
-      } catch {
-        if (!cancelled) {
-          setMissions([]);
-          onShowToast('Published mission catalogue could not be loaded from the server.');
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [onShowToast]);
+    // Mission catalogue is intentionally sourced from the versioned embedded package.
+    // Do not depend on the backend just to render the mission map.
+    const projects = Array.isArray(missionsPackage.projects) ? missionsPackage.projects : [];
+    const rows: Mission[] = projects.map((project) => ({
+      id: project.key,
+      slug: project.key,
+      title: project.title,
+      mission: project.mission,
+      role: project.role ?? null,
+      problemType: project.problemType ?? null,
+      subject: {
+        key: project.subject,
+        displayName: project.subject.charAt(0).toUpperCase() + project.subject.slice(1),
+      },
+      currentPublishedVersion: {
+        id: `${project.key}:v${project.version}`,
+        version: project.version,
+        contentMetadata: {
+          difficulty: project.difficulty,
+          estimatedLength: project.estimatedLength,
+          learningCapsule: project.learningCapsule,
+          requiredEvidence: project.requiredEvidence,
+          requiredSimulation: project.requiredSimulation,
+        },
+        levels: (project.levels || []).map((level) => ({
+          id: `${project.key}:level:${level.number}`,
+          levelNumber: level.number,
+          title: level.title,
+          questions: level.questions || [],
+        })),
+      },
+      levelsCount: project.levels?.length ?? 0,
+    }));
+
+    setMissions(rows);
+    setSelectedKey(rows[0]?.id || '');
+  }, []);
   const selectedMission = useMemo(
     () => missions.find((mission) => mission.id === selectedKey) ?? missions[0],
     [missions, selectedKey],
   );
 
   const openMission = (mission: Mission) => {
+    // Only IDs from the embedded catalogue are accepted; this prevents arbitrary
+    // localStorage values from becoming mission identifiers.
+    if (!missions.some((item) => item.id === mission.id)) {
+      onShowToast('Invalid mission selection.');
+      return;
+    }
     localStorage.setItem('nextess_selected_mission', mission.id);
     onNavigate('mission-detail');
   };
