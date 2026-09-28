@@ -251,10 +251,10 @@ export const AboutView: React.FC<AboutViewProps> = ({
               >
                 <div className="flex items-center gap-1.5 text-violet-400">
                   <span className="material-symbols-outlined text-[16px]">science</span>
-                  <span className="font-medium text-xs">Molecular Chemistry</span>
+                  <span className="font-medium text-xs">Physical & Synthetic Chemistry</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Reaction kinetics &amp; molecular bonding lattice engines.
+                  Reaction kinetics, synthesis systems &amp; molecular bonding models.
                 </p>
               </div>
 
@@ -265,10 +265,10 @@ export const AboutView: React.FC<AboutViewProps> = ({
               >
                 <div className="flex items-center gap-1.5 text-teal-400">
                   <span className="material-symbols-outlined text-[16px]">biotech</span>
-                  <span className="font-medium text-xs">Genetics &amp; Evolution</span>
+                  <span className="font-medium text-xs">Evolutionary Biology</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Natural selection models &amp; CRISPR sequence sandbox.
+                  Evolution, adaptation, population models &amp; biological systems.
                 </p>
               </div>
 
@@ -279,10 +279,10 @@ export const AboutView: React.FC<AboutViewProps> = ({
               >
                 <div className="flex items-center gap-1.5 text-rose-400">
                   <span className="material-symbols-outlined text-[16px]">terrain</span>
-                  <span className="font-medium text-xs">Geophysical Geography</span>
+                  <span className="font-medium text-xs">Geography</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Plate tectonics, atmospheric fluid cycles, and climate maps.
+                  Physical geography, climate systems, terrain and spatial models.
                 </p>
               </div>
 
@@ -293,10 +293,10 @@ export const AboutView: React.FC<AboutViewProps> = ({
               >
                 <div className="flex items-center gap-1.5 text-amber-400">
                   <span className="material-symbols-outlined text-[16px]">account_balance</span>
-                  <span className="font-medium text-xs">Macro Geopolitics</span>
+                  <span className="font-medium text-xs">History</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Trade sanction flow-charts and resource distribution trees.
+                  Historical systems, civilizations, institutions and evidence-based timelines.
                 </p>
               </div>
             </div>

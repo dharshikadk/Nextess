@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import missionsPackage from '../data/missions.json';
+import { api } from '../api';
 
 interface MissionDetailViewProps {
   theme: ThemeMode;
@@ -17,43 +17,40 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedId = localStorage.getItem('nextess_selected_mission');
-    const projects = Array.isArray(missionsPackage.projects) ? missionsPackage.projects : [];
-    const selected = storedId ? projects.find((project) => project.key === storedId) : undefined;
-
-    if (!selected) {
-      if (storedId) {
-        localStorage.removeItem('nextess_selected_mission');
-        onShowToast('The selected mission is not available.');
-      }
-      setMission(null);
-      setLoading(false);
-      return;
-    }
-
-    setMission({
-      ...selected,
-      id: selected.key,
-      version: selected.version,
-      subject: {
-        key: selected.subject,
-        displayName: selected.subject.charAt(0).toUpperCase() + selected.subject.slice(1),
-      },
-      difficulty: selected.difficulty,
-      estimatedLength: selected.estimatedLength,
-      learningCapsule: selected.learningCapsule,
-      requiredEvidence: selected.requiredEvidence,
-      requiredSimulation: selected.requiredSimulation,
-      levels: (selected.levels || []).map((level) => ({
-        ...level,
-        id: `${selected.key}:level:${level.number}`,
-        number: level.number,
-        evidenceUse: level.evidenceUse,
-        simulationUse: level.simulationUse,
-        questions: level.questions || [],
-      })),
-    });
-    setLoading(false);
+    let cancelled=false;
+    const load=async()=>{
+      const storedId=localStorage.getItem('nextess_selected_mission');
+      if(!storedId){setMission(null);setLoading(false);return;}
+      try{
+        const result=await api.project(storedId);
+        const selected=result.project;
+        if(cancelled)return;
+        if(!selected){setMission(null);setLoading(false);return;}
+        const metadata=selected.currentPublishedVersion?.contentMetadata||{};
+        setMission({
+          ...selected,
+          id:selected.id,
+          version:selected.currentPublishedVersion?.version||metadata.version||1,
+          subject:selected.subject,
+          difficulty:metadata.difficulty||'Published',
+          estimatedLength:metadata.estimatedLength||'',
+          learningCapsule:metadata.learningCapsule||{title:'Learning Capsule',sections:[]},
+          requiredEvidence:metadata.requiredEvidence||null,
+          requiredSimulation:metadata.requiredSimulation||null,
+          levels:(selected.currentPublishedVersion?.levels||[]).map((level:any)=>({
+            ...level,
+            number:level.levelNumber,
+            evidenceUse:level.debrief?.evidenceUse||'Use the mission data provided for this level.',
+            simulationUse:level.debrief?.simulationUse||'',
+            questions:level.questions||[],
+          })),
+        });
+      }catch{
+        if(!cancelled)onShowToast('The selected mission could not be loaded from the database.');
+      }finally{if(!cancelled)setLoading(false);}
+    };
+    load();
+    return ()=>{cancelled=true};
   }, [onShowToast]);
 
   if (loading) return <div className="flex flex-col w-full pb-20"><div className={`rounded-2xl p-6 border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}><p className="text-sm text-slate-400">Loading published mission...</p></div></div>;

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import missionsPackage from '../data/missions.json';
+import { api } from '../api';
 
 interface MissionsMapViewProps {
   theme: ThemeMode;
@@ -9,7 +9,16 @@ interface MissionsMapViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string;levelNumber:number;title:string;questions:any[]}[]}|null; levelsCount:number; };
+type Subject = { id:string; key:string; displayName:string; status:'ACTIVE'|'FUTURE'; ordering:number };
+type Mission = {
+  id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null;
+  subject:Subject;
+  currentPublishedVersion?:{
+    id:string; version:number; contentMetadata?:any;
+    levels:Array<{id:string;levelNumber:number;title:string;rewardXp:number;rewardCoins:number;questions:any[]}>;
+  }|null;
+  levelsCount:number;
+};
 
 export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   theme,
@@ -17,59 +26,50 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   onShowToast,
 }) => {
   const isDark = theme === 'dark';
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [selectedKey, setSelectedKey] = useState('');
-  useEffect(() => {
-    // Mission catalogue is intentionally sourced from the versioned embedded package.
-    // Do not depend on the backend just to render the mission map.
-    const projects = Array.isArray(missionsPackage.projects) ? missionsPackage.projects : [];
-    const rows: Mission[] = projects.map((project) => ({
-      id: project.key,
-      slug: project.key,
-      title: project.title,
-      mission: project.mission,
-      role: project.role ?? null,
-      problemType: project.problemType ?? null,
-      subject: {
-        key: project.subject,
-        displayName: project.subject.charAt(0).toUpperCase() + project.subject.slice(1),
-      },
-      currentPublishedVersion: {
-        id: `${project.key}:v${project.version}`,
-        version: project.version,
-        contentMetadata: {
-          difficulty: project.difficulty,
-          estimatedLength: project.estimatedLength,
-          learningCapsule: project.learningCapsule,
-          requiredEvidence: project.requiredEvidence,
-          requiredSimulation: project.requiredSimulation,
-        },
-        levels: (project.levels || []).map((level) => ({
-          id: `${project.key}:level:${level.number}`,
-          levelNumber: level.number,
-          title: level.title,
-          questions: level.questions || [],
-        })),
-      },
-      levelsCount: project.levels?.length ?? 0,
-    }));
+  const [subjects,setSubjects]=useState<Subject[]>([]);
+  const [futureSubjects,setFutureSubjects]=useState<Subject[]>([]);
+  const [missions,setMissions]=useState<Mission[]>([]);
+  const [selectedSubjectKey,setSelectedSubjectKey]=useState(()=>localStorage.getItem('nextess_selected_subject')||'');
+  const [selectedKey,setSelectedKey]=useState('');
+  const [loading,setLoading]=useState(true);
 
-    setMissions(rows);
-    setSelectedKey(rows[0]?.id || '');
-  }, []);
-  const selectedMission = useMemo(
-    () => missions.find((mission) => mission.id === selectedKey) ?? missions[0],
-    [missions, selectedKey],
-  );
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        const result=await api.subjects();
+        const all=(result.subjects||[]) as Subject[];
+        const active=all.filter(s=>s.status==='ACTIVE').sort((a,b)=>a.ordering-b.ordering);
+        const future=all.filter(s=>s.status==='FUTURE').sort((a,b)=>a.ordering-b.ordering);
+        const preferred=active.find(s=>s.key.toLowerCase()===selectedSubjectKey.toLowerCase())||active[0];
+        if(!preferred){if(!cancelled){setSubjects(active);setFutureSubjects(future);setMissions([]);setLoading(false)};return}
+        if(preferred.key!==selectedSubjectKey){setSelectedSubjectKey(preferred.key);localStorage.setItem('nextess_selected_subject',preferred.key)}
+        const projectResult=await api.projects(preferred.id);
+        if(!cancelled){setSubjects(active);setFutureSubjects(future);setMissions((projectResult.projects||[]) as Mission[]);setSelectedKey((projectResult.projects||[])[0]?.id||'');setLoading(false)}
+      }catch{
+        if(!cancelled){setLoading(false);setMissions([]);onShowToast('Mission catalogue could not be loaded from the database.')}
+      }
+    })();
+    return ()=>{cancelled=true};
+  },[onShowToast,selectedSubjectKey]);
+
+  const selectedSubject=useMemo(()=>subjects.find(s=>s.key.toLowerCase()===selectedSubjectKey.toLowerCase())||subjects[0],[subjects,selectedSubjectKey]);
+  const selectedMission=useMemo(()=>missions.find(m=>m.id===selectedKey)||missions[0],[missions,selectedKey]);
+  const rewards=useMemo(()=>{
+    const levels=selectedMission?.currentPublishedVersion?.levels||[];
+    return {xp:levels.reduce((n,l)=>n+(Number(l.rewardXp)||0),0),coins:levels.reduce((n,l)=>n+(Number(l.rewardCoins)||0),0)};
+  },[selectedMission]);
+  const concepts=useMemo(()=>((selectedMission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections||[]) as any[]).map(s=>s.title).filter(Boolean),[selectedMission]);
+  const selectSubject=(subject:Subject)=>{setSelectedSubjectKey(subject.key);localStorage.setItem('nextess_selected_subject',subject.key);setSelectedKey('');setLoading(true)};
+
 
   const openMission = (mission: Mission) => {
-    // Only IDs from the embedded catalogue are accepted; this prevents arbitrary
-    // localStorage values from becoming mission identifiers.
     if (!missions.some((item) => item.id === mission.id)) {
       onShowToast('Invalid mission selection.');
       return;
     }
     localStorage.setItem('nextess_selected_mission', mission.id);
+    localStorage.removeItem('nextess_mission_stage');
     onNavigate('mission-detail');
   };
 
@@ -99,6 +99,22 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
         </div>
       </div>
 
+      {subjects.length > 1 && (
+        <div className={`flex flex-wrap gap-2 p-2 mb-5 rounded-2xl border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
+          {subjects.map(subject => (
+            <button key={subject.id} onClick={() => selectSubject(subject)}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${selectedSubject?.id === subject.id ? 'bg-violet-600 text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-white hover:bg-[#181926]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}>
+              {subject.displayName}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
+        <div className={`rounded-2xl border p-8 ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
+          <p className="text-sm text-slate-400">Loading published missions…</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start relative">
         <div className="xl:col-span-7 flex flex-col items-center relative py-4 min-h-[700px]">
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" xmlns="http://www.w3.org/2000/svg">
@@ -212,22 +228,38 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`rounded-xl p-3 border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-violet-50 border-violet-200'}`}>
+                  <span className="font-mono text-[9px] text-slate-400 uppercase">KP earned</span>
+                  <span className="block text-lg font-bold text-violet-400 mt-1">+{rewards.xp}</span>
+                </div>
+                <div className={`rounded-xl p-3 border ${isDark ? 'bg-[#181926] border-amber-500/15' : 'bg-amber-50 border-amber-200'}`}>
+                  <span className="font-mono text-[9px] text-slate-400 uppercase">Coins earned</span>
+                  <span className="block text-lg font-bold text-amber-400 mt-1">+{rewards.coins}</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="font-mono text-[10px] text-slate-400 uppercase tracking-wider mb-2">Concepts used</div>
+                {concepts.length ? (
+                  <div className="flex flex-col gap-2">
+                    {concepts.map((title:string) => (
+                      <div key={title} className={`px-3 py-2 rounded-xl border text-xs font-semibold ${isDark ? 'bg-[#181926] border-violet-500/15 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>{title}</div>
+                    ))}
+                  </div>
+                ) : <p className="text-xs text-slate-500">No concept titles are published for this mission version.</p>}
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-violet-500/15">
                 <span className="font-mono text-[10px] text-slate-500">Double-click a mission node or use the button.</span>
                 <button
                   onClick={() => openMission(selectedMission)}
                   className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6] active:translate-y-0.5 transition-all"
                 >
-                  View Mission File
+                  Start Solving Mission
                 </button>
               </div>
 
-              <button
-                onClick={() => onShowToast('Mission execution is not connected yet. This view is using the published mission file only.')}
-                className={`text-[10px] font-mono text-left ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                Execution chamber: placeholder until the mission backend is connected.
-              </button>
             </div>
           ) : (
             <div className={`rounded-2xl p-6 border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
@@ -235,7 +267,26 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {futureSubjects.length > 0 && (
+        <section className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2"><span className="material-symbols-outlined text-slate-400">hourglass_top</span><h2 className={`font-headline-sm text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>UPCOMING DISCIPLINES</h2></div>
+            <span className="font-mono text-[10px] text-slate-400">{futureSubjects.length} IN PIPELINE</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {futureSubjects.map(subject => (
+              <button key={subject.id} onClick={() => onShowToast(`${subject.displayName} is in active development. Mission files are not published yet.`)}
+                className={`text-left p-4 rounded-2xl border transition-all ${isDark ? 'bg-[#12131b] border-violet-500/20 hover:border-violet-400/40' : 'bg-white border-slate-200 hover:border-violet-300'}`}>
+                <span className="material-symbols-outlined text-violet-400">hourglass_top</span>
+                <h3 className={`font-semibold text-sm mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{subject.displayName}</h3>
+                <p className="text-xs text-slate-400 mt-1">Future discipline · mission content coming later.</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
