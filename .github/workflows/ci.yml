@@ -76,6 +76,8 @@ jobs:
 
   database:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
     defaults:
       run:
         working-directory: database
