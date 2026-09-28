@@ -138,6 +138,15 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ const clientKey=requestIdempotencyKey(req);
+ if(!clientKey)return fail(res,'IDEMPOTENCY_KEY_REQUIRED','An Idempotency-Key header is required for answer submission.',400);
+ const scopedKey=hash((identity.userId||('anonymous:'+identity.anonymousSessionId))+':answer:'+clientKey);
+ const existingAnswer=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
+ if(existingAnswer){
+   const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
+   return res.json({result:existingAnswer.result,answerId:existingAnswer.id,feedbackData:existingAnswer.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
+ }
+
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  if(!validateUuid(req.body?.questionId))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
  if(!req.body||req.body.answer===undefined)return fail(res,'VALIDATION_ERROR','An answer is required.');
@@ -147,14 +156,6 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  if(inv.currentQuestionId&&inv.currentQuestionId!==q.id)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
  const incoming=req.body.answer?.value??req.body.answer?.text??req.body.answer;
  if(incoming===undefined||incoming===null||String(incoming).trim()==='')return fail(res,'VALIDATION_ERROR','An answer is required.');
- const clientKey=requestIdempotencyKey(req);
- if(!clientKey)return fail(res,'IDEMPOTENCY_KEY_REQUIRED','An Idempotency-Key header is required for answer submission.',400);
- const scopedKey=hash((identity.userId||('anonymous:'+identity.anonymousSessionId))+':answer:'+clientKey);
- const existingAnswer=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
- if(existingAnswer){
-   const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
-   return res.json({result:existingAnswer.result,answerId:existingAnswer.id,feedbackData:existingAnswer.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
- }
  const evaluation=evaluateChallenge({type:q.questionType,value:incoming,definition:(q.evaluationDefinition||{}) as any});
  let answer:any;
 let penalty={xp:0,coins:0};
