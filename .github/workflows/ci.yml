@@ -71,6 +71,8 @@ jobs:
           curl -fsS http://localhost:4000/v1/subjects | grep -q '"status":"FUTURE"'
           curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"author"'
           curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"date"'
+      - name: Run database-backed mission runtime smoke test
+        run: node scripts/runtime-smoke.mjs
 
   database:
     runs-on: ubuntu-latest
