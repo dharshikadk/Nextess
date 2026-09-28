@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import missionsPackage from '../data/missions.json';
+import { api } from '../api';
 
 interface MissionsMapViewProps {
   theme: ThemeMode;
@@ -9,7 +9,16 @@ interface MissionsMapViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string;levelNumber:number;title:string;questions:any[]}[]}|null; levelsCount:number; };
+type Subject = { id:string; key:string; displayName:string; status:'ACTIVE'|'FUTURE'; ordering:number };
+type Mission = {
+  id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null;
+  subject:Subject;
+  currentPublishedVersion?:{
+    id:string; version:number; contentMetadata?:any;
+    levels:Array<{id:string;levelNumber:number;title:string;rewardXp:number;rewardCoins:number;questions:any[]}>;
+  }|null;
+  levelsCount:number;
+};
 
 export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   theme,
@@ -17,59 +26,50 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   onShowToast,
 }) => {
   const isDark = theme === 'dark';
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [selectedKey, setSelectedKey] = useState('');
-  useEffect(() => {
-    // Mission catalogue is intentionally sourced from the versioned embedded package.
-    // Do not depend on the backend just to render the mission map.
-    const projects = Array.isArray(missionsPackage.projects) ? missionsPackage.projects : [];
-    const rows: Mission[] = projects.map((project) => ({
-      id: project.key,
-      slug: project.key,
-      title: project.title,
-      mission: project.mission,
-      role: project.role ?? null,
-      problemType: project.problemType ?? null,
-      subject: {
-        key: project.subject,
-        displayName: project.subject.charAt(0).toUpperCase() + project.subject.slice(1),
-      },
-      currentPublishedVersion: {
-        id: `${project.key}:v${project.version}`,
-        version: project.version,
-        contentMetadata: {
-          difficulty: project.difficulty,
-          estimatedLength: project.estimatedLength,
-          learningCapsule: project.learningCapsule,
-          requiredEvidence: project.requiredEvidence,
-          requiredSimulation: project.requiredSimulation,
-        },
-        levels: (project.levels || []).map((level) => ({
-          id: `${project.key}:level:${level.number}`,
-          levelNumber: level.number,
-          title: level.title,
-          questions: level.questions || [],
-        })),
-      },
-      levelsCount: project.levels?.length ?? 0,
-    }));
+  const [subjects,setSubjects]=useState<Subject[]>([]);
+  const [futureSubjects,setFutureSubjects]=useState<Subject[]>([]);
+  const [missions,setMissions]=useState<Mission[]>([]);
+  const [selectedSubjectKey,setSelectedSubjectKey]=useState(()=>localStorage.getItem('nextess_selected_subject')||'');
+  const [selectedKey,setSelectedKey]=useState('');
+  const [loading,setLoading]=useState(true);
 
-    setMissions(rows);
-    setSelectedKey(rows[0]?.id || '');
-  }, []);
-  const selectedMission = useMemo(
-    () => missions.find((mission) => mission.id === selectedKey) ?? missions[0],
-    [missions, selectedKey],
-  );
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        const result=await api.subjects();
+        const all=(result.subjects||[]) as Subject[];
+        const active=all.filter(s=>s.status==='ACTIVE').sort((a,b)=>a.ordering-b.ordering);
+        const future=all.filter(s=>s.status==='FUTURE').sort((a,b)=>a.ordering-b.ordering);
+        const preferred=active.find(s=>s.key.toLowerCase()===selectedSubjectKey.toLowerCase())||active[0];
+        if(!preferred){if(!cancelled){setSubjects(active);setFutureSubjects(future);setMissions([]);setLoading(false)};return}
+        if(preferred.key!==selectedSubjectKey){setSelectedSubjectKey(preferred.key);localStorage.setItem('nextess_selected_subject',preferred.key)}
+        const projectResult=await api.projects(preferred.id);
+        if(!cancelled){setSubjects(active);setFutureSubjects(future);setMissions((projectResult.projects||[]) as Mission[]);setSelectedKey((projectResult.projects||[])[0]?.id||'');setLoading(false)}
+      }catch{
+        if(!cancelled){setLoading(false);setMissions([]);onShowToast('Mission catalogue could not be loaded from the database.')}
+      }
+    })();
+    return ()=>{cancelled=true};
+  },[onShowToast,selectedSubjectKey]);
+
+  const selectedSubject=useMemo(()=>subjects.find(s=>s.key.toLowerCase()===selectedSubjectKey.toLowerCase())||subjects[0],[subjects,selectedSubjectKey]);
+  const selectedMission=useMemo(()=>missions.find(m=>m.id===selectedKey)||missions[0],[missions,selectedKey]);
+  const rewards=useMemo(()=>{
+    const levels=selectedMission?.currentPublishedVersion?.levels||[];
+    return {xp:levels.reduce((n,l)=>n+(Number(l.rewardXp)||0),0),coins:levels.reduce((n,l)=>n+(Number(l.rewardCoins)||0),0)};
+  },[selectedMission]);
+  const concepts=useMemo(()=>((selectedMission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections||[]) as any[]).map(s=>s.title).filter(Boolean),[selectedMission]);
+  const selectSubject=(subject:Subject)=>{setSelectedSubjectKey(subject.key);localStorage.setItem('nextess_selected_subject',subject.key);setSelectedKey('');setLoading(true)};
+
 
   const openMission = (mission: Mission) => {
-    // Only IDs from the embedded catalogue are accepted; this prevents arbitrary
-    // localStorage values from becoming mission identifiers.
     if (!missions.some((item) => item.id === mission.id)) {
       onShowToast('Invalid mission selection.');
       return;
     }
     localStorage.setItem('nextess_selected_mission', mission.id);
+    localStorage.removeItem('nextess_mission_stage');
     onNavigate('mission-detail');
   };
 
