@@ -63,6 +63,7 @@ async function migrateGuestSessionToUser(req:express.Request,res:express.Respons
 app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,true);
  if(!identity)return fail(res,'SESSION_ERROR','Unable to establish a learner session.',500);
+ if(!validateUuid(req.params.projectId))return fail(res,'VALIDATION_ERROR','Invalid project ID.');
  const p=await prisma.project.findUnique({where:{id:req.params.projectId,status:'PUBLISHED'},include:{currentPublishedVersion:true}});
  if(!p?.currentPublishedVersion||p.currentPublishedVersion.status!=='PUBLISHED')return fail(res,'NOT_FOUND','Published project not found.',404);
  if(identity.anonymous&&!p.anonymousAccess)return fail(res,'AUTH_REQUIRED','Sign in to start this mission.',401);
@@ -107,7 +108,9 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+ if(!validateUuid(req.body?.questionId))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
  if(!req.body||req.body.answer===undefined)return fail(res,'VALIDATION_ERROR','An answer is required.');
+ if(Array.isArray(req.body.answer))return fail(res,'VALIDATION_ERROR','Answer payload cannot be an array.');
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  if(inv.currentQuestionId&&inv.currentQuestionId!==q.id)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
@@ -262,8 +265,8 @@ app.post('/v1/investigations/:id/simulation-state',optionalAuth,async(req:R,res)
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
- const simulationId=String(req.body?.simulationId||'');
- if(!simulationId||!req.body?.state||typeof req.body.state!=='object'||Array.isArray(req.body.state))return fail(res,'VALIDATION_ERROR','simulationId and an object state are required.');
+ const simulationId=String(req.body?.simulationId||'').trim();
+ if(!simulationId||simulationId.length>120||!validateObject(req.body?.state))return fail(res,'VALIDATION_ERROR','simulationId and an object state are required.');
  const currentState:any=inv.state&&typeof inv.state==='object'?inv.state:{};
  const nextState={...currentState,simulations:{...(currentState.simulations||{}),[simulationId]:req.body.state}};
  await prisma.investigation.update({where:{id:inv.id},data:{state:nextState,lastActivityAt:new Date()}});
