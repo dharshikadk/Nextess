@@ -110,11 +110,13 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
         </div>
       )}
 
-      {loading ? (
+      {loading && (
         <div className={`rounded-2xl border p-8 ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
           <p className="text-sm text-slate-400">Loading published missions…</p>
         </div>
-      ) : (
+      )}
+
+      {!loading && (
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start relative">
         <div className="xl:col-span-7 flex flex-col items-center relative py-4 min-h-[700px]">
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" xmlns="http://www.w3.org/2000/svg">
