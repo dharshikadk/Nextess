@@ -129,22 +129,33 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  const user=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):null;
  res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:answer.id,feedbackData:evaluation.feedback,levelCompleted,missionCompleted,reward,penalty,levelPenalty,netChange:{xp:reward.xp-levelPenalty.xp,coins:reward.coins-levelPenalty.coins},balances:user??{xp:0,coins:0},anonymous:identity.anonymous});
 });
-app.post('/v1/investigations/:id/hints',auth,async(req:R,res)=>{
- const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!}});
+app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ const inv=await prisma.investigation.findFirst({where:{id:req.params.id,...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}},include:{hints:{orderBy:{level:'asc'}}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
- const used=await prisma.rewardLedger.count({where:{userId:req.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}});
- const next=q.hints.find((h:any)=>h.level===used+1);
- if(!next)return fail(res,'NO_MORE_HINTS','All hints for this question have already been revealed.',409);
+ const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
+ const used=identity.userId?await prisma.rewardLedger.count({where:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}}):Number(state.hints?.[q.id]||0);
+ const next=q.hints.find((h:any)=>h.level===used+1);if(!next)return fail(res,'NO_MORE_HINTS','All hints for this question have already been revealed.',409);
+ const costCoins=identity.userId?5:0;
  try{
-  await prisma.$transaction(async tx=>{
-   const updated=await tx.user.updateMany({where:{id:req.userId!,coins:{gte:5}},data:{coins:{decrement:5},lastActivityAt:new Date()}});
-   if(updated.count!==1)throw new Error('INSUFFICIENT_FUNDS');
-   await tx.rewardLedger.create({data:{userId:req.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-5,reasonCode:'MISSION_HINT',idempotencyKey:'hint:'+inv.id+':'+q.id+':'+next.level}});
-  });
-  res.json({hint:next.text,level:next.level,cost:{xp:0,coins:5},balances:await prisma.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}})});
- }catch(e:any){if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Using a hint costs 5 coins.',409);if(e?.code==='P2002')return fail(res,'HINT_ALREADY_USED','That hint has already been revealed.',409);return fail(res,'INTERNAL_ERROR','Unable to reveal hint.',500)}
+  if(identity.userId){
+   await prisma.$transaction(async tx=>{
+    const updated=await tx.user.updateMany({where:{id:identity.userId!,coins:{gte:costCoins}},data:{coins:{decrement:costCoins},lastActivityAt:new Date()}});
+    if(updated.count!==1)throw new Error('INSUFFICIENT_FUNDS');
+    await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-costCoins,reasonCode:'MISSION_HINT',idempotencyKey:'hint:'+inv.id+':'+q.id+':'+next.level}});
+   });
+  }else{
+   await prisma.investigation.update({where:{id:inv.id},data:{state:{...state,hints:{...(state.hints||{}),[q.id]:next.level}}}});
+  }
+  const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
+  res.json({hint:next.text,level:next.level,cost:{xp:0,coins:costCoins},balances,anonymous:identity.anonymous});
+ }catch(e:any){
+  if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Using a hint costs 5 coins.',409);
+  if(e?.code==='P2002')return fail(res,'HINT_ALREADY_USED','That hint has already been revealed.',409);
+  return fail(res,'INTERNAL_ERROR','Unable to reveal hint.',500);
+ }
 });
 app.post('/v1/investigations/:id/reveal-answer',auth,async(req:R,res)=>{
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!}});
