@@ -33,6 +33,13 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
   const physicsCount = physicsMissions.length;
   const economicsCount = economicsMissions.length;
 
+  const openSubjectMissions = (subjectKey: string) => {
+    localStorage.setItem('nextess_selected_subject', subjectKey);
+    localStorage.removeItem('nextess_selected_mission');
+    localStorage.removeItem('nextess_mission_stage');
+    onNavigate('missions-map');
+  };
+
   const toggleRegister = (_id: string, name: string) => onShowToast(`${name} is reserved in the database as a future subject. Mission content is not published yet.`);
 
   return (
@@ -190,7 +197,7 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
               {/* Action Button: Seamless navigation to Physics Missions Map */}
               <div className="pt-4 mt-3 border-t border-slate-700/20">
                 <button
-                  onClick={() => onNavigate('missions-map')}
+                  onClick={() => openSubjectMissions('PHYSICS')}
                   className="w-full py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(139,92,246,0.35)] active:translate-y-0.5 transition-all"
                 >
                   <span>Open Physics Missions</span>
@@ -273,7 +280,7 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
               {/* Action Button */}
               <div className="pt-4 mt-3 border-t border-slate-700/20">
                 <button
-                  onClick={() => onNavigate('missions-map')}
+                  onClick={() => openSubjectMissions('ECONOMICS')}
                   className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
                     isDark
                       ? 'bg-[#1e1f30] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white'
