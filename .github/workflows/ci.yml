@@ -17,12 +17,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          package-manager-cache: false
       - run: npm install
       - run: npm run lint
       - run: npm run build
 
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nextess
+          POSTGRES_PASSWORD: nextess
+          POSTGRES_DB: nextess_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nextess -d nextess_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
+      FRONTEND_ORIGIN: http://localhost:3000
     defaults:
       run:
         working-directory: backend
@@ -31,9 +49,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          package-manager-cache: false
       - run: npm install
       - run: npm run prisma:generate
+      - run: npm run prisma:migrate
+      - run: npm --prefix ../database run seed
+      - run: npm test
       - run: npm run build
+      - name: Verify seeded runtime data
+        run: node --input-type=module -e 'import {PrismaClient} from "@prisma/client"; const p=new PrismaClient(); const [subjects,projects,quotes]=await Promise.all([p.subject.count(),p.project.count({where:{status:"PUBLISHED"}}),p.dailyQuote.count()]); if(subjects!==6||projects!==4||quotes!==30){console.error({subjects,projects,quotes});process.exit(1)} await p.$disconnect()'
+      - name: Start API smoke server
+        run: |
+          nohup npm run dev >/tmp/nextess-api.log 2>&1 &
+          echo $! >/tmp/nextess-api.pid
+          for i in $(seq 1 20); do curl -fsS http://localhost:4000/health && break || sleep 1; done
+      - name: Verify API catalogue and quote contracts
+        run: |
+          curl -fsS http://localhost:4000/v1/subjects | grep -q '"displayName":"Physics"'
+          curl -fsS http://localhost:4000/v1/subjects | grep -q '"status":"FUTURE"'
+          curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"author"'
+          curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"date"'
 
   database:
     runs-on: ubuntu-latest
@@ -45,5 +80,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          package-manager-cache: false
       - run: npm install
+      - run: npx prisma generate
       - run: npx prisma validate
