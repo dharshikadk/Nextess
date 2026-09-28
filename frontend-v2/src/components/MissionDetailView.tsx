@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
-import { api } from '../api';
+import missionsPackage from '../data/missions.json';
 
 interface MissionDetailViewProps {
   theme: ThemeMode;
@@ -18,39 +18,45 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = localStorage.getItem('nextess_selected_mission');
-    setMissionKey(id);
-    if (!id) {
+    const storedId = localStorage.getItem('nextess_selected_mission');
+    const projects = Array.isArray(missionsPackage.projects) ? missionsPackage.projects : [];
+    const selected = storedId ? projects.find((project) => project.key === storedId) : undefined;
+
+    if (!selected) {
+      if (storedId) {
+        localStorage.removeItem('nextess_selected_mission');
+        onShowToast('The selected mission is not available.');
+      }
+      setMissionKey(null);
+      setMission(null);
       setLoading(false);
       return;
     }
-    let cancelled = false;
-    api.project(id).then((r:any) => {
-      if (cancelled) return;
-      const p = r.project;
-      const metadata = p.currentPublishedVersion?.contentMetadata || {};
-      setMission({
-        ...p,
-        version: p.currentPublishedVersion?.version,
-        difficulty: metadata.difficulty,
-        estimatedLength: metadata.estimatedLength,
-        learningCapsule: metadata.learningCapsule,
-        requiredEvidence: metadata.requiredEvidence,
-        requiredSimulation: metadata.requiredSimulation,
-        levels: (p.currentPublishedVersion?.levels || []).map((level:any) => ({
-          ...level,
-          number: level.levelNumber,
-          evidenceUse: level.debrief?.evidenceUse,
-          simulationUse: level.debrief?.simulationUse,
-          questions: level.questions || []
-        }))
-      });
-    }).catch(() => {
-      if (!cancelled) onShowToast('Published mission data could not be loaded from the server.');
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
+
+    setMissionKey(selected.key);
+    setMission({
+      ...selected,
+      id: selected.key,
+      version: selected.version,
+      subject: {
+        key: selected.subject,
+        displayName: selected.subject.charAt(0).toUpperCase() + selected.subject.slice(1),
+      },
+      difficulty: selected.difficulty,
+      estimatedLength: selected.estimatedLength,
+      learningCapsule: selected.learningCapsule,
+      requiredEvidence: selected.requiredEvidence,
+      requiredSimulation: selected.requiredSimulation,
+      levels: (selected.levels || []).map((level) => ({
+        ...level,
+        id: `${selected.key}:level:${level.number}`,
+        number: level.number,
+        evidenceUse: level.evidenceUse,
+        simulationUse: level.simulationUse,
+        questions: level.questions || [],
+      })),
     });
-    return () => { cancelled = true; };
+    setLoading(false);
   }, [onShowToast]);
 
   if (loading) return <div className="flex flex-col w-full pb-20"><div className={`rounded-2xl p-6 border ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}><p className="text-sm text-slate-400">Loading published mission...</p></div></div>;
@@ -67,6 +73,11 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
   }
 
   const openStage = (stage:number) => {
+    const validStage = mission.levels?.some((level: any) => level.number === stage);
+    if (!validStage) {
+      onShowToast('Invalid mission stage.');
+      return;
+    }
     localStorage.setItem('nextess_selected_mission', mission.id);
     localStorage.setItem('nextess_mission_stage', String(stage));
     onNavigate('mission-chamber');
