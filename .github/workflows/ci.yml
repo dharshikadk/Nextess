@@ -53,6 +53,8 @@ jobs:
       - run: npm install
       - run: npm run prisma:generate
       - run: npm run prisma:migrate
+      - run: npm --prefix ../database install
+      - run: npm --prefix ../database run generate
       - run: npm --prefix ../database run seed
       - run: npm test
       - run: npm run build
