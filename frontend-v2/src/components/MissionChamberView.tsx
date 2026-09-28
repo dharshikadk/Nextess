@@ -21,7 +21,7 @@ export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, o
     () => missionsPackage.projects.find((project) => project.key === missionId),
     [missionId],
   );
-  const stageIsValid = Boolean(mission?.levels?.some((level) => level.number === stage));
+  const stageIsValid = Boolean(mission && (stage === 1 || stage === 2 || mission.levels?.some((level) => level.number + 2 === stage)));
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
