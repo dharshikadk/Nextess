@@ -140,7 +140,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
     const finalLevel=level.levelNumber===inv.projectVersion.levels.length;
     if(identity.userId){
      reward=await prisma.$transaction(async tx=>{
-      const r=await rewardMissionLevel(tx,identity.userId!,inv.id,level.id,finalLevel);
+      const r=await rewardMissionLevel(tx,identity.userId!,inv.id,level.id,Number(level.rewardXp)||0,Number(level.rewardCoins)||0,finalLevel);
       await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
       if(finalLevel){
        missionCompleted=true;
