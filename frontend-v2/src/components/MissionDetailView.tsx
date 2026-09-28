@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
 import missionsPackage from '../data/missions.json';
 
@@ -13,7 +13,6 @@ type Mission = any;
 
 export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onNavigate, onShowToast }) => {
   const isDark = theme === 'dark';
-  const [missionKey, setMissionKey] = useState<string | null>(null);
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,13 +26,11 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
         localStorage.removeItem('nextess_selected_mission');
         onShowToast('The selected mission is not available.');
       }
-      setMissionKey(null);
       setMission(null);
       setLoading(false);
       return;
     }
 
-    setMissionKey(selected.key);
     setMission({
       ...selected,
       id: selected.key,
