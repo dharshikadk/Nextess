@@ -297,3 +297,6 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
           </div>
         </section>
       )}
+    </div>
+  );
+};
