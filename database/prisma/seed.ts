@@ -297,7 +297,7 @@ async function main() {
     ["I hear and I forget. I see and I remember. I do and I understand.", "Confucius", "learning"],
     ["It does not matter how slowly you go as long as you do not stop.", "Confucius", "success"],
     ["The journey of a thousand miles begins with one step.", "Lao Tzu", "success"],
-    ["A person who never made a mistake never tried anything new.", "Albert Einstein", "success"]
+    ["A person who never made a mistake never tried anything new.", "Albert Einstein", "success"],\n    ["The best way to have a good idea is to have a lot of ideas.", "Linus Pauling", "chemistry"]
   ] as const;
   await prisma.dailyQuote.deleteMany({});
   for (const [index, [quote, source, category]] of quotes.entries()) {
