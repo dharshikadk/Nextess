@@ -56,7 +56,7 @@ app.post('/v1/investigations/:id/answers',auth,async(req:R,res)=>{
  else if(def.answer!==undefined)correct=String(incoming).trim().toLowerCase()===String(def.answer).trim().toLowerCase();
  const attempts=await prisma.investigationAnswer.count({where:{investigationId:inv.id,questionId:q.id}})+1;
  const a=await prisma.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:req.userId!,attemptNumber:attempts,answerPayload:req.body.answer??{},normalizedAnswer:{value:incoming},result:correct?'CORRECT':'INCORRECT',evaluatorVersion:'v2',feedbackData:correct?{message:'Correct.'}:{message:'Not correct. Try again.'}}});
- let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},penalty={xp:0,coins:0};
+ let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},penalty={xp:0,coins:0},levelPenalty={xp:0,coins:0};
  if(!correct){
   try{
    await prisma.$transaction(async tx=>{
@@ -96,11 +96,16 @@ app.post('/v1/investigations/:id/answers',auth,async(req:R,res)=>{
      }
      return r;
     });
+    const levelPenaltyRows=await prisma.rewardLedger.findMany({where:{userId:req.userId!,investigationId:inv.id,sourceId:{in:ids},reasonCode:'MISSION_WRONG_ANSWER'},select:{rewardType:true,amount:true}});
+    levelPenalty={
+     xp:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.XP).reduce((s:number,x:any)=>s+Number(x.amount),0)),
+     coins:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((s:number,x:any)=>s+Number(x.amount),0))
+    };
    }
   }
  }
  const user=await prisma.user.findUnique({where:{id:req.userId!},select:{xp:true,coins:true}});
- res.json({result:a.result,answerId:a.id,feedbackData:a.feedbackData,levelCompleted,missionCompleted,reward,penalty,netChange:{xp:reward.xp-penalty.xp,coins:reward.coins-penalty.coins},balances:user});
+ res.json({result:a.result,answerId:a.id,feedbackData:a.feedbackData,levelCompleted,missionCompleted,reward,penalty,levelPenalty,netChange:{xp:reward.xp-levelPenalty.xp,coins:reward.coins-levelPenalty.coins},balances:user});
 });
 app.post('/v1/investigations/:id/hints',auth,async(req:R,res)=>{
  const inv=await prisma.investigation.findFirst({where:{id:req.params.id,userId:req.userId!}});
