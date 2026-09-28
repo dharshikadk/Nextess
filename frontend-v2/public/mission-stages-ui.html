@@ -36,9 +36,21 @@ async function loadMission(){
 }
 async function startOrResume(){
  try{
-  const s=await api('/v1/projects/'+encodeURIComponent(missionId)+'/start',{method:'POST'});
+  const startKey=state.startRequestKey||(state.startRequestKey=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()));
+  const s=await api('/v1/projects/'+encodeURIComponent(missionId)+'/start',{method:'POST',headers:{'Idempotency-Key':startKey}});
   const inv=await api('/v1/investigations/'+s.investigationId);
   state.investigation=inv.investigation;
+  const authoritativeLevels=state.investigation?.projectVersion?.levels||[];
+  const authoritativeIndex=authoritativeLevels.findIndex(x=>x.id===state.investigation?.currentLevelId);
+  if(state.investigation?.status==='COMPLETED'){
+    state.stage=stageCount();
+  }else if(authoritativeIndex>=0){
+    state.level=authoritativeIndex+1;
+    state.stage=state.level+2;
+  }else{
+    state.level=1;
+    state.stage=3;
+  }
   state.reward=null;
   state.error=null;
   const level=currentLevel();
@@ -116,11 +128,20 @@ async function submit(){
  if(answer===null||answer===undefined||String(answer).trim()===''){state.feedback={correct:false,message:'Select an option or enter an answer before submitting.'};render();return}
  state.submitting=true;render();
  try{
-  const r=await api('/v1/investigations/'+state.investigation.id+'/answers',{method:'POST',body:JSON.stringify({questionId:q.id,answer:{value:answer}})});
+  const submissionKey=crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random();
+  const r=await api('/v1/investigations/'+state.investigation.id+'/answers',{method:'POST',headers:{'Idempotency-Key':submissionKey},body:JSON.stringify({questionId:q.id,answer:{value:answer}})});
   state.penalty=r.penalty||null;state.reward=r.reward||null;
   state.feedback={correct:r.result==='CORRECT',message:r.result==='CORRECT'?'Correct.':(r.penalty?.xp||r.penalty?.coins?'-'+(r.penalty.xp||0)+' KP, -'+(r.penalty.coins||0)+' coins. Try again.':'Not correct. Try again.')};
   state.submitting=false;
-  if(r.result==='CORRECT'){
+  if(r.replayed){
+    const latest=await api('/v1/investigations/'+state.investigation.id);
+    state.investigation=latest.investigation;
+    const refreshedLevels=state.investigation?.projectVersion?.levels||[];
+    const refreshedIndex=refreshedLevels.findIndex(x=>x.id===state.investigation?.currentLevelId);
+    if(state.investigation?.status==='COMPLETED')state.stage=stageCount();
+    else if(refreshedIndex>=0){state.level=refreshedIndex+1;state.stage=state.level+2;}
+    state.q=Math.max(1,(currentLevel()?.questions||[]).findIndex(x=>(state.investigation?.answers||[]).some(a=>a.questionId===x.id&&a.result!=='CORRECT'))+1);
+  }else if(r.result==='CORRECT'){
    state.investigation.answers=[...(state.investigation.answers||[]),{questionId:q.id,result:'CORRECT',submittedAt:new Date().toISOString()}];
    if(r.levelCompleted)state.levelRewardModal={title:currentLevel()?.title||('Level '+state.level),reward:r.reward||{xp:0,coins:0},penalty:r.penalty||{xp:0,coins:0},levelPenalty:r.levelPenalty||r.penalty||{xp:0,coins:0},final:!!r.missionCompleted};
    else if(state.q<(currentLevel()?.questions?.length||0))state.q++;
@@ -139,7 +160,15 @@ function continueAfterLevelReward(){
  const d=state.levelRewardModal;if(!d)return;
  state.levelRewardModal=null;state.feedback=null;state.penalty=null;state.reward=null;state.hints=[];state.revealData=null;state.selected=null;state.numeric='';
  if(d.final){state.stage=stageCount();render();return}
- state.level++;state.stage=state.level+2;state.q=1;render();
+ try{
+   const latest=await api('/v1/investigations/'+state.investigation.id);
+   state.investigation=latest.investigation;
+   const idx=(state.investigation?.projectVersion?.levels||[]).findIndex(x=>x.id===state.investigation?.currentLevelId);
+   state.level=idx>=0?idx+1:state.level+1;
+   state.stage=state.level+2;
+   state.q=1;
+ }catch{}
+ render();
 }
 function wire(){
  document.querySelectorAll('[data-file]').forEach(b=>b.onclick=()=>{state.fileIndex=Number(b.dataset.file);render()});
