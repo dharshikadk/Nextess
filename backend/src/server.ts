@@ -162,7 +162,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  const attempts=await prisma.investigationAnswer.count({where:{investigationId:inv.id,questionId:q.id}})+1;
  let answer;
  try{
-   answer=await prisma.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer??{},normalizedAnswer:{value:evaluation.normalizedAnswer},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
+   answer=await prisma.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer??{},normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
  }catch(e:any){
    if(e?.code==='P2002'){
      const replay=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
