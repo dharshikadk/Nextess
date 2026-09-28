@@ -106,7 +106,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
           <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
             <div className="flex flex-col gap-2 max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-mono text-[10px] uppercase font-semibold">Discipline: {mission.subject}</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-mono text-[10px] uppercase font-semibold">Discipline: {mission.subject?.displayName || mission.subject}</span>
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-mono text-[10px] uppercase font-semibold">Difficulty: {mission.difficulty}</span>
               </div>
               <h1 className={`font-headline-lg text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h1>
