@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivePage, ThemeMode, UserStats } from '../types';
 import { API_BASE, api } from '../api';
 
