@@ -9,7 +9,7 @@ interface MissionsMapViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string;levelNumber:number;title:string;questions:{id:string}[]}[]}|null; levelsCount:number; };
+type Mission = { id:string; slug:string; title:string; mission:string; role?:string|null; problemType?:string|null; subject:{key:string;displayName:string}; currentPublishedVersion?:{id:string;version:number;contentMetadata?:any;levels:{id:string;levelNumber:number;title:string;questions:any[]}[]}|null; levelsCount:number; };
 
 export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   theme,
