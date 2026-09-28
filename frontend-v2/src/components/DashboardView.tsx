@@ -8,7 +8,7 @@ interface DashboardViewProps {
   onNavigate: (page: ActivePage) => void;
   onOpenAuth: () => void;
   onClaimSurge: () => void;
-  dailyQuote?: {quote:string;source:string}|null;
+  dailyQuote?: {quote:string;author:string;date:string;category:string}|null;
   directives?: Array<{id:string;title:string;description:string;rewardXp:number;rewardCoins:number;claimed:boolean}>;
   activeProgress?: Array<{projectId:string;title:string;status:string;progressPercent:number}>;
   leaderboard?: {opened?:boolean;entries?:Array<{rank:number;userId:string;name:string;username:string;kp:number;streakDays:number}>};
@@ -58,7 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
               <p className="text-xs truncate">
                 <span className="italic">{dailyQuote?.quote || 'No daily quote available.'}</span>
-                <span className={`ml-2 font-mono font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>— {dailyQuote?.source || 'Nextess'}</span>
+                <span className={`ml-2 font-mono font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>— {dailyQuote?.author || 'Nextess'}</span>
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0"><span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" /><span className="font-mono text-[11px] text-violet-400">DAILY QUOTES</span></div>
