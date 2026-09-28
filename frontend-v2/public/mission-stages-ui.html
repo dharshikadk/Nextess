@@ -36,8 +36,7 @@ async function loadMission(){
 }
 async function startOrResume(){
  try{
-  const startKey=state.startRequestKey||(state.startRequestKey=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()));
-  const s=await api('/v1/projects/'+encodeURIComponent(missionId)+'/start',{method:'POST',headers:{'Idempotency-Key':startKey}});
+  const s=await api('/v1/projects/'+encodeURIComponent(missionId)+'/start',{method:'POST'});
   const inv=await api('/v1/investigations/'+s.investigationId);
   state.investigation=inv.investigation;
   const authoritativeLevels=state.investigation?.projectVersion?.levels||[];
