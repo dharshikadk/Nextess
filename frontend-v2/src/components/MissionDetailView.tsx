@@ -37,6 +37,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
           learningCapsule:metadata.learningCapsule||{title:'Learning Capsule',sections:[]},
           requiredEvidence:metadata.requiredEvidence||null,
           requiredSimulation:metadata.requiredSimulation||null,
+          progress:result.progress||null,
           levels:(selected.currentPublishedVersion?.levels||[]).map((level:any)=>({
             ...level,
             number:level.levelNumber,
@@ -77,6 +78,9 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
     onNavigate('mission-chamber');
   };
 
+  const progressStatus=mission.progress?.status||'NOT_STARTED';
+  const progressLabel=progressStatus==='COMPLETED'?'COMPLETED':progressStatus==='IN_PROGRESS'?'IN PROGRESS':'NOT STARTED';
+
   return (
     <div className="flex flex-col w-full pb-20">
       <div className="flex flex-col gap-3 mb-6 pt-2">
@@ -109,8 +113,8 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
             <div className={`flex items-center gap-4 px-5 py-3 rounded-2xl border shrink-0 ${isDark ? 'bg-[#181926]/90 border-violet-500/20 backdrop-blur-md' : 'bg-white border-slate-200 shadow-md'}`}>
               <div className="flex flex-col">
                 <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider">Mission Status</span>
-                <span className="font-headline-md text-xl text-amber-400 font-bold">NOT STARTED</span>
-                <span className="text-xs text-slate-400 font-mono">{mission.levels.length} levels in source file</span>
+                <span className={`font-headline-md text-xl font-bold ${progressStatus==='COMPLETED'?'text-emerald-400':progressStatus==='IN_PROGRESS'?'text-violet-400':'text-amber-400'}`}>{progressLabel}</span>
+                <span className="text-xs text-slate-400 font-mono">{mission.levels.length} levels in published version</span>
               </div>
             </div>
           </div>
@@ -211,10 +215,10 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
           </div>
 
           <button
-            onClick={() => openStage(1)}
+            onClick={() => openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1)}
             className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
           >
-            Open Mission Stages
+            {progressStatus==='IN_PROGRESS'?'Continue Mission':'Open Mission Stages'}
           </button>
         </div>
       </div>
