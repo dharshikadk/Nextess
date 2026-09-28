@@ -73,7 +73,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
   }
 
   const openStage = (stage:number) => {
-    const validStage = mission.levels?.some((level: any) => level.number === stage);
+    const validStage = stage === 1 || stage === 2 || mission.levels?.some((level: any) => level.number + 2 === stage);
     if (!validStage) {
       onShowToast('Invalid mission stage.');
       return;
