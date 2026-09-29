@@ -310,7 +310,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             </div>
           </div>
           <div className="flex justify-end mt-5">
-            <button onClick={() => setStage('capsule')} className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold">Next · Learning Capsule</button>
+            <button
+              onClick={() => capsules.length > 0 ? setStage('capsule') : startMission()}
+              disabled={busy}
+              className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold disabled:opacity-50"
+            >
+              {capsules.length > 0 ? 'Next · Learning Capsule' : 'Start Investigation'}
+            </button>
           </div>
         </div>
       </section>
