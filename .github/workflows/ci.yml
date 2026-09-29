@@ -59,12 +59,58 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Verify seeded runtime data
-        run: node --input-type=module -e 'import {PrismaClient} from "@prisma/client"; const p=new PrismaClient(); const [subjects,projects,quotes]=await Promise.all([p.subject.count(),p.project.count({where:{status:"PUBLISHED"}}),p.dailyQuote.count()]); if(subjects<2||projects<1||quotes<1){console.error({subjects,projects,quotes});process.exit(1)} await p.$disconnect()'
+        env:
+          DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
+        run: |
+          node --input-type=module <<'NODE'
+          import { PrismaClient } from '@prisma/client';
+          const p = new PrismaClient();
+          try {
+            const [subjects, projects, quotes] = await Promise.all([
+              p.subject.count(),
+              p.project.count({ where: { status: 'PUBLISHED' } }),
+              p.dailyQuote.count(),
+            ]);
+            console.log({ subjects, projects, quotes });
+            if (subjects < 2 || projects < 1 || quotes < 1) {
+              throw new Error('Missing seeded runtime data');
+            }
+          } finally {
+            await p.$disconnect();
+          }
+          NODE
       - name: Start API smoke server
         run: |
-          nohup npm run dev >/tmp/nextess-api.log 2>&1 &
-          echo $! >/tmp/nextess-api.pid
-          for i in $(seq 1 20); do curl -fsS http://localhost:4000/health && break || sleep 1; done
+          # Start the already-compiled production server. This removes tsx/dev-server
+          # startup from the E2E path and tests the same artifact produced by CI.
+          nohup npm start >/tmp/nextess-api.log 2>&1 &
+          API_PID=$!
+          echo "$API_PID" >/tmp/nextess-api.pid
+
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:4000/health >/dev/null 2>&1; then
+              echo "API server started successfully on attempt $i"
+              exit 0
+            fi
+
+            if ! kill -0 "$API_PID" 2>/dev/null; then
+              echo "API process crashed before becoming ready."
+              echo "API logs:"
+              cat /tmp/nextess-api.log
+              exit 1
+            fi
+
+            echo "Waiting for API... attempt $i/60"
+            sleep 1
+          done
+
+          echo "API failed to start after 60 seconds. Logs:"
+          cat /tmp/nextess-api.log
+          exit 1
+
+      - name: Verify API readiness
+        run: |
+          curl -fsS http://localhost:4000/ready
       - name: Verify API catalogue and quote contracts
         run: |
           curl -fsS http://localhost:4000/v1/subjects | grep -q '"displayName":"Physics"'
@@ -73,6 +119,50 @@ jobs:
           curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"date"'
       - name: Run database-backed mission runtime smoke test
         run: node scripts/runtime-smoke.mjs
+      - name: Build frontend for browser E2E
+        working-directory: frontend-v2
+        env:
+          VITE_API_BASE_URL: http://localhost:4000
+        run: |
+          npm install
+          npm run build
+
+      - name: Start frontend for browser E2E
+        working-directory: frontend-v2
+        env:
+          VITE_API_BASE_URL: http://localhost:4000
+        run: |
+          nohup npm run preview -- --host 127.0.0.1 --port 3000 >/tmp/nextess-frontend.log 2>&1 &
+          FRONTEND_PID=$!
+          echo $FRONTEND_PID >/tmp/nextess-frontend.pid
+
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null 2>&1; then
+              echo "Frontend started successfully on attempt $i"
+              exit 0
+            fi
+
+            if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+              echo "Frontend process exited before becoming ready."
+              cat /tmp/nextess-frontend.log
+              exit 1
+            fi
+
+            echo "Waiting for frontend... attempt $i/60"
+            sleep 1
+          done
+
+          echo "Frontend failed to start after 60 seconds. Logs:"
+          cat /tmp/nextess-frontend.log
+          exit 1
+      - name: Install Chromium for browser E2E
+        working-directory: frontend-v2
+        run: npx playwright install --with-deps chromium
+      - name: Run browser E2E
+        working-directory: frontend-v2
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: npm run e2e
 
   database:
     runs-on: ubuntu-latest
@@ -90,3 +180,5 @@ jobs:
       - run: npm install
       - run: npx prisma generate
       - run: npx prisma validate
+      - name: Validate canonical mission package
+        run: npm run mission:validate -- 'content/nextess_missions(4).json'
