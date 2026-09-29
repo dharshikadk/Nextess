@@ -40,13 +40,18 @@ test('mission catalogue, first task, feedback, and refresh resume are reachable 
       await continueButton.click();
       await expect(page.getByText(/LEVEL 1\s*\//i).first()).toBeVisible({ timeout: 15000 });
     }
-    await expect(page.getByRole('button', { name: /Submit/i })).toBeVisible({ timeout: 15000 });
-    const firstOption = page.locator('button[aria-pressed]').first();
+    await expect(page.getByTestId('mission-task')).toHaveAttribute('aria-busy', 'false', { timeout: 15000 });
+    await expect(page.getByTestId('mission-submit')).toBeVisible({ timeout: 15000 });
+    const firstOption = page.locator('[data-testid="mission-task"] button[aria-pressed]').first();
     if (await firstOption.count()) {
       await firstOption.click();
-      await page.getByRole('button', { name: /Submit/i }).click();
-      await expect(page.getByRole('status')).toBeVisible({ timeout: 15000 });
+    } else {
+      const numericAnswer = page.getByLabel(/Numeric answer/i);
+      await expect(numericAnswer).toBeVisible({ timeout: 5000 });
+      await numericAnswer.fill('1');
     }
+    await page.getByTestId('mission-submit').click();
+    await expect(page.getByRole('status')).toBeVisible({ timeout: 15000 });
     await page.reload();
     await expect(page.getByText(/LEVEL|Mission Brief|Learning Capsule/i).first()).toBeVisible({ timeout: 15000 });
   }
@@ -74,15 +79,18 @@ test('guest progress can be converted into an authenticated account', async ({ p
   }
 
   const signIn = page.getByRole('button', { name: 'Sign In' }).last();
-  await expect(signIn).toBeVisible();
+  await expect(signIn).toBeVisible({ timeout: 15000 });
   await signIn.click();
-  await page.getByRole('button', { name: 'Sign Up' }).first().click();
+
+  const authDialog = page.getByRole('dialog', { name: 'Cadet Access Station' });
+  await expect(authDialog).toBeVisible({ timeout: 5000 });
+  await authDialog.getByRole('tab', { name: 'Sign Up' }).click();
 
   const suffix = Date.now().toString().slice(-8);
-  await page.getByLabel('Name').fill('E2E Cadet');
-  await page.getByLabel('Username').fill('e2e_cadet_' + suffix);
-  await page.getByLabel('Password').fill('NextessE2E!2026');
-  await page.getByRole('button', { name: 'Sign Up' }).last().click();
+  await authDialog.getByLabel('Name').fill('E2E Cadet');
+  await authDialog.getByLabel('Username').fill('e2e_cadet_' + suffix);
+  await authDialog.getByLabel('Password').fill('NextessE2E!2026');
+  await authDialog.getByRole('button', { name: 'Create account' }).click();
 
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: 15000 });
   await page.reload();
