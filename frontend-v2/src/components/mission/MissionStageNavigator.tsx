@@ -6,7 +6,7 @@ export const MissionStageNavigator:React.FC<Props>=({stages,onSelect})=>(
   <nav aria-label="Mission stages" className="flex gap-2 overflow-x-auto py-2">
     {stages.map((stage,index)=>{const interactive=stage.state!=='locked'&&stage.state!=='unavailable'&&Boolean(onSelect);return(
       <button key={stage.key} type="button" disabled={!interactive} aria-current={stage.state==='current'?'step':undefined}
-        aria-label={\`Stage \${index+1}: \${stage.label}, \${stage.state}\`} onClick={()=>interactive&&onSelect?.(stage)}
+        aria-label={'Stage '+(index+1)+': '+stage.label+', '+stage.state} onClick={()=>interactive&&onSelect?.(stage)}
         className={[
           'min-w-[132px] rounded-xl border px-3 py-2 text-left text-[10px] transition-colors',
           stage.state==='current'?'border-violet-400 bg-violet-500/15 text-white':'',
