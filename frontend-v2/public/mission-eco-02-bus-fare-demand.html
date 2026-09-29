@@ -101,6 +101,7 @@
   function resize(){const r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);draw()}
   new ResizeObserver(resize).observe(canvas);
 
+  function emitState(){window.parent.postMessage({type:'nextess-simulation-state',state:{fare:Number(fareR.value),competitor}},window.location.origin)}
   function update(){
     const p=+fareR.value,q=quantity(p),rev=p*q,ok=q>=800;
     fareO.textContent='₹'+p;tripsO.textContent=Math.round(q).toLocaleString('en-IN');
@@ -111,7 +112,7 @@
     status.style.borderColor=ok?'rgba(90,240,180,.25)':'rgba(249,115,134,.3)';
     fill.style.width=Math.min(100,Math.max(0,q/1000*100))+'%';
     fill.style.background=ok?'#8b5cf6':'#f97386';
-    draw()
+    draw();emitState()
   }
 
   function draw(){
@@ -155,6 +156,7 @@
     if(competitor){ctx.fillStyle='#f97386';ctx.font='700 9px ui-monospace,monospace';ctx.fillText('SCENARIO: COMPETITOR',pad.l+5,pad.t+11)}
   }
 
+  window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==window.parent||event.data?.type!=='nextess-simulation-restore')return;const s=event.data.state||{};if(Number.isFinite(Number(s.fare)))fareR.value=String(Math.max(10,Math.min(15,Number(s.fare))));if(typeof s.competitor==='boolean'){competitor=s.competitor;competitorBtn.classList.toggle('on',competitor);competitorBtn.textContent=competitor?'ON — DEMAND SHIFT':'OFF — ORIGINAL MARKET';}update()});
   fareR.addEventListener('input',update);
   competitorBtn.addEventListener('click',()=>{
     competitor=!competitor;
