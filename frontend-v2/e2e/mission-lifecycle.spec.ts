@@ -16,7 +16,7 @@ test('mission catalogue and runtime are reachable through the real UI', async ({
 
   // "Missions" is the discovery entry point; the actual catalogue is the
   // Missions Path screen selected by the discipline card.
-  const physicsCard = page.getByRole('button', { name: /Explore Physics Missions|View Physics Missions/i }).first();
+  const physicsCard = page.getByRole('button', { name: /Open Physics Missions/i }).first();
   await expect(physicsCard).toBeVisible({ timeout: 15000 });
   await physicsCard.click();
 
@@ -28,7 +28,7 @@ test('mission catalogue and runtime are reachable through the real UI', async ({
 
   // Mission selection is intentionally single-click; opening a mission is a
   // separate action in the real UI.
-  const open = page.getByRole('button', { name: /Open Mission|Start Mission|Continue Mission/i }).first();
+  const open = page.getByRole('button', { name: /Start Solving Mission/i }).first();
   if (await open.count()) {
     await open.click();
     await expect(page.getByText(/Mission Brief|Learning Capsule|LEVEL/i).first()).toBeVisible({ timeout: 15000 });
