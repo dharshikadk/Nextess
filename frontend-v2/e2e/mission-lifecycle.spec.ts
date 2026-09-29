@@ -38,6 +38,7 @@ test('mission catalogue, first task, feedback, and refresh resume are reachable 
       const continueButton = page.getByRole('button', { name: /Continue to Level 1/i });
       await expect(continueButton).toBeVisible();
       await continueButton.click();
+      await expect(page.getByText(/LEVEL 1\s*\//i).first()).toBeVisible({ timeout: 15000 });
     }
     await expect(page.getByRole('button', { name: /Submit/i })).toBeVisible({ timeout: 15000 });
     const firstOption = page.locator('button[aria-pressed]').first();
@@ -75,7 +76,7 @@ test('guest progress can be converted into an authenticated account', async ({ p
   const signIn = page.getByRole('button', { name: 'Sign In' }).last();
   await expect(signIn).toBeVisible();
   await signIn.click();
-  await page.getByRole('button', { name: 'Sign Up' }).click();
+  await page.getByRole('button', { name: 'Sign Up' }).first().click();
 
   const suffix = Date.now().toString().slice(-8);
   await page.getByLabel('Name').fill('E2E Cadet');
