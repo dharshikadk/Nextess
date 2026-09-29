@@ -10,19 +10,20 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await expect(open).toBeVisible({ timeout: 15000 });
   await open.click();
 
-  const startInvestigation = page.getByRole('button', { name: /Start Investigation/i });
-  const capsuleNext = page.getByRole('button', { name: /Next · Learning Capsule/i });
-  if (await startInvestigation.count()) {
-    await expect(startInvestigation).toBeVisible({ timeout: 15000 });
-    await startInvestigation.click();
-  } else {
-    await expect(capsuleNext).toBeVisible({ timeout: 15000 });
-    await capsuleNext.click();
+  await expect(page.getByTestId('mission-runtime-loading')).toBeHidden({ timeout: 15000 });
+  await expect(page.getByTestId('mission-runtime-error')).toBeHidden({ timeout: 15000 });
+  const missionRuntime = page.getByTestId('mission-runtime');
+  await expect(missionRuntime).toBeVisible({ timeout: 15000 });
+
+  const briefStart = page.getByTestId('mission-brief-start');
+  await expect(briefStart).toBeVisible({ timeout: 15000 });
+  const briefLabel = await briefStart.textContent();
+  await briefStart.click();
+
+  if (briefLabel?.includes('Learning Capsule')) {
     const continueButton = page.getByRole('button', { name: /Continue to Level 1/i });
-    if (await continueButton.count()) {
-      await expect(continueButton).toBeVisible({ timeout: 15000 });
-      await continueButton.click();
-    }
+    await expect(continueButton).toBeVisible({ timeout: 15000 });
+    await continueButton.click();
   }
 
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
