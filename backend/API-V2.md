@@ -69,7 +69,7 @@ Reusable evaluator types currently include:
 - engineering-decision
 - decision
 
-Evaluation is selected by challenge type through `backend/src/evaluators.ts`. Unknown future types can use the generic deterministic answer contract until a dedicated evaluator is added.
+Evaluation is selected by challenge type through `backend/src/evaluators.ts`. The shared evaluator performs deterministic scalar, array, and nested-object comparisons, so structured answer payloads can be reused across missions. Unknown future types can use the generic deterministic answer contract until a dedicated evaluator is added.
 
 Correctness is never accepted from the frontend.
 
@@ -79,8 +79,9 @@ Correctness is never accepted from the frontend.
 - The backend validates the current question before accepting a submission.
 - Level completion and mission completion are calculated from persisted server-side answers.
 - Reward values are taken from the published level's `rewardXp` and `rewardCoins` fields.
-- RewardLedger idempotency keys prevent repeated submissions from awarding the same level reward twice.
+- RewardLedger idempotency keys prevent repeated submissions from awarding the same level reward twice. Answer idempotency keys are scoped to the learner and investigation, so reusing a client key in another mission cannot replay the first mission's answer.
 - The frontend only displays reward results returned by the server.
+- Answer creation, penalties, progression, level rewards, and mission completion are committed in one serializable transaction.
 - localStorage values such as selected mission and stage are navigation state, never authoritative progression state.
 
 ## Security/retry behavior
@@ -88,8 +89,10 @@ Correctness is never accepted from the frontend.
 - Mission investigations are scoped to the authenticated user or expiring anonymous session.
 - Cross-user investigation access returns NOT_FOUND rather than exposing another learner's state.
 - Published mission attempts retain their projectVersionId.
-- Invalid question IDs and questions outside the investigation version are rejected.
+- Invalid investigation/question IDs and questions outside the investigation version are rejected.
 - A submission for a question other than the investigation's currentQuestionId is rejected.
+- Hint and answer-reveal requests are restricted to the current task.
+- Simulation-state writes are restricted to the simulation attached to the current level.
 - Hint/reveal charges use unique reward-ledger idempotency keys.
 - API errors use `{ error: { code, message, requestId, details } }`.
 

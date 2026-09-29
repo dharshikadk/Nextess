@@ -20,7 +20,7 @@ export interface ChallengeEvaluationResult {
 const VERSION = 'v3';
 
 const normalizeText = (value: unknown): string =>
-  String(value ?? '').trim().toLocaleLowerCase();
+  String(value ?? '').trim().toLowerCase();
 
 const normalize = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(normalize);
@@ -33,6 +33,13 @@ const equal = (a: unknown, b: unknown): boolean => {
   const nb = normalize(b);
   if (Array.isArray(na) && Array.isArray(nb)) {
     return na.length === nb.length && na.every((v, i) => equal(v, nb[i]));
+  }
+  if (na && nb && typeof na === 'object' && typeof nb === 'object') {
+    const ao = na as Record<string, unknown>;
+    const bo = nb as Record<string, unknown>;
+    const ak = Object.keys(ao).sort();
+    const bk = Object.keys(bo).sort();
+    return ak.length === bk.length && ak.every((key, i) => key === bk[i] && equal(ao[key], bo[key]));
   }
   return na === nb;
 };

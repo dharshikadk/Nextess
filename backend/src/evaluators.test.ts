@@ -26,3 +26,10 @@ test('unknown challenge types remain deterministic when an answer contract exist
   assert.equal(evaluateChallenge({type:'future-type',value:12,definition:{answer:12}}).correct,true);
   assert.equal(evaluateChallenge({type:'future-type',value:11,definition:{answer:12}}).correct,false);
 });
+
+
+test('structured answers support nested objects and arrays deterministically',()=>{
+  const definition={answer:{decision:'repair',parameters:{threshold:5,channels:['A','B']}}};
+  assert.equal(evaluateChallenge({type:'data-analysis',value:{parameters:{channels:['A','B'],threshold:5},decision:'repair'},definition}).correct,true);
+  assert.equal(evaluateChallenge({type:'data-analysis',value:{parameters:{channels:['B','A'],threshold:5},decision:'repair'},definition}).correct,false);
+});
