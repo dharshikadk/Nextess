@@ -244,10 +244,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     }
   };
 
-  const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
-  const totalStages = Math.max(3, levels.length + 3);
-  const progress = Math.round(((stageNumber - 1) / (totalStages - 1)) * 100);
-
   useEffect(() => {
     if (!investigation?.id || !simulation?.id || !simulationSrc) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
