@@ -140,7 +140,6 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  if(!validateUuid(String(req.params.id)))return fail(res,'VALIDATION_ERROR','Invalid investigation ID.');
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
- if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  if(!validateUuid(req.body?.questionId))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
  if(!req.body||req.body.answer===undefined)return fail(res,'VALIDATION_ERROR','An answer is required.');
  const clientKey=requestIdempotencyKey(req);
@@ -151,6 +150,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
   const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
   return res.json({result:existing.result,answerId:existing.id,feedbackData:existing.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
  }
+ if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  if(inv.currentQuestionId&&inv.currentQuestionId!==q.id)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
