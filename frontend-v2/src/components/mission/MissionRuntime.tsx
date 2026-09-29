@@ -77,8 +77,24 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         const result = await api.project(missionId);
         if (cancelled) return;
         setMission(result.project);
+
         const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
-        if (result.progress?.status === 'IN_PROGRESS' || savedStage >= 3) await startMission();
+        if (result.progress?.status === 'IN_PROGRESS' || savedStage >= 3) {
+          const started = await api.startMission(missionId);
+          if (cancelled) return;
+          const investigationResult = await api.investigation(started.investigationId);
+          if (cancelled) return;
+          const inv = investigationResult.investigation;
+          setInvestigation(inv);
+          const invLevels = inv?.projectVersion?.levels || result.project?.currentPublishedVersion?.levels || [];
+          const nextLevel = Math.max(0, invLevels.findIndex((item: any) => item.id === inv.currentLevelId));
+          setLevel(nextLevel);
+          const firstOpen = (invLevels[nextLevel]?.questions || []).findIndex((item: any) =>
+            !(inv.answers || []).some((a: any) => a.questionId === item.id && a.result === 'CORRECT')
+          );
+          setQuestion(firstOpen >= 0 ? firstOpen : 0);
+          setStage(inv.status === 'COMPLETED' ? 'complete' : 'level');
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Mission could not be loaded.');
       } finally {
@@ -277,9 +293,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
   const shell = `rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
 
-  if (loading) return <div className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
+  if (loading) return <div data-testid="mission-runtime-loading" className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
   if (error || !mission) return (
-    <section className={`${shell} p-8`}>
+    <section data-testid="mission-runtime-error" className={`${shell} p-8`}>
       <div className="font-mono text-[10px] uppercase text-rose-400">Mission runtime</div>
       <h2 className="text-xl font-bold mt-2">Mission could not be opened</h2>
       <p className="text-sm text-slate-400 mt-2">{error || 'Mission not found.'}</p>
@@ -288,7 +304,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 
   if (stage === 'brief') return (
-    <div className="w-full pb-16">
+    <div data-testid="mission-runtime" className="w-full pb-16">
       <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
@@ -313,6 +329,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             <button
               onClick={() => capsules.length > 0 ? setStage('capsule') : startMission()}
               disabled={busy}
+              data-testid="mission-brief-start"
               className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold disabled:opacity-50"
             >
               {capsules.length > 0 ? 'Next · Learning Capsule' : 'Start Investigation'}
