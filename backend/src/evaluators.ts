@@ -32,7 +32,7 @@ const result=(correct:boolean,value:unknown)=>({correct,normalizedAnswer:normali
 const numericalEvaluator:ChallengeEvaluator=({value,definition})=>result(numerical(value,definition.answer,definition.tolerance),value);
 const deterministicEvaluator:ChallengeEvaluator=({value,definition})=>result(equal(value,definition.answer),value);
 
-export const challengeEvaluatorRegistry:ReadonlyMap<string,ChallengeEvaluator>=new Map([
+export const challengeEvaluatorRegistry:Map<string,ChallengeEvaluator>=new Map([
   ["numerical",numericalEvaluator],
   ["structured-choice",deterministicEvaluator],
   ["what-if",deterministicEvaluator],
@@ -44,7 +44,7 @@ export const challengeEvaluatorRegistry:ReadonlyMap<string,ChallengeEvaluator>=n
 
 export function registerChallengeEvaluator(type:string,evaluator:ChallengeEvaluator){
   if(!type.trim()) throw new Error("Challenge type is required.");
-  (challengeEvaluatorRegistry as Map<string,ChallengeEvaluator>).set(type,evaluator);
+  challengeEvaluatorRegistry.set(type,evaluator);
 }
 
 export function evaluateChallenge(input:ChallengeEvaluationInput):ChallengeEvaluationResult{
