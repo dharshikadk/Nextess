@@ -415,8 +415,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
           </div>
-          <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt}</h2>
-          <div className="mt-4">{currentQuestion && <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy} />}</div>
+          <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
+            <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
+            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
+          </div>
           {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
           {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
@@ -425,7 +427,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
               <button onClick={useHint} disabled={busy} className="px-3 py-2 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs">Hint</button>
               <button onClick={revealAnswer} disabled={busy} className="px-3 py-2 rounded-xl border border-amber-500/30 bg-[#181926] text-slate-300 text-xs">Reveal answer</button>
             </div>
-            <button onClick={submit} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>
+            <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>
           </div>
         </section>
         <aside className="col-span-12 lg:col-span-3">
