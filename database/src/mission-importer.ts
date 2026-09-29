@@ -81,7 +81,13 @@ async function importMission(tx: any, mission: any, subjects: Map<string,string>
     await tx.project.update({where:{id:project.id},data:{currentPublishedVersionId:version.id,status:"PUBLISHED"}});
   }
 
-  if (existingVersion) {\n    await tx.simulationDefinition.deleteMany({where:{key:{startsWith:`${mission.key}.level-`}}});\n    await tx.caseFile.deleteMany({where:{projectVersionId:version.id}});\n    await tx.level.deleteMany({where:{projectVersionId:version.id}});\n  }\n\n  {
+  if (existingVersion) {
+    await tx.simulationDefinition.deleteMany({where:{key:{startsWith:`${mission.key}.level-`}}});
+    await tx.caseFile.deleteMany({where:{projectVersionId:version.id}});
+    await tx.level.deleteMany({where:{projectVersionId:version.id}});
+  }
+
+  {
     for (const [index, resource] of (mission.requiredEvidence?.files ?? []).entries()) {
       await tx.caseFile.create({data:{
         projectVersionId:version.id,name:resource.fileName,mimeType:mimeType(resource.fileName),content:resource.content ?? null,
