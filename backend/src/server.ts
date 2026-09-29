@@ -137,106 +137,98 @@ app.get('/v1/investigations/:id',optionalAuth,async(req:R,res)=>{
 app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);
  if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ if(!validateUuid(String(req.params.id)))return fail(res,'VALIDATION_ERROR','Invalid investigation ID.');
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
- const clientKey=requestIdempotencyKey(req);
- if(!clientKey)return fail(res,'IDEMPOTENCY_KEY_REQUIRED','An Idempotency-Key header is required for answer submission.',400);
- const scopedKey=hash((identity.userId||('anonymous:'+identity.anonymousSessionId))+':answer:'+clientKey);
- const existingAnswer=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
- if(existingAnswer){
-   const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
-   return res.json({result:existingAnswer.result,answerId:existingAnswer.id,feedbackData:existingAnswer.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
- }
-
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  if(!validateUuid(req.body?.questionId))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
  if(!req.body||req.body.answer===undefined)return fail(res,'VALIDATION_ERROR','An answer is required.');
- if(Array.isArray(req.body.answer))return fail(res,'VALIDATION_ERROR','Answer payload cannot be an array.');
+ const clientKey=requestIdempotencyKey(req);
+ if(!clientKey)return fail(res,'IDEMPOTENCY_KEY_REQUIRED','An Idempotency-Key header is required for answer submission.',400);
+ const scopedKey=hash((identity.userId||('anonymous:'+identity.anonymousSessionId))+':investigation:'+inv.id+':answer:'+clientKey);
+ const existing=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
+ if(existing){
+  const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
+  return res.json({result:existing.result,answerId:existing.id,feedbackData:existing.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
+ }
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  if(inv.currentQuestionId&&inv.currentQuestionId!==q.id)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
- const incoming=req.body.answer?.value??req.body.answer?.text??req.body.answer;
- if(incoming===undefined||incoming===null||String(incoming).trim()==='')return fail(res,'VALIDATION_ERROR','An answer is required.');
+ const incoming=validateObject(req.body.answer)
+  ? (Object.prototype.hasOwnProperty.call(req.body.answer,'value')?req.body.answer.value:Object.prototype.hasOwnProperty.call(req.body.answer,'text')?req.body.answer.text:req.body.answer)
+  : req.body.answer;
+ if(incoming===undefined||incoming===null||(typeof incoming==='string'&&incoming.trim()===''))return fail(res,'VALIDATION_ERROR','An answer is required.');
  const evaluation=evaluateChallenge({type:q.questionType,value:incoming,definition:(q.evaluationDefinition||{}) as any});
- let answer:any;
-let penalty={xp:0,coins:0};
-try{
+ try{
   const outcome=await serializableTransaction(async tx=>{
-    const attempts=await tx.investigationAnswer.count({where:{investigationId:inv.id,questionId:q.id}})+1;
-    const created=await tx.investigationAnswer.create({data:{investigationId:inv.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer??{},normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
-    let appliedPenalty={xp:0,coins:0};
-    if(!evaluation.correct&&identity.userId){
-      const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
-      if(!u)throw new Error('USER_NOT_FOUND');
-      const xpPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.xp,Math.max(0,u.xp));
-      const coinPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.coins,Math.max(0,u.coins));
-      if(xpPenalty||coinPenalty){
-        await tx.user.update({where:{id:identity.userId!},data:{...(xpPenalty?{xp:{decrement:xpPenalty}}:{}),...(coinPenalty?{coins:{decrement:coinPenalty}}:{}),lastActivityAt:new Date()}});
-        if(xpPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-xpPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+created.id+':xp'}});
-        if(coinPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-coinPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+created.id+':coins'}});
-        appliedPenalty={xp:xpPenalty,coins:coinPenalty};
+   const current:any=await tx.investigation.findUnique({where:{id:inv.id},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
+   if(!current)throw new Error('INVESTIGATION_NOT_FOUND');
+   if(current.status!=='IN_PROGRESS')throw new Error('INVESTIGATION_CLOSED');
+   if(current.currentQuestionId&&current.currentQuestionId!==q.id)throw new Error('TASK_NOT_AVAILABLE');
+   const attempts=await tx.investigationAnswer.count({where:{investigationId:current.id,questionId:q.id}})+1;
+   const created=await tx.investigationAnswer.create({data:{investigationId:current.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer,normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
+   let penalty={xp:0,coins:0};
+   if(!evaluation.correct&&identity.userId){
+    const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
+    if(!u)throw new Error('USER_NOT_FOUND');
+    const xpPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.xp,Math.max(0,u.xp)),coinPenalty=Math.min(MISSION_WRONG_ANSWER_PENALTY.coins,Math.max(0,u.coins));
+    if(xpPenalty||coinPenalty){
+     await tx.user.update({where:{id:identity.userId!},data:{...(xpPenalty?{xp:{decrement:xpPenalty}}:{}),...(coinPenalty?{coins:{decrement:coinPenalty}}:{}),lastActivityAt:new Date()}});
+     if(xpPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:current.id,sourceId:q.id,rewardType:RewardType.XP,amount:-xpPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+created.id+':xp'}});
+     if(coinPenalty)await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:current.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-coinPenalty,reasonCode:'MISSION_WRONG_ANSWER',idempotencyKey:'wrong:'+created.id+':coins'}});
+     penalty={xp:xpPenalty,coins:coinPenalty};
+    }
+   }
+   let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},levelPenalty={...penalty};
+   if(evaluation.correct){
+    const level=current.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
+    if(level){
+     const ids=level.questions.map((x:any)=>x.id);
+     const rows=await tx.investigationAnswer.findMany({where:{investigationId:current.id,questionId:{in:ids}},orderBy:{submittedAt:'desc'}});
+     const latest=new Map<string,any>();for(const row of rows)if(!latest.has(row.questionId))latest.set(row.questionId,row);
+     levelCompleted=ids.length>0&&ids.every((id:string)=>latest.get(id)?.result==='CORRECT');
+     const nextQuestion=level.questions.find((x:any)=>!latest.has(x.id)||latest.get(x.id)?.result!=='CORRECT');
+     if(levelCompleted){
+      const finalLevel=level.levelNumber===current.projectVersion.levels.length;
+      if(identity.userId){
+       reward=await rewardMissionLevel(tx,identity.userId!,current.id,level.id,Number(level.rewardXp)||0,Number(level.rewardCoins)||0,finalLevel);
+       await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
       }
-    }
-    return {answer:created,penalty:appliedPenalty};
-  });
-  answer=outcome.answer;
-  penalty=outcome.penalty;
-}catch(e:any){
-  if(e?.code==='P2002'){
-    const replay=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
-    if(replay){
-      const balances=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
-      const wrongXp=identity.userId?await prisma.rewardLedger.findFirst({where:{idempotencyKey:'wrong:'+replay.id+':xp'},select:{amount:true}}):null;
-      const wrongCoins=identity.userId?await prisma.rewardLedger.findFirst({where:{idempotencyKey:'wrong:'+replay.id+':coins'},select:{amount:true}}):null;
-      return res.json({result:replay.result,answerId:replay.id,feedbackData:replay.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:Math.abs(Number(wrongXp?.amount||0)),coins:Math.abs(Number(wrongCoins?.amount||0))},levelPenalty:{xp:0,coins:0},netChange:{xp:-Math.abs(Number(wrongXp?.amount||0)),coins:-Math.abs(Number(wrongCoins?.amount||0))},balances:balances??{xp:0,coins:0},anonymous:identity.anonymous});
-    }
-  }
-  return fail(res,'CONFLICT','The answer submission could not be safely committed. Retry with the same Idempotency-Key.',409);
-}
- let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},levelPenalty={xp:0,coins:0};
- if(evaluation.correct){
-  const level=inv.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
-  if(level){
-   const ids=level.questions.map((x:any)=>x.id);
-   const rows=await prisma.investigationAnswer.findMany({where:{investigationId:inv.id,questionId:{in:ids}},orderBy:{submittedAt:'desc'}});
-   const latest=new Map<string,any>();for(const row of rows)if(!latest.has(row.questionId))latest.set(row.questionId,row);
-   levelCompleted=ids.length>0&&ids.every((id:string)=>latest.get(id)?.result==='CORRECT');
-   const nextQuestion=level.questions.find((x:any)=>!latest.has(x.id)||latest.get(x.id)?.result!=='CORRECT');
-   if(levelCompleted){
-    const finalLevel=level.levelNumber===inv.projectVersion.levels.length;
-    if(identity.userId){
-     reward=await prisma.$transaction(async tx=>{
-      const r=await rewardMissionLevel(tx,identity.userId!,inv.id,level.id,Number(level.rewardXp)||0,Number(level.rewardCoins)||0,finalLevel);
-      await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
       if(finalLevel){
        missionCompleted=true;
-       await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId!,projectId:inv.projectId}},update:{status:'COMPLETED',progressPercent:100,completedAt:new Date(),currentLevelId:null,currentQuestionId:null,lastActivityAt:new Date()},create:{userId:identity.userId!,projectId:inv.projectId,status:'COMPLETED',progressPercent:100,completedAt:new Date(),lastActivityAt:new Date()}});
-       await tx.investigation.update({where:{id:inv.id},data:{status:'COMPLETED',completedAt:new Date(),lastActivityAt:new Date(),currentLevelId:level.id,currentQuestionId:q.id}});
+       await tx.investigation.update({where:{id:current.id},data:{status:'COMPLETED',completedAt:new Date(),lastActivityAt:new Date(),currentLevelId:level.id,currentQuestionId:q.id}});
+       if(identity.userId)await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId!,projectId:current.projectId}},update:{status:'COMPLETED',progressPercent:100,completedAt:new Date(),currentLevelId:null,currentQuestionId:null,lastActivityAt:new Date()},create:{userId:identity.userId!,projectId:current.projectId,status:'COMPLETED',progressPercent:100,completedAt:new Date(),lastActivityAt:new Date()}});
       }else{
-       const next=inv.projectVersion.levels.find((l:any)=>l.levelNumber===level.levelNumber+1);
-       await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId!,projectId:inv.projectId}},update:{status:'IN_PROGRESS',progressPercent:Math.round(level.levelNumber/inv.projectVersion.levels.length*100),currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()},create:{userId:identity.userId!,projectId:inv.projectId,status:'IN_PROGRESS',progressPercent:Math.round(level.levelNumber/inv.projectVersion.levels.length*100),currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
-       await tx.investigation.update({where:{id:inv.id},data:{currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
+       const next=current.projectVersion.levels.find((l:any)=>l.levelNumber===level.levelNumber+1);
+       await tx.investigation.update({where:{id:current.id},data:{currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
+       if(identity.userId)await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId!,projectId:current.projectId}},update:{status:'IN_PROGRESS',progressPercent:Math.round(level.levelNumber/current.projectVersion.levels.length*100),currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()},create:{userId:identity.userId!,projectId:current.projectId,status:'IN_PROGRESS',progressPercent:Math.round(level.levelNumber/current.projectVersion.levels.length*100),currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
       }
-      return r;
-     });
-    }else{
-     const next=inv.projectVersion.levels.find((l:any)=>l.levelNumber===level.levelNumber+1);
-     missionCompleted=finalLevel;
-     await prisma.investigation.update({where:{id:inv.id},data:finalLevel?{status:'COMPLETED',completedAt:new Date(),currentLevelId:level.id,currentQuestionId:q.id,lastActivityAt:new Date()}:{currentLevelId:next?.id??null,currentQuestionId:next?.questions[0]?.id??null,lastActivityAt:new Date()}});
+     }else if(nextQuestion){
+      const nextIndex=level.questions.findIndex((x:any)=>x.id===nextQuestion.id);
+      await tx.investigation.update({where:{id:current.id},data:{currentLevelId:level.id,currentQuestionId:nextQuestion.id,lastActivityAt:new Date()}});
+      if(identity.userId)await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'IN_PROGRESS',currentQuestionId:nextQuestion.id,completedQuestions:Math.max(0,nextIndex),totalQuestions:ids.length},create:{userId:identity.userId!,levelId:level.id,status:'IN_PROGRESS',currentQuestionId:nextQuestion.id,completedQuestions:Math.max(0,nextIndex),totalQuestions:ids.length}});
+     }
+     if(identity.userId){
+      const rowsPenalty=await tx.rewardLedger.findMany({where:{userId:identity.userId!,investigationId:current.id,sourceId:{in:ids},reasonCode:'MISSION_WRONG_ANSWER'},select:{rewardType:true,amount:true}});
+      levelPenalty={xp:Math.abs(rowsPenalty.filter((x:any)=>x.rewardType===RewardType.XP).reduce((a:number,x:any)=>a+Number(x.amount),0)),coins:Math.abs(rowsPenalty.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((a:number,x:any)=>a+Number(x.amount),0))};
+     }
     }
-    if(identity.userId){
-     const levelPenaltyRows=await prisma.rewardLedger.findMany({where:{userId:identity.userId!,investigationId:inv.id,sourceId:{in:ids},reasonCode:'MISSION_WRONG_ANSWER'},select:{rewardType:true,amount:true}});
-     levelPenalty={xp:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.XP).reduce((sum:number,x:any)=>sum+Number(x.amount),0)),coins:Math.abs(levelPenaltyRows.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((sum:number,x:any)=>sum+Number(x.amount),0))};
-    }
-   }else if(nextQuestion){
-    const nextIndex=level.questions.findIndex((x:any)=>x.id===nextQuestion.id);
-    await prisma.investigation.update({where:{id:inv.id},data:{currentLevelId:level.id,currentQuestionId:nextQuestion.id,lastActivityAt:new Date()}});
-    if(identity.userId)await prisma.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'IN_PROGRESS',currentQuestionId:nextQuestion.id,completedQuestions:Math.max(0,nextIndex),totalQuestions:ids.length},create:{userId:identity.userId!,levelId:level.id,status:'IN_PROGRESS',currentQuestionId:nextQuestion.id,completedQuestions:Math.max(0,nextIndex),totalQuestions:ids.length}});
    }
+   const balances=identity.userId?await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
+   return {answer:created,levelCompleted,missionCompleted,reward,penalty,levelPenalty,balances:balances??{xp:0,coins:0}};
+  });
+  return res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:outcome.answer.id,feedbackData:evaluation.feedback,replayed:false,levelCompleted:outcome.levelCompleted,missionCompleted:outcome.missionCompleted,reward:outcome.reward,penalty:outcome.penalty,levelPenalty:outcome.levelPenalty,netChange:{xp:outcome.reward.xp-outcome.levelPenalty.xp,coins:outcome.reward.coins-outcome.levelPenalty.coins},balances:outcome.balances,anonymous:identity.anonymous});
+ }catch(e:any){
+  if(e?.message==='INVESTIGATION_NOT_FOUND')return fail(res,'NOT_FOUND','Investigation not found.',404);
+  if(e?.message==='INVESTIGATION_CLOSED')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+  if(e?.message==='TASK_NOT_AVAILABLE')return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
+  if(e?.message==='USER_NOT_FOUND')return fail(res,'AUTH_REQUIRED','Authentication session is no longer valid.',401);
+  if(e?.code==='P2002'){
+   const replay=await prisma.investigationAnswer.findUnique({where:{idempotencyKey:scopedKey}});
+   if(replay)return res.json({result:replay.result,answerId:replay.id,feedbackData:replay.feedbackData,replayed:true,levelCompleted:false,missionCompleted:false,reward:{xp:0,coins:0},penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:0,coins:0},balances:identity.userId?(await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})??{xp:0,coins:0}):{xp:0,coins:0},anonymous:identity.anonymous});
   }
+  return fail(res,'CONFLICT','The answer submission could not be safely committed. Retry with the same Idempotency-Key.',409);
  }
- const user=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):null;
- res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:answer.id,feedbackData:evaluation.feedback,levelCompleted,missionCompleted,reward,penalty,levelPenalty,netChange:{xp:reward.xp-levelPenalty.xp,coins:reward.coins-levelPenalty.coins},balances:user??{xp:0,coins:0},anonymous:identity.anonymous});
 });
 app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
