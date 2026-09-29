@@ -9,7 +9,11 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
-    "seed:v2": "tsx prisma/seed-v2.ts"
+    "seed:v2": "tsx prisma/seed-v2.ts",
+    "mission:validate": "tsx src/mission-cli.ts validate",
+    "mission:import": "tsx src/mission-cli.ts import",
+    "mission:publish": "tsx src/mission-cli.ts publish",
+    "test": "tsx src/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0"
