@@ -1,14 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { TaskRenderer, MissionTask } from './TaskRendererRegistry';
+import { MissionStageNavigator, MissionStage } from './MissionStageNavigator';
+import { resolveSimulationSource } from '../../data/simulationRegistry';
 
 type Props = { theme: 'dark' | 'light'; onExit: () => void; onShowToast: (message: string) => void };
-
-const simulationPath = (fileName?: string) => {
-  const file = String(fileName || '').trim().replace(/^\/+/, '');
-  if (!file || !/^[A-Za-z0-9._/-]+$/.test(file)) return null;
-  return file.startsWith('simulations/') ? '/' + file : '/simulations/' + file;
-};
 
 export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) => {
   const dark = theme === 'dark';
@@ -28,6 +24,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [simulationSaving, setSimulationSaving] = useState(false);
+  const simulationFrameRef = React.useRef<HTMLIFrameElement>(null);
 
   const capsules = mission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections || [];
   const levels = investigation?.projectVersion?.levels || mission?.currentPublishedVersion?.levels || [];
@@ -38,7 +36,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const file = files[fileIndex] || files[0];
   const simulation = currentLevel?.simulation;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
-  const simulationSrc = simulationPath(simulationFile);
+  const simulationSrc = resolveSimulationSource(simulationFile, mission?.slug || mission?.key);
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
@@ -80,7 +78,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         if (cancelled) return;
         setMission(result.project);
         const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
-        if (savedStage >= 3) await startMission();
+        if (result.progress?.status === 'IN_PROGRESS' || savedStage >= 3) await startMission();
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Mission could not be loaded.');
       } finally {
@@ -91,7 +89,48 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   }, [missionId]);
 
   useEffect(() => {
-    const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
+    const stageItems = useMemo<MissionStage[]>(() => {
+    const items: MissionStage[] = [
+      { key: 'brief', label: 'Mission Brief', state: stage === 'brief' ? 'current' : 'completed' },
+    ];
+    if (capsules.length > 0) {
+      items.push({ key: 'capsule', label: 'Learning Capsule', state: stage === 'capsule' ? 'current' : stage === 'brief' ? 'available' : 'completed' });
+    }
+    levels.forEach((item: any, index: number) => {
+      const completed = (item.questions || []).length > 0 && (item.questions || []).every((q: any) =>
+        (investigation?.answers || []).some((a: any) => a.questionId === q.id && a.result === 'CORRECT')
+      );
+      const isCurrent = stage === 'level' && index === level;
+      const unlocked = index <= level || completed;
+      items.push({
+        key: `level-${item.levelNumber ?? index + 1}`,
+        label: `Level ${item.levelNumber ?? index + 1}: ${item.title || 'Investigation'}`,
+        state: completed ? 'completed' : isCurrent ? 'current' : unlocked ? 'available' : 'locked',
+      });
+    });
+    items.push({ key: 'complete', label: 'Mission Complete', state: investigation?.status === 'COMPLETED' || stage === 'complete' ? 'available' : 'locked' });
+    return items;
+  }, [stage, level, levels, capsules.length, investigation?.answers, investigation?.status]);
+
+  const selectStage = (selected: MissionStage) => {
+    if (selected.key === 'brief') setStage('brief');
+    else if (selected.key === 'capsule' && capsules.length) setStage('capsule');
+    else if (selected.key === 'complete' && investigation?.status === 'COMPLETED') setStage('complete');
+    else if (selected.key.startsWith('level-')) {
+      const index = levels.findIndex((item: any) => `level-${item.levelNumber}` === selected.key);
+      if (index >= 0 && index <= level) {
+        setLevel(index);
+        setQuestion(0);
+        setAnswer('');
+        setFeedback(null);
+        setHints([]);
+        setRevealed(null);
+        setStage('level');
+      }
+    }
+  };
+
+  const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
     localStorage.setItem('nextess_mission_stage', String(stageNumber));
   }, [stage, level, levels.length]);
 
@@ -196,6 +235,37 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
   const totalStages = Math.max(3, levels.length + 3);
   const progress = Math.round(((stageNumber - 1) / (totalStages - 1)) * 100);
+
+  useEffect(() => {
+    if (!investigation?.id || !simulation?.id || !simulationSrc) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== simulationFrameRef.current?.contentWindow) return;
+      const payload = event.data;
+      if (payload?.type !== 'nextess-simulation-state' || !payload.state || typeof payload.state !== 'object') return;
+      if (timer) clearTimeout(timer);
+      setSimulationSaving(true);
+      timer = setTimeout(() => {
+        api.simulationState(investigation.id, simulation.id, payload.state)
+          .catch((e: any) => setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' }))
+          .finally(() => setSimulationSaving(false));
+      }, 250);
+    };
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      if (timer) clearTimeout(timer);
+    };
+  }, [investigation?.id, simulation?.id, simulationSrc]);
+
+  const restoreSimulation = () => {
+    const state = investigation?.state?.simulations?.[simulation?.id];
+    if (!state || !simulationFrameRef.current?.contentWindow) return;
+    simulationFrameRef.current.contentWindow.postMessage(
+      { type: 'nextess-simulation-restore', state },
+      window.location.origin
+    );
+  };
 
   const shell = `rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
 
@@ -354,11 +424,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           <div className={`rounded-2xl border p-4 ${dark ? 'bg-[#12131b] border-indigo-500/40' : 'bg-white border-indigo-200'}`}>
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] text-indigo-300 uppercase">Simulation Sandbox</span>
-              <span className="font-mono text-[9px] text-indigo-300">{simulation ? 'LIVE' : 'NOT CONFIGURED'}</span>
+              <span className="font-mono text-[9px] text-indigo-300">{simulation ? (simulationSaving ? 'SAVING…' : 'LIVE') : 'NOT CONFIGURED'}</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-2">{mission.requiredSimulation?.description || simulation?.purpose || 'Use the simulation to investigate the mission variables.'}</p>
             <div className="mt-3">
-              {simulationSrc ? <iframe title="Nextess mission simulation" src={simulationSrc} className="w-full h-[450px] border-0 rounded-xl" allow="fullscreen" loading="eager" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
+              {simulationSrc ? <iframe ref={simulationFrameRef} title="Nextess mission simulation" src={simulationSrc} onLoad={restoreSimulation} className="w-full h-[450px] border-0 rounded-xl" allow="fullscreen" loading="eager" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
             </div>
             {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className="px-2 py-1 rounded-lg bg-[#181926] border border-indigo-500/20 text-[9px] text-slate-300">{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
             {simulation?.consequences?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Consequences</div>{simulation.consequences.map((item: any) => <div key={item.id || item.ordering} className="text-[9px] text-slate-400 mt-1">• {item.label}</div>)}</div>}
