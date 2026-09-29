@@ -6,12 +6,12 @@ const initialStage=Math.max(1,Number(params.get('stage')||1));
 const state={mission:null,investigation:null,stage:initialStage,level:Math.max(1,initialStage-2),q:1,capsule:0,selected:null,numeric:'',submitted:false,submitting:false,hint:0,hints:[],revealed:false,revealData:null,fileIndex:0,fileCollapsed:true,feedback:null,reward:null,penalty:null,levelRewardModal:null,error:null};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=async(path,init={})=>{const r=await fetch(API_BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers||{})}});const b=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(b?.error?.message||'Request failed');e.code=b?.error?.code;e.body=b;throw e}return b};
-const meta=()=>state.mission?.currentPublishedVersion?.contentMetadata||{};
+const meta=()=>state.mission?.currentPublishedVersion?.contentMetadata||{};\nconst stages=()=>Array.isArray(meta().stages)&&meta().stages.length?meta().stages:[{type:"brief",order:1,title:"Mission Brief"},{type:"learning-capsule",order:2,title:"Learning Capsule"},...levels().map((l,i)=>({type:"level",order:i+3,levelNumber:l.levelNumber,title:l.title})),{type:"completion",order:levels().length+3,title:"Mission Complete"}];\nconst stageDefinition=()=>stages()[state.stage-1];\nconst stageForLevel=(levelNumber)=>stages().find(s=>s.type==="level"&&Number(s.levelNumber)===Number(levelNumber));\nconst firstLevelStage=()=>stageForLevel(levels()[0]?.levelNumber)?.order||3;\nconst challengeRendererRegistry=window.NextessChallengeRendererRegistry||{};
 const levels=()=>state.investigation?.projectVersion?.levels||state.mission?.currentPublishedVersion?.levels||[];
 const currentLevel=()=>levels()[state.level-1];
 const question=()=>currentLevel()?.questions?.[state.q-1];
-const stageCount=()=>2+levels().length+1;
-const stageLabel=()=>state.stage===1?'MISSION BRIEF':state.stage===2?'LEARNING CAPSULE':state.stage===stageCount()?'MISSION COMPLETE':'LEVEL '+state.level;
+const stageCount=()=>stages().length;
+const stageLabel=()=>{const s=stageDefinition();return s?.type==="level"?`LEVEL ${s.levelNumber||state.level}`:String(s?.title||s?.type||"STAGE").toUpperCase();};
 const simUrl=()=>{
  const sim=currentLevel()?.simulation;
  const file=String(sim?.configuration?.fileName||'').trim();
@@ -45,7 +45,7 @@ async function startOrResume(){
     state.stage=stageCount();
   }else if(authoritativeIndex>=0){
     state.level=authoritativeIndex+1;
-    state.stage=state.level+2;
+    state.stage=stageForLevel(state.level)?.order||firstLevelStage();
   }else{
     state.level=1;
     state.stage=3;
@@ -62,7 +62,7 @@ async function startOrResume(){
  }catch(e){state.error=e.code==='AUTH_REQUIRED'?'Sign in to start this mission and earn KP/coins.':e.message;renderError()}
 }
 async function ensureInvestigation(){if(!state.investigation)await startOrResume()}
-function setStage(n){state.stage=n;if(n>=3){state.level=n-2;state.q=1;state.hint=0;state.hints=[];state.revealed=false;state.revealData=null;state.feedback=null;state.selected=null;state.numeric='';ensureInvestigation();return}render()}
+function setStage(n){const def=stages()[n-1];if(!def)return;if(def.type==="level"){state.stage=n;state.level=Number(def.levelNumber)||1;state.q=1;state.hint=0;state.hints=[];state.revealed=false;state.revealData=null;state.feedback=null;state.selected=null;state.numeric="";ensureInvestigation();return}state.stage=n;render()}
 function selectedAnswer(){
  const q=question();
  if(q?.questionType==='numerical'||q?.inputSchema?.hasOptions===false)return state.numeric;
@@ -138,7 +138,7 @@ async function submit(){
     const refreshedLevels=state.investigation?.projectVersion?.levels||[];
     const refreshedIndex=refreshedLevels.findIndex(x=>x.id===state.investigation?.currentLevelId);
     if(state.investigation?.status==='COMPLETED')state.stage=stageCount();
-    else if(refreshedIndex>=0){state.level=refreshedIndex+1;state.stage=state.level+2;}
+    else if(refreshedIndex>=0){state.level=refreshedIndex+1;state.stage=stageForLevel(state.level)?.order||firstLevelStage();}
     state.q=Math.max(1,(currentLevel()?.questions||[]).findIndex(x=>(state.investigation?.answers||[]).some(a=>a.questionId===x.id&&a.result!=='CORRECT'))+1);
   }else if(r.result==='CORRECT'){
    state.investigation.answers=[...(state.investigation.answers||[]),{questionId:q.id,result:'CORRECT',submittedAt:new Date().toISOString()}];
@@ -164,7 +164,7 @@ function continueAfterLevelReward(){
    state.investigation=latest.investigation;
    const idx=(state.investigation?.projectVersion?.levels||[]).findIndex(x=>x.id===state.investigation?.currentLevelId);
    state.level=idx>=0?idx+1:state.level+1;
-   state.stage=state.level+2;
+   state.stage=stageForLevel(state.level)?.order||firstLevelStage();
    state.q=1;
  }catch{}
  render();
@@ -178,18 +178,17 @@ function wire(){
  const exit=document.getElementById('exit');if(exit)exit.onclick=()=>window.parent.postMessage({type:'NEXTESS_MISSION_EXIT'},'*');
  const sb=document.getElementById('startBrief');if(sb)sb.onclick=()=>{state.stage=2;render()};
  const cb=document.getElementById('capsuleBack');if(cb)cb.onclick=()=>{state.capsule--;render()};
- const cn=document.getElementById('capsuleNext');if(cn)cn.onclick=()=>{const sections=meta().learningCapsule?.sections||[];if(state.capsule+1<sections.length){state.capsule++;render()}else{state.stage=3;state.level=1;state.q=1;ensureInvestigation()}};
- const cs=document.getElementById('capsuleSkip');if(cs)cs.onclick=()=>{state.stage=3;state.level=1;state.q=1;ensureInvestigation()};
- const back=document.getElementById('backStage');if(back)back.onclick=()=>{if(state.q>1){state.q--;state.hints=[];state.revealData=null;state.feedback=null;render()}else if(state.level>1){state.level--;state.stage=state.level+2;state.q=1;state.hints=[];state.revealData=null;state.feedback=null;render()}else{state.stage=2;render()}};
+ const cn=document.getElementById('capsuleNext');if(cn)cn.onclick=()=>{const sections=meta().learningCapsule?.sections||[];if(state.capsule+1<sections.length){state.capsule++;render()}else{state.stage=firstLevelStage();state.level=1;state.q=1;ensureInvestigation()}};
+ const cs=document.getElementById('capsuleSkip');if(cs)cs.onclick=()=>{state.stage=firstLevelStage();state.level=1;state.q=1;ensureInvestigation()};
+ const back=document.getElementById('backStage');if(back)back.onclick=()=>{if(state.q>1){state.q--;state.hints=[];state.revealData=null;state.feedback=null;render()}else if(state.level>1){state.level--;state.stage=stageForLevel(state.level)?.order||firstLevelStage();state.q=1;state.hints=[];state.revealData=null;state.feedback=null;render()}else{state.stage=2;render()}};
  const sub=document.getElementById('submit');if(sub)sub.onclick=submit;
  const hi=document.getElementById('hint');if(hi)hi.onclick=useHint;
  const rv=document.getElementById('reveal');if(rv)rv.onclick=reveal;
  const nx=document.getElementById('nextConcept');if(nx)nx.onclick=()=>{if(state.feedback?.correct){state.q++;state.hints=[];state.revealData=null;state.feedback=null;state.selected=null;state.numeric='';render()}else{state.feedback={correct:false,message:'Solve this question correctly before continuing.'};render()}};
- const nt=document.getElementById('nextTask');if(nt)nt.onclick=()=>{const completed=Boolean(currentLevel()?.questions?.length)&&currentLevel().questions.every((x)=>((state.investigation?.answers||[]).some(a=>a.questionId===x.id&&a.result==='CORRECT')));if(state.feedback?.correct||completed){if(state.level<levels().length){state.level++;state.stage=state.level+2;state.q=1;state.hints=[];state.revealData=null;state.feedback=null;state.selected=null;state.numeric='';render()}else{state.stage=stageCount();render()}}else{state.feedback={correct:false,message:'Complete the final question correctly before advancing.'};render()}};
+ const nt=document.getElementById('nextTask');if(nt)nt.onclick=()=>{const completed=Boolean(currentLevel()?.questions?.length)&&currentLevel().questions.every((x)=>((state.investigation?.answers||[]).some(a=>a.questionId===x.id&&a.result==='CORRECT')));if(state.feedback?.correct||completed){if(state.level<levels().length){state.level++;state.stage=stageForLevel(state.level)?.order||firstLevelStage();state.q=1;state.hints=[];state.revealData=null;state.feedback=null;state.selected=null;state.numeric='';render()}else{state.stage=stageCount();render()}}else{state.feedback={correct:false,message:'Complete the final question correctly before advancing.'};render()}};
  const bm=document.getElementById('backMission');if(bm)bm.onclick=()=>window.parent.postMessage({type:'NEXTESS_MISSION_EXIT'},'*');
  const lrc=document.getElementById('levelRewardContinue');if(lrc)lrc.onclick=continueAfterLevelReward;
- const q=question();if(q){const el=document.getElementById('answerArea');if(el){if(q.questionType==='numerical'||q.inputSchema?.hasOptions===false){el.innerHTML='<div class="flex gap-2"><input id="numeric" type="number" placeholder="Enter numeric answer" class="flex-1 bg-[#181926] border border-cyan-500/30 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400 ui-transition"><span class="px-3 py-2.5 rounded-xl bg-[#181926] border border-cyan-500/30 text-xs text-slate-400 flex items-center">'+esc(q.inputSchema?.unit||'')+'</span></div>';document.getElementById('numeric').value=state.numeric;document.getElementById('numeric').oninput=e=>state.numeric=e.target.value}else{el.innerHTML='<div class="flex flex-col gap-2">'+(q.options||[]).map((o,i)=>`<button data-opt="${i}" class="answerOpt w-full text-left p-3 rounded-xl border bg-[#181926] border-cyan-500/20 hover:bg-[#1f2030] hover:border-cyan-500/40 ui-transition flex items-start gap-3"><span class="w-7 h-7 rounded-lg bg-slate-700/20 text-slate-400 font-mono text-xs flex items-center justify-center font-bold shrink-0">${esc(o.optionKey||String.fromCharCode(65+i))}</span><span class="text-xs text-slate-200">${esc(o.optionText||o.value||'')}</span></button>`).join('')+'</div>';document.querySelectorAll('.answerOpt').forEach(b=>b.onclick=()=>{document.querySelectorAll('.answerOpt').forEach(x=>x.classList.remove('border-cyan-400','bg-[#1f2030]'));b.classList.add('border-cyan-400','bg-[#1f2030]');state.selected=Number(b.dataset.opt)})}}}
-}
+ const q=question();if(q){const el=document.getElementById('answerArea');if(el){const renderer=challengeRendererRegistry[q.questionType]||challengeRendererRegistry.fallback;if(!renderer){el.innerHTML='<div class="p-3 rounded-xl border border-rose-500/30 text-xs text-rose-200">Unsupported challenge type.</div>';}else{el.innerHTML=renderer({q,state,esc});if(q.questionType==='numerical'||q.inputSchema?.hasOptions===false){const input=document.getElementById('numeric');if(input){input.value=state.numeric;input.oninput=e=>state.numeric=e.target.value}}else{document.querySelectorAll('.answerOpt').forEach(b=>b.onclick=()=>{document.querySelectorAll('.answerOpt').forEach(x=>x.classList.remove('border-cyan-400','bg-[#1f2030]'));b.classList.add('border-cyan-400','bg-[#1f2030]');state.selected=Number(b.dataset.opt)})}}}}}
 render();
 loadMission();
 .
