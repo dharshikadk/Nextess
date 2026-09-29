@@ -75,7 +75,8 @@ test('guest progress can be converted into an authenticated account', async ({ p
     const continueButton = page.getByRole('button', { name: /Continue to Level 1/i });
     await expect(continueButton).toBeVisible();
     await continueButton.click();
-    await expect(page.getByRole('button', { name: /Submit/i })).toBeVisible();
+    await expect(page.getByTestId('mission-task')).toHaveAttribute('aria-busy', 'false', { timeout: 15000 });
+    await expect(page.getByTestId('mission-submit')).toBeVisible({ timeout: 15000 });
   }
 
   const signIn = page.getByRole('button', { name: 'Sign In' }).last();
