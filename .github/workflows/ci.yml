@@ -59,12 +59,38 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Verify seeded runtime data
-        run: node --input-type=module -e 'import {PrismaClient} from "@prisma/client"; const p=new PrismaClient(); const [subjects,projects,quotes]=await Promise.all([p.subject.count(),p.project.count({where:{status:"PUBLISHED"}}),p.dailyQuote.count()]); if(subjects<2||projects<1||quotes<1){console.error({subjects,projects,quotes});process.exit(1)} await p.$disconnect()'
+        env:
+          DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
+        run: |
+          node --input-type=module <<'NODE'
+          import { PrismaClient } from '@prisma/client';
+          const p = new PrismaClient();
+          try {
+            const [subjects, projects, quotes] = await Promise.all([
+              p.subject.count(),
+              p.project.count({ where: { status: 'PUBLISHED' } }),
+              p.dailyQuote.count(),
+            ]);
+            console.log({ subjects, projects, quotes });
+            if (subjects < 2 || projects < 1 || quotes < 1) {
+              throw new Error('Missing seeded runtime data');
+            }
+          } finally {
+            await p.$disconnect();
+          }
+          NODE
       - name: Start API smoke server
         run: |
           nohup npm run dev >/tmp/nextess-api.log 2>&1 &
           echo $! >/tmp/nextess-api.pid
-          for i in $(seq 1 20); do curl -fsS http://localhost:4000/health && break || sleep 1; done
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:4000/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/nextess-api.log
+          exit 1
       - name: Verify API catalogue and quote contracts
         run: |
           curl -fsS http://localhost:4000/v1/subjects | grep -q '"displayName":"Physics"'
@@ -74,19 +100,25 @@ jobs:
       - name: Run database-backed mission runtime smoke test
         run: node scripts/runtime-smoke.mjs
       - name: Start frontend for browser E2E
-        working-directory: frontend-v2
+        working-directory: ../frontend-v2
         env:
           VITE_API_BASE_URL: http://localhost:4000
         run: |
           npm install
           nohup npm run dev -- --host 127.0.0.1 >/tmp/nextess-frontend.log 2>&1 &
-          echo $! >/tmp/nextess-frontend.pid
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000 >/dev/null && break || sleep 1; done
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/nextess-frontend.log
+          exit 1
       - name: Install Chromium for browser E2E
-        working-directory: frontend-v2
+        working-directory: ../frontend-v2
         run: npx playwright install --with-deps chromium
       - name: Run browser E2E
-        working-directory: frontend-v2
+        working-directory: ../frontend-v2
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
         run: npm run e2e
@@ -108,4 +140,4 @@ jobs:
       - run: npx prisma generate
       - run: npx prisma validate
       - name: Validate canonical mission package
-        run: npm run mission:validate -- content/nextess_missions(4).json
+        run: npm run mission:validate -- 'content/nextess_missions(4).json'
