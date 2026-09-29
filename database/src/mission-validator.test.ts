@@ -25,5 +25,5 @@ test("rejects duplicate and out-of-order structure", () => {
 
 test("default stages are derived from mission data", () => {
   const stages = buildDefaultStages(base([{number:1,title:"A",questions:[{number:1,type:"numerical",prompt:"x?",answer:1}] }]).projects[0]);
-  assert.deepEqual(stages.map(x=>x.type), ["brief","learning-capsule","level","completion"]);
+  assert.deepEqual(stages.map(x=>x.type), ["brief","level","completion"]);
 });
