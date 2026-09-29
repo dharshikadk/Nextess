@@ -88,13 +88,16 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     return () => { cancelled = true; };
   }, [missionId]);
 
-  useEffect(() => {
-    const stageItems = useMemo<MissionStage[]>(() => {
+  const stageItems = useMemo<MissionStage[]>(() => {
     const items: MissionStage[] = [
       { key: 'brief', label: 'Mission Brief', state: stage === 'brief' ? 'current' : 'completed' },
     ];
     if (capsules.length > 0) {
-      items.push({ key: 'capsule', label: 'Learning Capsule', state: stage === 'capsule' ? 'current' : stage === 'brief' ? 'available' : 'completed' });
+      items.push({
+        key: 'capsule',
+        label: 'Learning Capsule',
+        state: stage === 'capsule' ? 'current' : stage === 'brief' ? 'available' : 'completed',
+      });
     }
     levels.forEach((item: any, index: number) => {
       const completed = (item.questions || []).length > 0 && (item.questions || []).every((q: any) =>
@@ -108,7 +111,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         state: completed ? 'completed' : isCurrent ? 'current' : unlocked ? 'available' : 'locked',
       });
     });
-    items.push({ key: 'complete', label: 'Mission Complete', state: investigation?.status === 'COMPLETED' || stage === 'complete' ? 'available' : 'locked' });
+    items.push({
+      key: 'complete',
+      label: 'Mission Complete',
+      state: investigation?.status === 'COMPLETED' || stage === 'complete' ? 'available' : 'locked',
+    });
     return items;
   }, [stage, level, levels, capsules.length, investigation?.answers, investigation?.status]);
 
@@ -131,8 +138,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   };
 
   const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
+  const totalStages = Math.max(3, levels.length + 3);
+  const progress = Math.round(((stageNumber - 1) / (totalStages - 1)) * 100);
+
+  useEffect(() => {
     localStorage.setItem('nextess_mission_stage', String(stageNumber));
-  }, [stage, level, levels.length]);
+  }, [stageNumber]);
+
 
   const submit = async () => {
     if (!investigation?.id || !currentQuestion || busy) return;
