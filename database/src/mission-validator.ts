@@ -93,7 +93,7 @@ export function assertValidMissionPackage(pkg: any): asserts pkg is { contentPac
 }
 
 export function buildDefaultStages(mission: any) {
-  const stages = [
+  const stages: any[] = [
     { key: "brief", type: "brief", order: 1, title: "Mission Brief" },
     ...(mission.learningCapsule ? [{ key: "learning-capsule", type: "learning-capsule", order: 2, title: mission.learningCapsule.title || "Learning Capsule" }] : [])
   ];
