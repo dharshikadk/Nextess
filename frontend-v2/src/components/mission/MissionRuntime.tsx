@@ -281,7 +281,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
   if (stage === 'brief') return (
     <div className="w-full pb-16">
-      <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} />
+      <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
           <div className="rounded-2xl border border-amber-500/40 bg-[#0f1017] p-6">
@@ -313,7 +313,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     const section = capsules[capsule];
     return (
       <div className="w-full pb-16">
-        <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} />
+        <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
         <section className={`${shell} mt-5 p-6`}>
           <div className="max-w-[1000px] mx-auto">
             <div className="flex gap-2 mb-5 overflow-x-auto">
@@ -348,7 +348,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
   if (stage === 'complete') return (
     <div className="w-full pb-16">
-      <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} />
+      <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className="mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 bg-[#0f1017] p-8 text-center">
         <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center">
           <span className="material-symbols-outlined text-[42px]">celebration</span>
@@ -393,7 +393,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
   return (
     <div className="w-full pb-16">
-      <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} />
+      <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <div className="grid grid-cols-12 gap-5 mt-5 items-start">
         <div className="col-span-12 lg:col-span-3">{missionPanel}</div>
         <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
@@ -452,7 +452,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 };
 
-const Header = ({ mission, progress, label, onExit }: any) => (
+const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any) => (
   <div className="relative overflow-hidden rounded-2xl p-5 border border-violet-500/40 bg-[#12131b] shadow-2xl">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
@@ -467,6 +467,7 @@ const Header = ({ mission, progress, label, onExit }: any) => (
         <button onClick={onExit} className="px-3 py-2 rounded-xl border border-rose-500/30 bg-[#181926] text-xs text-slate-300">Exit</button>
       </div>
     </div>
+    {stages?.length > 0 && <MissionStageNavigator stages={stages} onSelect={onStageSelect} />}
   </div>
 );
 
