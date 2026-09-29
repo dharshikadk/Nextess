@@ -234,6 +234,9 @@ app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+ if(!validateUuid(String(req.body?.questionId)))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
+ if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before requesting a hint.',409);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}},include:{hints:{orderBy:{level:'asc'}}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
@@ -262,6 +265,9 @@ app.post('/v1/investigations/:id/reveal-answer',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+ if(!validateUuid(String(req.body?.questionId)))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
+ if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId)return fail(res,'TASK_NOT_AVAILABLE','Reveal is only available for the current task.',409);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  const def:any=q.evaluationDefinition||{},base='reveal:'+inv.id+':'+q.id,state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
@@ -301,11 +307,22 @@ app.post('/v1/investigations/:id/simulation-state',optionalAuth,async(req:R,res)
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+ if(!validateUuid(String(req.params.id)))return fail(res,'VALIDATION_ERROR','Invalid investigation ID.');
  const simulationId=String(req.body?.simulationId||'').trim();
  if(!simulationId||simulationId.length>120||!validateObject(req.body?.state))return fail(res,'VALIDATION_ERROR','simulationId and an object state are required.');
+ const currentLevel=inv.currentLevelId?await prisma.level.findUnique({where:{id:inv.currentLevelId},include:{simulation:true}}):null;
+ if(!currentLevel?.simulation||currentLevel.simulation.id!==simulationId)return fail(res,'TASK_NOT_AVAILABLE','The simulation is not attached to the current mission level.',409);
  const currentState:any=inv.state&&typeof inv.state==='object'?inv.state:{};
  const nextState={...currentState,simulations:{...(currentState.simulations||{}),[simulationId]:req.body.state}};
  await prisma.investigation.update({where:{id:inv.id},data:{state:nextState,lastActivityAt:new Date()}});
  res.json({saved:true,simulationId,state:req.body.state});
+});
+app.use((err:any,_req:express.Request,res:express.Response,next:express.NextFunction)=>{
+ if(res.headersSent)return next(err);
+ const isJsonSyntax=err instanceof SyntaxError && Object.prototype.hasOwnProperty.call(err,'body');
+ if(isJsonSyntax)return fail(res,'VALIDATION_ERROR','Malformed JSON request body.',400);
+ console.error(err);
+ return fail(res,'INTERNAL_ERROR','An unexpected server error occurred.',500);
 });
 app.listen(port,()=>console.log('Nextess API listening on '+port));
