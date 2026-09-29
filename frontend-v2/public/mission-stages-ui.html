@@ -6,7 +6,12 @@ const initialStage=Math.max(1,Number(params.get('stage')||1));
 const state={mission:null,investigation:null,stage:initialStage,level:Math.max(1,initialStage-2),q:1,capsule:0,selected:null,numeric:'',submitted:false,submitting:false,hint:0,hints:[],revealed:false,revealData:null,fileIndex:0,fileCollapsed:true,feedback:null,reward:null,penalty:null,levelRewardModal:null,error:null};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=async(path,init={})=>{const r=await fetch(API_BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers||{})}});const b=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(b?.error?.message||'Request failed');e.code=b?.error?.code;e.body=b;throw e}return b};
-const meta=()=>state.mission?.currentPublishedVersion?.contentMetadata||{};\nconst stages=()=>Array.isArray(meta().stages)&&meta().stages.length?meta().stages:[{type:"brief",order:1,title:"Mission Brief"},{type:"learning-capsule",order:2,title:"Learning Capsule"},...levels().map((l,i)=>({type:"level",order:i+3,levelNumber:l.levelNumber,title:l.title})),{type:"completion",order:levels().length+3,title:"Mission Complete"}];\nconst stageDefinition=()=>stages()[state.stage-1];\nconst stageForLevel=(levelNumber)=>stages().find(s=>s.type==="level"&&Number(s.levelNumber)===Number(levelNumber));\nconst firstLevelStage=()=>stageForLevel(levels()[0]?.levelNumber)?.order||3;\nconst challengeRendererRegistry=window.NextessChallengeRendererRegistry||{};
+const meta=()=>state.mission?.currentPublishedVersion?.contentMetadata||{};
+const stages=()=>Array.isArray(meta().stages)&&meta().stages.length?meta().stages:[{type:"brief",order:1,title:"Mission Brief"},{type:"learning-capsule",order:2,title:"Learning Capsule"},...levels().map((l,i)=>({type:"level",order:i+3,levelNumber:l.levelNumber,title:l.title})),{type:"completion",order:levels().length+3,title:"Mission Complete"}];
+const stageDefinition=()=>stages()[state.stage-1];
+const stageForLevel=(levelNumber)=>stages().find(s=>s.type==="level"&&Number(s.levelNumber)===Number(levelNumber));
+const firstLevelStage=()=>stageForLevel(levels()[0]?.levelNumber)?.order||3;
+const challengeRendererRegistry=window.NextessChallengeRendererRegistry||{};
 const levels=()=>state.investigation?.projectVersion?.levels||state.mission?.currentPublishedVersion?.levels||[];
 const currentLevel=()=>levels()[state.level-1];
 const question=()=>currentLevel()?.questions?.[state.q-1];
@@ -30,7 +35,7 @@ async function loadMission(){
   if(!missionId)throw new Error('No mission was selected.');
   const r=await api('/v1/projects/'+encodeURIComponent(missionId));
   state.mission=r.project;
-  if(state.stage>=3)await startOrResume();
+  if(state.stage>=firstLevelStage())await startOrResume();
   else render();
  }catch(e){state.error=e.code==='AUTH_REQUIRED'?'Sign in to start this mission and earn KP/coins.':e.message;renderError()}
 }
