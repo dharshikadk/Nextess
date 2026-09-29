@@ -10,6 +10,13 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await expect(open).toBeVisible({ timeout: 15000 });
   await open.click();
 
+  // "Start Solving Mission" opens the mission file. The runtime is entered
+  // from the mission-detail page through its explicit stage control.
+  await expect(page.getByRole('heading', { name: /The Bicycle That Would Not Stop/i })).toBeVisible({ timeout: 15000 });
+  const openStages = page.getByRole('button', { name: /Open Mission Stages/i });
+  await expect(openStages).toBeVisible({ timeout: 15000 });
+  await openStages.click();
+
   await expect(page.getByTestId('mission-runtime-loading')).toBeHidden({ timeout: 15000 });
   await expect(page.getByTestId('mission-runtime-error')).toBeHidden({ timeout: 15000 });
   const missionRuntime = page.getByTestId('mission-runtime');
