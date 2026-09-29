@@ -77,7 +77,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       try {
         if (!missionId) throw new Error('No mission was selected.');
         const result = await api.project(missionId);
-        if (!cancelled) setMission(result.project);
+        if (cancelled) return;
+        setMission(result.project);
+        const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
+        if (savedStage >= 3) await startMission();
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Mission could not be loaded.');
       } finally {
@@ -86,6 +89,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     })();
     return () => { cancelled = true; };
   }, [missionId]);
+
+  useEffect(() => {
+    const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
+    localStorage.setItem('nextess_mission_stage', String(stageNumber));
+  }, [stage, level, levels.length]);
 
   const submit = async () => {
     if (!investigation?.id || !currentQuestion || busy) return;
