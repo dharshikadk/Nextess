@@ -43,10 +43,6 @@ async function importMission(tx: any, mission: any, subjects: Map<string,string>
   if (!subjectId) throw new Error(`Unknown subject: ${mission.subject}`);
   const versionNumber = Number(mission.version ?? 1);
   const contentChecksum = checksum(mission);
-  const existing = await tx.projectVersion.findUnique({
-    where:{projectId_version:{projectId:(await tx.project.findUnique({where:{slug:mission.key},select:{id:true}}))?.id ?? "__missing__",version:versionNumber}}
-  }).catch(()=>null);
-
   const existingProject = await tx.project.findUnique({where:{slug:mission.key},select:{id:true}});
   const existingVersion = existingProject
     ? await tx.projectVersion.findUnique({where:{projectId_version:{projectId:existingProject.id,version:versionNumber}}})
@@ -85,7 +81,7 @@ async function importMission(tx: any, mission: any, subjects: Map<string,string>
     await tx.project.update({where:{id:project.id},data:{currentPublishedVersionId:version.id,status:"PUBLISHED"}});
   }
 
-  if (!existingVersion) {
+  if (existingVersion) {\n    await tx.simulationDefinition.deleteMany({where:{key:{startsWith:`${mission.key}.level-`}}});\n    await tx.caseFile.deleteMany({where:{projectVersionId:version.id}});\n    await tx.level.deleteMany({where:{projectVersionId:version.id}});\n  }\n\n  {
     for (const [index, resource] of (mission.requiredEvidence?.files ?? []).entries()) {
       await tx.caseFile.create({data:{
         projectVersionId:version.id,name:resource.fileName,mimeType:mimeType(resource.fileName),content:resource.content ?? null,
