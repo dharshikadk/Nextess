@@ -63,6 +63,15 @@ test('guest progress can be converted into an authenticated account', async ({ p
   const open = page.getByRole('button', { name: /Start Solving Mission/i }).first();
   if (await open.count()) await open.click();
 
+  const capsule = page.getByRole('button', { name: /Next · Learning Capsule/i });
+  if (await capsule.count()) {
+    await capsule.click();
+    const continueButton = page.getByRole('button', { name: /Continue to Level 1/i });
+    await expect(continueButton).toBeVisible();
+    await continueButton.click();
+    await expect(page.getByRole('button', { name: /Submit/i })).toBeVisible();
+  }
+
   const signIn = page.getByRole('button', { name: 'Sign In' }).last();
   await expect(signIn).toBeVisible();
   await signIn.click();
@@ -77,4 +86,5 @@ test('guest progress can be converted into an authenticated account', async ({ p
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: 15000 });
   await page.reload();
   await expect(page.getByText(/E2E Cadet|@e2e_cadet_/i).first()).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('The Bicycle That Would Not Stop')).toBeVisible({ timeout: 15000 });
 });
