@@ -73,6 +73,23 @@ jobs:
           curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"date"'
       - name: Run database-backed mission runtime smoke test
         run: node scripts/runtime-smoke.mjs
+      - name: Start frontend for browser E2E
+        working-directory: frontend-v2
+        env:
+          VITE_API_BASE_URL: http://localhost:4000
+        run: |
+          npm install
+          nohup npm run dev -- --host 127.0.0.1 >/tmp/nextess-frontend.log 2>&1 &
+          echo $! >/tmp/nextess-frontend.pid
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000 >/dev/null && break || sleep 1; done
+      - name: Install Chromium for browser E2E
+        working-directory: frontend-v2
+        run: npx playwright install --with-deps chromium
+      - name: Run browser E2E
+        working-directory: frontend-v2
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+        run: npm run e2e
 
   database:
     runs-on: ubuntu-latest
@@ -90,3 +107,5 @@ jobs:
       - run: npm install
       - run: npx prisma generate
       - run: npx prisma validate
+      - name: Validate canonical mission package
+        run: npm run mission:validate -- content/nextess_missions(4).json
