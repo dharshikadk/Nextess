@@ -23,7 +23,7 @@ All expected API errors use:
 }
 ```
 
-Known codes include `VALIDATION_ERROR`, `AUTH_REQUIRED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `MISSION_UNAVAILABLE`, `INVALID_VERSION`, `INVALID_TASK`, `INVALID_STATE`, `IDEMPOTENCY_KEY_REQUIRED`, and `INTERNAL_ERROR`.
+Known codes include `VALIDATION_ERROR`, `AUTH_REQUIRED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `MISSION_UNAVAILABLE`, `INVALID_VERSION`, `INVALID_TASK`, `INVALID_STATE`, `IDEMPOTENCY_KEY_REQUIRED`, `INVESTIGATION_CLOSED`, `TASK_NOT_AVAILABLE`, `INSUFFICIENT_FUNDS`, `NO_MORE_HINTS`, `INVALID_CREDENTIALS`, and `INTERNAL_ERROR`.
 
 ## Mission lifecycle
 
@@ -47,3 +47,26 @@ The frontend must:
 4. Use scoped idempotency keys for answer submissions.
 5. Render task behavior from the task registry instead of mission-specific pages.
 6. Treat unsupported task types as explicit extension gaps, not silent fallbacks.
+
+
+## Client error handling
+
+The frontend preserves the server error envelope as an ApiError containing:
+- code for programmatic handling;
+- message for learner-facing text;
+- status for HTTP semantics;
+- requestId for support/debug correlation;
+- details for structured validation information.
+
+Mutations must not be retried blindly. Answer submission retries reuse the same Idempotency-Key; other mutations follow their endpoint-specific semantics.
+
+## Mission extension contract
+
+A new challenge type must add:
+1. content/schema validation;
+2. deterministic evaluator registration when applicable;
+3. frontend task renderer registration;
+4. automated contract tests;
+5. an example mission.
+
+A new mission must not require a new route, page, database table or evaluator architecture.

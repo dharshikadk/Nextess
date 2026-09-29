@@ -1,14 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { TaskRenderer, MissionTask } from './TaskRendererRegistry';
+import { MissionStageNavigator, MissionStage } from './MissionStageNavigator';
+import { resolveSimulationSource } from '../../data/simulationRegistry';
 
 type Props = { theme: 'dark' | 'light'; onExit: () => void; onShowToast: (message: string) => void };
-
-const simulationPath = (fileName?: string) => {
-  const file = String(fileName || '').trim().replace(/^\/+/, '');
-  if (!file || !/^[A-Za-z0-9._/-]+$/.test(file)) return null;
-  return file.startsWith('simulations/') ? '/' + file : '/simulations/' + file;
-};
 
 export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) => {
   const dark = theme === 'dark';
@@ -28,6 +24,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [simulationSaving, setSimulationSaving] = useState(false);
+  const simulationFrameRef = React.useRef<HTMLIFrameElement>(null);
 
   const capsules = mission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections || [];
   const levels = investigation?.projectVersion?.levels || mission?.currentPublishedVersion?.levels || [];
@@ -38,7 +36,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const file = files[fileIndex] || files[0];
   const simulation = currentLevel?.simulation;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
-  const simulationSrc = simulationPath(simulationFile);
+  const simulationSrc = resolveSimulationSource(simulationFile, mission?.slug || mission?.key);
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
@@ -79,8 +77,24 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         const result = await api.project(missionId);
         if (cancelled) return;
         setMission(result.project);
+
         const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
-        if (savedStage >= 3) await startMission();
+        if (result.progress?.status === 'IN_PROGRESS' || savedStage >= 3) {
+          const started = await api.startMission(missionId);
+          if (cancelled) return;
+          const investigationResult = await api.investigation(started.investigationId);
+          if (cancelled) return;
+          const inv = investigationResult.investigation;
+          setInvestigation(inv);
+          const invLevels = inv?.projectVersion?.levels || result.project?.currentPublishedVersion?.levels || [];
+          const nextLevel = Math.max(0, invLevels.findIndex((item: any) => item.id === inv.currentLevelId));
+          setLevel(nextLevel);
+          const firstOpen = (invLevels[nextLevel]?.questions || []).findIndex((item: any) =>
+            !(inv.answers || []).some((a: any) => a.questionId === item.id && a.result === 'CORRECT')
+          );
+          setQuestion(firstOpen >= 0 ? firstOpen : 0);
+          setStage(inv.status === 'COMPLETED' ? 'complete' : 'level');
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Mission could not be loaded.');
       } finally {
@@ -90,10 +104,63 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     return () => { cancelled = true; };
   }, [missionId]);
 
+  const stageItems = useMemo<MissionStage[]>(() => {
+    const items: MissionStage[] = [
+      { key: 'brief', label: 'Mission Brief', state: stage === 'brief' ? 'current' : 'completed' },
+    ];
+    if (capsules.length > 0) {
+      items.push({
+        key: 'capsule',
+        label: 'Learning Capsule',
+        state: stage === 'capsule' ? 'current' : stage === 'brief' ? 'available' : 'completed',
+      });
+    }
+    levels.forEach((item: any, index: number) => {
+      const completed = (item.questions || []).length > 0 && (item.questions || []).every((q: any) =>
+        (investigation?.answers || []).some((a: any) => a.questionId === q.id && a.result === 'CORRECT')
+      );
+      const isCurrent = stage === 'level' && index === level;
+      const unlocked = index <= level || completed;
+      items.push({
+        key: `level-${item.levelNumber ?? index + 1}`,
+        label: `Level ${item.levelNumber ?? index + 1}: ${item.title || 'Investigation'}`,
+        state: completed ? 'completed' : isCurrent ? 'current' : unlocked ? 'available' : 'locked',
+      });
+    });
+    items.push({
+      key: 'complete',
+      label: 'Mission Complete',
+      state: investigation?.status === 'COMPLETED' || stage === 'complete' ? 'available' : 'locked',
+    });
+    return items;
+  }, [stage, level, levels, capsules.length, investigation?.answers, investigation?.status]);
+
+  const selectStage = (selected: MissionStage) => {
+    if (selected.key === 'brief') setStage('brief');
+    else if (selected.key === 'capsule' && capsules.length) setStage('capsule');
+    else if (selected.key === 'complete' && investigation?.status === 'COMPLETED') setStage('complete');
+    else if (selected.key.startsWith('level-')) {
+      const index = levels.findIndex((item: any) => `level-${item.levelNumber}` === selected.key);
+      if (index >= 0 && index <= level) {
+        setLevel(index);
+        setQuestion(0);
+        setAnswer('');
+        setFeedback(null);
+        setHints([]);
+        setRevealed(null);
+        setStage('level');
+      }
+    }
+  };
+
+  const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
+  const totalStages = Math.max(3, levels.length + 3);
+  const progress = Math.round(((stageNumber - 1) / (totalStages - 1)) * 100);
+
   useEffect(() => {
-    const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
     localStorage.setItem('nextess_mission_stage', String(stageNumber));
-  }, [stage, level, levels.length]);
+  }, [stageNumber]);
+
 
   const submit = async () => {
     if (!investigation?.id || !currentQuestion || busy) return;
@@ -193,15 +260,42 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     }
   };
 
-  const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'complete' ? levels.length + 3 : level + 3;
-  const totalStages = Math.max(3, levels.length + 3);
-  const progress = Math.round(((stageNumber - 1) / (totalStages - 1)) * 100);
+  useEffect(() => {
+    if (!investigation?.id || !simulation?.id || !simulationSrc) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== simulationFrameRef.current?.contentWindow) return;
+      const payload = event.data;
+      if (payload?.type !== 'nextess-simulation-state' || !payload.state || typeof payload.state !== 'object') return;
+      if (timer) clearTimeout(timer);
+      setSimulationSaving(true);
+      timer = setTimeout(() => {
+        api.simulationState(investigation.id, simulation.id, payload.state)
+          .catch((e: any) => setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' }))
+          .finally(() => setSimulationSaving(false));
+      }, 250);
+    };
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      if (timer) clearTimeout(timer);
+    };
+  }, [investigation?.id, simulation?.id, simulationSrc]);
+
+  const restoreSimulation = () => {
+    const state = investigation?.state?.simulations?.[simulation?.id];
+    if (!state || !simulationFrameRef.current?.contentWindow) return;
+    simulationFrameRef.current.contentWindow.postMessage(
+      { type: 'nextess-simulation-restore', state },
+      window.location.origin
+    );
+  };
 
   const shell = `rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
 
-  if (loading) return <div className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
+  if (loading) return <div data-testid="mission-runtime-loading" className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
   if (error || !mission) return (
-    <section className={`${shell} p-8`}>
+    <section data-testid="mission-runtime-error" className={`${shell} p-8`}>
       <div className="font-mono text-[10px] uppercase text-rose-400">Mission runtime</div>
       <h2 className="text-xl font-bold mt-2">Mission could not be opened</h2>
       <p className="text-sm text-slate-400 mt-2">{error || 'Mission not found.'}</p>
@@ -210,8 +304,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 
   if (stage === 'brief') return (
-    <div className="w-full pb-16">
-      <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} />
+    <div data-testid="mission-runtime" className="w-full pb-16">
+      <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
           <div className="rounded-2xl border border-amber-500/40 bg-[#0f1017] p-6">
@@ -232,7 +326,14 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             </div>
           </div>
           <div className="flex justify-end mt-5">
-            <button onClick={() => setStage('capsule')} className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold">Next · Learning Capsule</button>
+            <button
+              onClick={() => capsules.length > 0 ? setStage('capsule') : startMission()}
+              disabled={busy}
+              data-testid="mission-brief-start"
+              className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold disabled:opacity-50"
+            >
+              {capsules.length > 0 ? 'Next · Learning Capsule' : 'Start Investigation'}
+            </button>
           </div>
         </div>
       </section>
@@ -243,7 +344,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     const section = capsules[capsule];
     return (
       <div className="w-full pb-16">
-        <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} />
+        <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
         <section className={`${shell} mt-5 p-6`}>
           <div className="max-w-[1000px] mx-auto">
             <div className="flex gap-2 mb-5 overflow-x-auto">
@@ -278,7 +379,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
   if (stage === 'complete') return (
     <div className="w-full pb-16">
-      <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} />
+      <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className="mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 bg-[#0f1017] p-8 text-center">
         <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center">
           <span className="material-symbols-outlined text-[42px]">celebration</span>
@@ -323,7 +424,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
   return (
     <div className="w-full pb-16">
-      <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} />
+      <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <div className="grid grid-cols-12 gap-5 mt-5 items-start">
         <div className="col-span-12 lg:col-span-3">{missionPanel}</div>
         <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
@@ -337,8 +438,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
           </div>
-          <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt}</h2>
-          <div className="mt-4">{currentQuestion && <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy} />}</div>
+          <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
+            <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
+            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
+          </div>
           {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
           {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
@@ -347,18 +450,18 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
               <button onClick={useHint} disabled={busy} className="px-3 py-2 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs">Hint</button>
               <button onClick={revealAnswer} disabled={busy} className="px-3 py-2 rounded-xl border border-amber-500/30 bg-[#181926] text-slate-300 text-xs">Reveal answer</button>
             </div>
-            <button onClick={submit} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>
+            <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>
           </div>
         </section>
         <aside className="col-span-12 lg:col-span-3">
           <div className={`rounded-2xl border p-4 ${dark ? 'bg-[#12131b] border-indigo-500/40' : 'bg-white border-indigo-200'}`}>
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] text-indigo-300 uppercase">Simulation Sandbox</span>
-              <span className="font-mono text-[9px] text-indigo-300">{simulation ? 'LIVE' : 'NOT CONFIGURED'}</span>
+              <span className="font-mono text-[9px] text-indigo-300">{simulation ? (simulationSaving ? 'SAVING…' : 'LIVE') : 'NOT CONFIGURED'}</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-2">{mission.requiredSimulation?.description || simulation?.purpose || 'Use the simulation to investigate the mission variables.'}</p>
             <div className="mt-3">
-              {simulationSrc ? <iframe title="Nextess mission simulation" src={simulationSrc} className="w-full h-[450px] border-0 rounded-xl" allow="fullscreen" loading="eager" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
+              {simulationSrc ? <iframe ref={simulationFrameRef} title="Nextess mission simulation" src={simulationSrc} onLoad={restoreSimulation} className="w-full h-[450px] border-0 rounded-xl" allow="fullscreen" loading="eager" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
             </div>
             {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className="px-2 py-1 rounded-lg bg-[#181926] border border-indigo-500/20 text-[9px] text-slate-300">{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
             {simulation?.consequences?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Consequences</div>{simulation.consequences.map((item: any) => <div key={item.id || item.ordering} className="text-[9px] text-slate-400 mt-1">• {item.label}</div>)}</div>}
@@ -382,7 +485,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 };
 
-const Header = ({ mission, progress, label, onExit }: any) => (
+const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any) => (
   <div className="relative overflow-hidden rounded-2xl p-5 border border-violet-500/40 bg-[#12131b] shadow-2xl">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
@@ -397,6 +500,7 @@ const Header = ({ mission, progress, label, onExit }: any) => (
         <button onClick={onExit} className="px-3 py-2 rounded-xl border border-rose-500/30 bg-[#181926] text-xs text-slate-300">Exit</button>
       </div>
     </div>
+    {stages?.length > 0 && <MissionStageNavigator stages={stages} onSelect={onStageSelect} />}
   </div>
 );
 

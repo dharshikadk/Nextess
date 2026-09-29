@@ -98,6 +98,7 @@
   function resize(){const r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);draw()}
   new ResizeObserver(resize).observe(canvas);
   function values(){const a=+angleR.value,pm=+pmaxR.value,p=pm*Math.cos(a*Math.PI/180);return {a,pm,p}}
+  function emit(v){window.parent.postMessage({type:'nextess-simulation-state',state:{angle:v.a,pmax:v.pm}},window.location.origin)}
   function update(){
     const v=values(),ratio=v.p/v.pm;
     angleO.textContent=v.a+'°';angleOut.textContent=v.a+'°';pmaxO.textContent=v.pm+' W';powerO.textContent=v.p.toFixed(1)+' W';
@@ -107,8 +108,9 @@
     status.textContent=good?'HIGH OUTPUT':'LOW OUTPUT';status.style.color=good?'#5af0b4':'#f97386';
     status.style.borderColor=good?'rgba(90,240,180,.25)':'rgba(249,115,134,.3)';
     fill.style.background=good?'#8b5cf6':'#f97386';fill.style.boxShadow=good?'0 0 10px rgba(139,92,246,.35)':'0 0 10px rgba(249,115,134,.3)';
-    draw()
+    draw();emit(v)
   }
+  window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==window.parent||event.data?.type!=='nextess-simulation-restore')return;const s=event.data.state||{};if(Number.isFinite(Number(s.angle)))angleR.value=String(Math.max(0,Math.min(90,Number(s.angle))));if(Number.isFinite(Number(s.pmax)))pmaxR.value=String(Math.max(100,Math.min(200,Number(s.pmax))));update()});
   function draw(){
     const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0,0,w,h);
     ctx.strokeStyle='rgba(167,139,250,.07)';ctx.lineWidth=1;
