@@ -150,11 +150,10 @@ test('mission simulation asset loads and controller state restores after refresh
 
   const iframe = page.locator('iframe[title="Nextess mission simulation"]');
   await expect(iframe).toBeVisible({ timeout: 15000 });
-  const frame = page.frames().find((item) => item !== page.mainFrame() && item.url().includes('/mission-'));
-  expect(frame).toBeDefined();
-  await expect(frame!.getByText('Simulation Sandbox', { exact: true })).toBeVisible({ timeout: 10000 });
+  const frame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(frame.getByText('Simulation Sandbox', { exact: true })).toBeVisible({ timeout: 15000 });
 
-  const mass = frame!.getByLabel('Total mass');
+  const mass = frame.getByLabel('Total mass');
   await expect(mass).toBeVisible();
   const saveResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/investigations/') &&
@@ -168,9 +167,9 @@ test('mission simulation asset loads and controller state restores after refresh
 
   await page.reload();
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
-  const restoredFrame = page.frames().find((item) => item !== page.mainFrame() && item.url().includes('/mission-'));
-  expect(restoredFrame).toBeDefined();
-  const restoredMass = restoredFrame!.getByLabel('Total mass');
-  await expect(restoredMass).toBeVisible({ timeout: 10000 });
+  const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(restoredFrame.getByText('Simulation Sandbox', { exact: true })).toBeVisible({ timeout: 15000 });
+  const restoredMass = restoredFrame.getByLabel('Total mass');
+  await expect(restoredMass).toBeVisible({ timeout: 15000 });
   await expect.poll(async () => restoredMass.inputValue()).toBe('72');
 });
