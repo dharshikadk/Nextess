@@ -56,7 +56,7 @@ async function migrateGuestSessionToUser(req:express.Request,res:express.Respons
   return {xp:ax?safeXp:0,coins:ac?safeCoins:0};
 }app.get('/health',(_,r)=>r.json({ok:true,service:'nextess-api'}));app.get('/ready', async (_req, res) => {
   try {
-    await prisma.$queryRaw\`SELECT 1\`;
+    await prisma.$queryRaw`SELECT 1`;
     return res.json({ ok: true, ready: true });
   } catch {
     return res.status(503).json({ ok: false, ready: false });
