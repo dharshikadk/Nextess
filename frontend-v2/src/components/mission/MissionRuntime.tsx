@@ -31,12 +31,16 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const levels = investigation?.projectVersion?.levels || mission?.currentPublishedVersion?.levels || [];
   const currentLevel = levels[level];
   const questions = currentLevel?.questions || [];
-  const currentQuestion = questions[question] as MissionTask | undefined;
+  const currentQuestion = useMemo<MissionTask | undefined>(() => {
+    const task = questions[question] as MissionTask | undefined;
+    if (!task) return undefined;
+    return { ...task, subject: mission?.subject?.key || mission?.subject?.displayName };
+  }, [questions, question, mission?.subject?.key, mission?.subject?.displayName]);
   const files = investigation?.projectVersion?.caseFiles || mission?.currentPublishedVersion?.caseFiles || mission?.requiredEvidence?.files || [];
   const file = files[fileIndex] || files[0];
   const simulation = currentLevel?.simulation;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
-  const simulationSrc = resolveSimulationSource(simulationFile, mission?.slug || mission?.key);
+  const simulationSrc = resolveSimulationSource(simulationFile);
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
