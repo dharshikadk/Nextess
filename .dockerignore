@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+.git
+.github
+.env
+.env.*
+!.env.example
+npm-debug.log*
+Dockerfile*
+docker-compose*.yml
