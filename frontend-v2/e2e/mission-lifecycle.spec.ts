@@ -29,8 +29,19 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
 
   if (briefLabel?.includes('Learning Capsule')) {
     const continueButton = page.getByRole('button', { name: /Continue to Level 1/i });
-    await expect(continueButton).toBeVisible({ timeout: 15000 });
-    await continueButton.click();
+    const nextConceptButton = page.getByRole('button', { name: /Next Concept/i });
+
+    for (let section = 0; section < 20; section += 1) {
+      if (await continueButton.isVisible().catch(() => false)) {
+        await continueButton.click();
+        break;
+      }
+
+      await expect(nextConceptButton).toBeVisible({ timeout: 15000 });
+      await nextConceptButton.click();
+    }
+
+    await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
   }
 
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
