@@ -145,8 +145,14 @@ test('mission simulation asset loads and controller state restores after refresh
 
   const mass = frame!.getByLabel('Total mass');
   await expect(mass).toBeVisible();
+  const saveResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/simulation-state') &&
+    response.request().method() === 'POST' &&
+    response.status() === 200,
+  );
   await mass.fill('72');
-
+  await saveResponse;
   await expect.poll(async () => mass.inputValue()).toBe('72');
 
   await page.reload();
