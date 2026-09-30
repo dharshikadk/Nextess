@@ -162,6 +162,7 @@ jobs:
         working-directory: frontend-v2
         env:
           E2E_BASE_URL: http://localhost:3000
+          E2E_API_BASE_URL: http://localhost:4000
         run: npm run e2e
 
   database:
