@@ -70,3 +70,17 @@ A new challenge type must add:
 5. an example mission.
 
 A new mission must not require a new route, page, database table or evaluator architecture.
+
+
+## Simulation embedding contract
+
+Published mission levels may reference a simulation asset through simulation.configuration.fileName. The frontend resolves that content-provided filename to a static asset under the frontend public directory; no mission-specific frontend route or component is required.
+
+Embedded simulations communicate only through the shared postMessage contract:
+
+- parent to simulation: { type: "nextess-simulation-restore", state }
+- simulation to parent: { type: "nextess-simulation-state", state }
+- messages must use the same-origin target and validate event.origin and event.source.
+- state contains only simulation-controlled variables needed to restore the learner's current configuration; transient animation state is not persisted.
+
+A newly authored simulation therefore requires only the content JSON reference and the corresponding static simulation asset. The MissionRuntime persists and restores state generically.

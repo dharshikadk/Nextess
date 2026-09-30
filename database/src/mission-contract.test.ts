@@ -10,6 +10,7 @@ const pkg=JSON.parse(fs.readFileSync(packagePath,"utf8"));
 test("canonical mission package satisfies the published mission contract",()=>{
   assert.doesNotThrow(()=>assertValidMissionPackage(pkg));
   assert.ok(pkg.projects.length>=4);
+  assert.ok(pkg.projects.length<=100, "Canonical package unexpectedly exceeds the intended 100-mission verification fixture.");
   for(const mission of pkg.projects){
     const stages=buildDefaultStages(mission);
     assert.equal(stages[0].type,"brief");

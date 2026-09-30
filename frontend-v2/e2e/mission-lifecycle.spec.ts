@@ -29,8 +29,19 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
 
   if (briefLabel?.includes('Learning Capsule')) {
     const continueButton = page.getByRole('button', { name: /Continue to Level 1/i });
-    await expect(continueButton).toBeVisible({ timeout: 15000 });
-    await continueButton.click();
+    const nextConceptButton = page.getByRole('button', { name: /Next Concept/i });
+
+    for (let section = 0; section < 20; section += 1) {
+      if (await continueButton.isVisible().catch(() => false)) {
+        await continueButton.click();
+        break;
+      }
+
+      await expect(nextConceptButton).toBeVisible({ timeout: 15000 });
+      await nextConceptButton.click();
+    }
+
+    await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
   }
 
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
@@ -88,7 +99,7 @@ test('guest progress can be converted into an authenticated account', async ({ p
 
 
 test('API exposes health, readiness, correlation and security headers', async ({ page }) => {
-  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://localhost:4000';
   const response = await page.request.get(apiBase + '/health', {
     headers: { 'X-Request-Id': 'e2e-health-check' },
   });
@@ -126,8 +137,39 @@ test('logout invalidates the server-side cookie session', async ({ page }) => {
   await authDialog.getByRole('button', { name: 'Create account', exact: true }).click();
 
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: 15000 });
-  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://localhost:4000';
   expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(200);
   expect((await page.request.post(apiBase + '/v1/auth/logout')).status()).toBe(200);
   expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(401);
+});
+
+
+test('mission simulation asset loads and controller state restores after refresh', async ({ page }) => {
+  await page.goto('/');
+  await reachFirstMissionTask(page);
+
+  const iframe = page.locator('iframe[title="Nextess mission simulation"]');
+  await expect(iframe).toBeVisible({ timeout: 15000 });
+  const frame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(frame.locator('[aria-label="Bicycle braking simulation"]')).toBeVisible({ timeout: 15000 });
+
+  const mass = frame.getByLabel('Total mass');
+  await expect(mass).toBeVisible();
+  const saveResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/simulation-state') &&
+    response.request().method() === 'POST' &&
+    response.status() === 200,
+  );
+  await mass.fill('72');
+  await saveResponse;
+  await expect.poll(async () => mass.inputValue()).toBe('72');
+
+  await page.reload();
+  await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
+  const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(restoredFrame.locator('[aria-label="Bicycle braking simulation"]')).toBeVisible({ timeout: 15000 });
+  const restoredMass = restoredFrame.getByLabel('Total mass');
+  await expect(restoredMass).toBeVisible({ timeout: 15000 });
+  await expect.poll(async () => restoredMass.inputValue()).toBe('72');
 });

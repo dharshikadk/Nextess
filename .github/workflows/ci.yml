@@ -41,11 +41,18 @@ jobs:
     env:
       DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
       FRONTEND_ORIGIN: http://localhost:3000
+      RATE_LIMIT_AUTH: 100
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - name: Reduce CI PostgreSQL checkpoint stalls
+        run: |
+          PG_CONTAINER=$(docker ps --filter ancestor=postgres:16 --format '{{.ID}}' | head -n 1)
+          test -n "$PG_CONTAINER"
+          docker exec "$PG_CONTAINER" psql -U nextess -d nextess_ci -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET checkpoint_timeout='1h';"
+          docker exec "$PG_CONTAINER" psql -U nextess -d nextess_ci -v ON_ERROR_STOP=1 -c "SELECT pg_reload_conf();"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -158,10 +165,14 @@ jobs:
       - name: Install Chromium for browser E2E
         working-directory: frontend-v2
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: Verify API is still ready before browser E2E
+        run: curl -fsS http://localhost:4000/ready
+
       - name: Run browser E2E
         working-directory: frontend-v2
         env:
           E2E_BASE_URL: http://localhost:3000
+          E2E_API_BASE_URL: http://localhost:4000
         run: npm run e2e
 
   database:
