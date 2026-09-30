@@ -30,7 +30,7 @@ export default function App() {
   });
 
   // Active Screen
-  const [activePage, setActivePage] = useState<ActivePage>('dashboard');
+  const [activePage, setActivePage] = useState<ActivePage>(() => localStorage.getItem('nextess_selected_mission') ? 'mission-detail' : 'dashboard');
 
   // Modals & Notifications
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -110,7 +110,7 @@ export default function App() {
   const handleAuthSuccess = () => { setShowStartAnimation(true); refresh(); setToastMessage('Account synchronized with Nextess.'); };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
-  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
+  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 
   const isDark = theme === 'dark';
 
