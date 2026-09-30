@@ -131,3 +131,32 @@ test('logout invalidates the server-side cookie session', async ({ page }) => {
   expect((await page.request.post(apiBase + '/v1/auth/logout')).status()).toBe(200);
   expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(401);
 });
+
+
+test('mission simulation asset loads and controller state restores after refresh', async ({ page }) => {
+  await page.goto('/');
+  await reachFirstMissionTask(page);
+
+  const iframe = page.locator('iframe[title="Nextess mission simulation"]');
+  await expect(iframe).toBeVisible({ timeout: 15000 });
+  const frame = page.frames().find((item) => item !== page.mainFrame() && item.url().includes('/mission-'));
+  expect(frame).toBeDefined();
+  await expect(frame!.getByText('Simulation Sandbox', { exact: true })).toBeVisible({ timeout: 10000 });
+
+  const mass = frame!.getByLabel('Total mass');
+  await expect(mass).toBeVisible();
+  await mass.fill('72');
+
+  await expect.poll(async () => {
+    const value = await mass.inputValue();
+    return value;
+  }).toBe('72');
+
+  await page.reload();
+  await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
+  const restoredFrame = page.frames().find((item) => item !== page.mainFrame() && item.url().includes('/mission-'));
+  expect(restoredFrame).toBeDefined();
+  const restoredMass = restoredFrame!.getByLabel('Total mass');
+  await expect(restoredMass).toBeVisible({ timeout: 10000 });
+  await expect.poll(async () => restoredMass.inputValue()).toBe('72');
+});
