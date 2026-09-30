@@ -82,8 +82,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         if (cancelled) return;
         setMission(result.project);
 
-        const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
-        if (result.progress?.status === 'IN_PROGRESS' || savedStage >= 3) {
+        if (result.progress?.status === 'IN_PROGRESS') {
           const started = await api.startMission(missionId);
           if (cancelled) return;
           const investigationResult = await api.investigation(started.investigationId);
@@ -91,12 +90,15 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           const inv = investigationResult.investigation;
           setInvestigation(inv);
           const invLevels = inv?.projectVersion?.levels || result.project?.currentPublishedVersion?.levels || [];
-          const nextLevel = Math.max(0, invLevels.findIndex((item: any) => item.id === inv.currentLevelId));
+          const nextLevelIndex = invLevels.findIndex((item: any) => item.id === inv.currentLevelId);
+          const nextLevel = nextLevelIndex >= 0 ? nextLevelIndex : 0;
           setLevel(nextLevel);
-          const firstOpen = (invLevels[nextLevel]?.questions || []).findIndex((item: any) =>
+          const currentQuestions = invLevels[nextLevel]?.questions || [];
+          const currentQuestionIndex = currentQuestions.findIndex((item: any) => item.id === inv.currentQuestionId);
+          const firstOpen = currentQuestions.findIndex((item: any) =>
             !(inv.answers || []).some((a: any) => a.questionId === item.id && a.result === 'CORRECT')
           );
-          setQuestion(firstOpen >= 0 ? firstOpen : 0);
+          setQuestion(currentQuestionIndex >= 0 ? currentQuestionIndex : (firstOpen >= 0 ? firstOpen : 0));
           setStage(inv.status === 'COMPLETED' ? 'complete' : 'level');
         }
       } catch (e: any) {
@@ -161,10 +163,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const totalStages = Math.max(3, levels.length + 3);
   const progress = Math.round(((stageNumber - 1) / (totalStages - 1)) * 100);
 
-  useEffect(() => {
-    localStorage.setItem('nextess_mission_stage', String(stageNumber));
-  }, [stageNumber]);
-
 
   const submit = async () => {
     if (!investigation?.id || !currentQuestion || busy) return;
@@ -178,7 +176,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         investigation.id,
         currentQuestion.id,
         { value: typeof answer === 'string' ? answer.trim() : answer },
-        crypto.randomUUID()
+        globalThis.crypto.randomUUID()
       );
       setFeedback({
         correct: result.result === 'CORRECT',
