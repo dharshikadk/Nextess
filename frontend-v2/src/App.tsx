@@ -249,7 +249,7 @@ export default function App() {
 
       {/* Floating guest exploration banner — contains no progress claims. */}
       {stats.isGuest && !sessionBannerDismissed && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-xl z-40 transition-all duration-300">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-xl z-40 transition-all duration-300 pointer-events-none">
           <div
             className={`rounded-2xl p-4 border shadow-2xl backdrop-blur-md relative ${
               isDark
@@ -292,7 +292,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setAuthModalOpen(true)}
-                className="shrink-0 px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-all shadow-[0_3px_0_#5b21b6] active:translate-y-0.5"
+                className="pointer-events-auto shrink-0 px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-all shadow-[0_3px_0_#5b21b6] active:translate-y-0.5"
               >
                 Sign In
               </button>
