@@ -147,10 +147,7 @@ test('mission simulation asset loads and controller state restores after refresh
   await expect(mass).toBeVisible();
   await mass.fill('72');
 
-  await expect.poll(async () => {
-    const value = await mass.inputValue();
-    return value;
-  }).toBe('72');
+  await expect.poll(async () => mass.inputValue()).toBe('72');
 
   await page.reload();
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: 15000 });
