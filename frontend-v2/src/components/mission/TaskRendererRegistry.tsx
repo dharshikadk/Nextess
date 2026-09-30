@@ -2,6 +2,7 @@ import React from 'react';
 
 export type MissionTask={
   id:string;
+  subject?:string;
   questionType:string;
   prompt:string;
   inputSchema?:any;
@@ -67,10 +68,26 @@ export function registerTaskRenderer(type:string,renderer:Renderer){
   if(!type.trim())throw new Error('Task renderer type is required.');
   taskRendererRegistry[type]=renderer;
 }
-export function getTaskRenderer(type:string):Renderer{
-  return taskRendererRegistry[type]??UnsupportedRenderer;
+
+type SubjectRendererRegistry = Record<string, Record<string, Renderer>>;
+export const subjectTaskRendererRegistry: SubjectRendererRegistry = {};
+
+export function registerSubjectTaskRenderer(subject: string, type: string, renderer: Renderer) {
+  const subjectKey = subject.trim().toLowerCase();
+  const typeKey = type.trim();
+  if (!subjectKey) throw new Error('Task renderer subject is required.');
+  if (!typeKey) throw new Error('Task renderer type is required.');
+  subjectTaskRendererRegistry[subjectKey] ??= {};
+  subjectTaskRendererRegistry[subjectKey][typeKey] = renderer;
+}
+
+export function getTaskRenderer(type: string, subject?: string): Renderer {
+  const subjectKey = String(subject || '').trim().toLowerCase();
+  return (subjectKey && subjectTaskRendererRegistry[subjectKey]?.[type])
+    ?? taskRendererRegistry[type]
+    ?? UnsupportedRenderer;
 }
 export function TaskRenderer(props:TaskRendererProps){
-  const Renderer=getTaskRenderer(props.task.questionType);
+  const Renderer=getTaskRenderer(props.task.questionType, props.task.subject);
   return <Renderer {...props} />;
 }
