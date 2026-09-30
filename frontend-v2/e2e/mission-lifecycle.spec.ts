@@ -126,7 +126,7 @@ test('logout invalidates the server-side cookie session', async ({ page }) => {
   await authDialog.getByRole('button', { name: 'Create account', exact: true }).click();
 
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: 15000 });
-  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://localhost:4000';
   expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(200);
   expect((await page.request.post(apiBase + '/v1/auth/logout')).status()).toBe(200);
   expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(401);
