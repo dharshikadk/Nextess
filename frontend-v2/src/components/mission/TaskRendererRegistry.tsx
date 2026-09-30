@@ -83,7 +83,10 @@ export function registerSubjectTaskRenderer(subject: string, type: string, rende
 
 export function getTaskRenderer(type: string, subject?: string): Renderer {
   const subjectKey = String(subject || '').trim().toLowerCase();
-  return (subjectKey && subjectTaskRendererRegistry[subjectKey]?.[type])
+  const subjectRenderer = subjectKey
+    ? subjectTaskRendererRegistry[subjectKey]?.[type]
+    : undefined;
+  return subjectRenderer
     ?? taskRendererRegistry[type]
     ?? UnsupportedRenderer;
 }
