@@ -85,3 +85,49 @@ test('guest progress can be converted into an authenticated account', async ({ p
   await expect(page.getByText(/E2E Cadet|@e2e_cadet_/i).first()).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('The Bicycle That Would Not Stop')).toBeVisible({ timeout: 15000 });
 });
+
+
+test('API exposes health, readiness, correlation and security headers', async ({ page }) => {
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const response = await page.request.get(apiBase + '/health', {
+    headers: { 'X-Request-Id': 'e2e-health-check' },
+  });
+  expect(response.ok()).toBeTruthy();
+  expect(response.headers()['x-request-id']).toBe('e2e-health-check');
+  expect(response.headers()['x-content-type-options']).toBe('nosniff');
+  expect(response.headers()['x-frame-options']).toBe('DENY');
+  await expect.poll(async () => (await page.request.get(apiBase + '/ready')).status()).toBe(200);
+});
+
+test('mobile-sized mission shell remains horizontally usable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByText('Nextess').first()).toBeVisible({ timeout: 15000 });
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+});
+
+test('logout invalidates the server-side cookie session', async ({ page }) => {
+  await page.goto('/');
+  const signIn = page.getByRole('button', { name: 'Sign In' }).last();
+  await expect(signIn).toBeVisible({ timeout: 15000 });
+  await signIn.click();
+
+  const authDialog = page.getByRole('dialog', { name: 'Cadet Access Station' });
+  await authDialog.getByRole('tab', { name: 'Sign Up', exact: true }).click();
+
+  const suffix = Date.now().toString().slice(-8);
+  await authDialog.getByLabel('Name', { exact: true }).fill('Logout E2E Cadet');
+  await authDialog.getByLabel('Username', { exact: true }).fill('logout_e2e_' + suffix);
+  await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
+  await authDialog.getByRole('button', { name: 'Create account', exact: true }).click();
+
+  await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: 15000 });
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(200);
+  expect((await page.request.post(apiBase + '/v1/auth/logout')).status()).toBe(200);
+  expect((await page.request.get(apiBase + '/v1/auth/me')).status()).toBe(401);
+});
