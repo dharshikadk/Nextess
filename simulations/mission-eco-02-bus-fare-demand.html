@@ -160,7 +160,7 @@
     competitor=!competitor;
     competitorBtn.classList.toggle('on',competitor);
     competitorBtn.textContent=competitor?'ON — DEMAND SHIFT':'OFF — ORIGINAL MARKET';
-    update()
+    update();emitState()
   });
   update();
 })();
