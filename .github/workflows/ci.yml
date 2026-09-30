@@ -41,6 +41,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
       FRONTEND_ORIGIN: http://localhost:3000
+      RATE_LIMIT_AUTH: 100
     defaults:
       run:
         working-directory: backend
@@ -166,7 +167,6 @@ jobs:
         env:
           E2E_BASE_URL: http://localhost:3000
           E2E_API_BASE_URL: http://localhost:4000
-          RATE_LIMIT_AUTH: 100
         run: npm run e2e
 
   database:
