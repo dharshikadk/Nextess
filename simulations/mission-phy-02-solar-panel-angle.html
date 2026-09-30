@@ -147,7 +147,7 @@
   }
   angleR.addEventListener('input',update);pmaxR.addEventListener('input',update);
   buttons.forEach(b=>b.addEventListener('click',()=>{
-    const m=+b.dataset.mode;pmaxR.value=m;buttons.forEach(x=>x.classList.toggle('active',x===b));update()
+    const m=+b.dataset.mode;pmaxR.value=m;buttons.forEach(x=>x.classList.toggle('active',x===b));update();emitState()
   }));
   update();
 })();
