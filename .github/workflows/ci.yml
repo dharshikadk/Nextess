@@ -164,7 +164,7 @@ jobs:
           exit 1
       - name: Install Chromium for browser E2E
         working-directory: frontend-v2
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps chromium
       - name: Verify API is still ready before browser E2E
         run: curl -fsS http://localhost:4000/ready
 
