@@ -18,6 +18,12 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
+      - name: Reduce CI PostgreSQL checkpoint stalls
+        run: |
+          PG_CONTAINER=$(docker ps --filter ancestor=postgres:16 --format '{{.ID}}' | head -n 1)
+          test -n "$PG_CONTAINER"
+          docker exec "$PG_CONTAINER" psql -U nextess -d nextess_ci -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET checkpoint_timeout='1h';"
+          docker exec "$PG_CONTAINER" psql -U nextess -d nextess_ci -v ON_ERROR_STOP=1 -c "SELECT pg_reload_conf();"
       - run: npm install
       - run: npm run lint
       - run: npm run build
@@ -38,7 +44,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-          -c checkpoint_timeout=1h
     env:
       DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
       FRONTEND_ORIGIN: http://localhost:3000
