@@ -19,6 +19,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [feedback, setFeedback] = useState<any>(null);
   const [hints, setHints] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<any>(null);
+  const [revealLock, setRevealLock] = useState(false);
   const [reward, setReward] = useState<any>(null);
   const [fileIndex, setFileIndex] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -41,6 +42,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const simulation = currentLevel?.simulation;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
   const simulationSrc = resolveSimulationSource(simulationFile);
+  const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
+  const hasSubmittedCurrent = currentAnswers.length > 0;
+  const hasCorrectCurrent = currentAnswers.some((item:any) => item.result === 'CORRECT');
+  const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
@@ -165,7 +170,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
 
   const submit = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
     if (answer === '' || answer == null) {
       setFeedback({ correct: false, message: 'Select an option or enter an answer before submitting.' });
       return;
@@ -181,30 +186,63 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       setFeedback({
         correct: result.result === 'CORRECT',
         message: result.result === 'CORRECT'
-          ? 'Correct.'
+          ? `Correct.${result.reward?.xp || result.reward?.coins ? ` +${result.reward.xp || 0} KP, +${result.reward.coins || 0} coins.` : ''}`
           : (result.penalty?.xp || result.penalty?.coins
             ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. Try again.`
             : 'Not correct. Try again.'),
       });
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
-      const refreshed = await refreshInvestigation();
-      if (result.levelCompleted) {
+      await refreshInvestigation();
+      setRevealLock(false);
+      setRevealed(null);
+      if (result.result === 'CORRECT' && result.levelCompleted) {
         setReward({ title: currentLevel?.title || `Level ${level + 1}`, result, final: Boolean(result.missionCompleted) });
-      } else if (result.result === 'CORRECT') {
-        const refreshedQuestions = refreshed?.projectVersion?.levels?.[level]?.questions || [];
-        const next = refreshedQuestions.findIndex((item: any) =>
-          !(refreshed?.answers || []).some((a: any) => a.questionId === item.id && a.result === 'CORRECT')
-        );
-        setQuestion(next >= 0 ? next : question + 1);
-        setAnswer('');
-        setHints([]);
-        setRevealed(null);
       }
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
     } finally {
       setBusy(false);
     }
+  };
+
+  const moveNext = async () => {
+    if (!currentQuestion || busy) return;
+    if (revealLock) {
+      if (question + 1 < questions.length) {
+        setQuestion(v => v + 1);
+        setAnswer('');
+        setFeedback({ correct: false, message: 'This challenge was revealed. Answer it before submitting the following challenges.' });
+        return;
+      }
+      setFeedback({ correct: false, message: 'Answer this revealed challenge before finishing the mission.' });
+      return;
+    }
+    const currentLevelComplete = hasCorrectCurrent && questions.length > 0 && questions.every((q:any) =>
+      (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
+    );
+    if (currentLevelComplete) {
+      if (isFinalChallenge) {
+        await finalize();
+        setStage('complete');
+        return;
+      }
+      const refreshed = await refreshInvestigation();
+      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
+      setReward(null);
+      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
+      setQuestion(0);
+    } else if (question + 1 < questions.length) {
+      setQuestion(v => v + 1);
+    } else if (level + 1 < levels.length) {
+      const refreshed = await refreshInvestigation();
+      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
+      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
+      setQuestion(0);
+    }
+    setAnswer('');
+    setFeedback(null);
+    setHints([]);
+    setRevealed(null);
   };
 
   const useHint = async () => {
@@ -227,6 +265,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
+      setRevealLock(true);
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
