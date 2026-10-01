@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ThemeMode } from '../types';
 import { api } from '../api';
 
-interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:()=>void; }
+interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:()=>void|Promise<void>; }
 
 export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSuccess }) => {
   const dark=theme==='dark';
@@ -37,7 +37,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
           fieldOfStudy:profileType==='STUDENT'&&educationStage==='COLLEGE'?fieldOfStudy.trim():null,
         });
       }
-      onSuccess();onClose();
+      await onSuccess();onClose();
     }catch(err:any){setError(err?.message||'Authentication failed.');}
     finally{setLoading(false);}
   };
