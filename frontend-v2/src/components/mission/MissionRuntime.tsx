@@ -334,12 +334,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
-          <div className="rounded-2xl border border-amber-500/40 bg-[#0f1017] p-6">
+          <div className={\`rounded-2xl border p-6 \${dark ? 'border-amber-500/40 bg-[#0f1017]' : 'border-amber-200 bg-amber-50/70'}\`}>
             <div className="font-mono text-[10px] text-amber-400 uppercase">Case File · Overview</div>
-            <h2 className="text-lg font-bold text-white mt-1">{mission.title}</h2>
-            <div className="mt-4 rounded-xl border border-amber-500/20 bg-[#12131b] p-4">
+            <h2 className={\`text-lg font-bold mt-1 \${dark ? 'text-white' : 'text-slate-900'}\`}>{mission.title}</h2>
+            <div className={\`mt-4 rounded-xl border p-4 \${dark ? 'border-amber-500/20 bg-[#12131b]' : 'border-amber-200 bg-white'}\`}>
               <div className="font-mono text-[10px] text-amber-400 uppercase font-bold">Primary Objective</div>
-              <p className="text-base leading-7 text-slate-200 mt-2">{mission.mission}</p>
+              <p className={\`text-base leading-7 mt-2 \${dark ? 'text-slate-200' : 'text-slate-700'}\`}>{mission.mission}</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
               <Meta label="Role" value={mission.role || '—'} />
@@ -348,7 +348,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             </div>
             <div className="mt-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
               <div className="font-mono text-[9px] text-emerald-400 uppercase">Evidence requirement</div>
-              <p className="text-xs text-slate-300 mt-1">{mission.requiredEvidence?.instruction || 'Use the provided mission evidence.'}</p>
+              <p className={\`text-xs mt-1 \${dark ? 'text-slate-300' : 'text-slate-600'}\`}>{mission.requiredEvidence?.instruction || 'Use the provided mission evidence.'}</p>
             </div>
           </div>
           <div className="flex justify-end mt-5">
@@ -375,22 +375,22 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           <div className="max-w-[1000px] mx-auto">
             <div className="flex gap-2 mb-5 overflow-x-auto">
               {capsules.map((item: any, index: number) => (
-                <button key={item.title} onClick={() => setCapsule(index)} className={`px-3 py-2 rounded-xl text-xs font-mono min-w-[140px] ${index === capsule ? 'bg-violet-600 text-white font-bold' : 'bg-[#181926] text-slate-400'}`}>
+                <button key={item.title} onClick={() => setCapsule(index)} className={`px-3 py-2 rounded-xl text-xs font-mono min-w-[140px] ${index === capsule ? 'bg-violet-600 text-white font-bold' : dark ? 'bg-[#181926] text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
                   {index + 1}. {item.title}
                 </button>
               ))}
             </div>
-            <article className="max-w-[700px] min-h-[360px] mx-auto rounded-[24px] border-2 border-violet-500/40 bg-[#12131b] p-8 flex flex-col justify-between">
+            <article className={`max-w-[700px] min-h-[360px] mx-auto rounded-[24px] border-2 border-violet-500/40 p-8 flex flex-col justify-between ${dark ? 'bg-[#12131b]' : 'bg-white'}`}>
               <div>
                 <span className="font-mono text-[10px] text-violet-400">CONCEPT {capsule + 1} / {capsules.length}</span>
-                <h2 className="text-2xl font-bold text-white mt-3">{section?.title}</h2>
+                <h2 className={`text-2xl font-bold mt-3 ${dark ? 'text-white' : 'text-slate-900'}`}>{section?.title}</h2>
                 <div className="w-12 h-1 rounded-full bg-violet-500 mt-3" />
-                <p className="text-base leading-7 text-slate-200 mt-5">{section?.content}</p>
+                <p className={`text-base leading-7 mt-5 ${dark ? 'text-slate-200' : 'text-slate-700'}`}>{section?.content}</p>
               </div>
               <div className="flex flex-wrap justify-between gap-2 mt-8">
-                <button disabled={capsule === 0} onClick={() => setCapsule((v) => Math.max(0, v - 1))} className="px-4 py-2.5 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs disabled:opacity-40">Previous</button>
+                <button disabled={capsule === 0} onClick={() => setCapsule((v) => Math.max(0, v - 1))} className={`px-4 py-2.5 rounded-xl border border-violet-500/30 text-xs disabled:opacity-40 ${dark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700'}`}>Previous</button>
                 <div className="flex gap-2">
-                  <button onClick={startMission} disabled={busy} className="px-4 py-2.5 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs">Skip to levels</button>
+                  <button onClick={startMission} disabled={busy} className={`px-4 py-2.5 rounded-xl border border-violet-500/30 text-xs ${dark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700'}`}>Skip to levels</button>
                   <button onClick={() => capsule + 1 < capsules.length ? setCapsule((v) => v + 1) : startMission()} disabled={busy} className="px-5 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold">
                     {capsule + 1 < capsules.length ? 'Next Concept' : 'Continue to Level 1'}
                   </button>
@@ -406,13 +406,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   if (stage === 'complete') return (
     <div className="w-full pb-16">
       <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
-      <section className="mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 bg-[#0f1017] p-8 text-center">
+      <section className={`mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 p-8 text-center ${dark ? 'bg-[#0f1017]' : 'bg-white'}`}>
         <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center">
           <span className="material-symbols-outlined text-[42px]">celebration</span>
         </div>
         <div className="font-mono text-[10px] text-emerald-400 uppercase tracking-[.2em] mt-5">Investigation completed</div>
-        <h2 className="text-3xl font-bold text-white mt-2">{mission.title}</h2>
-        <p className="text-slate-300 text-sm leading-6 mt-3">All mission levels were completed and server-authoritative rewards were applied.</p>
+        <h2 className={`text-3xl font-bold mt-2 ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
+        <p className={`text-sm leading-6 mt-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>All mission levels were completed and server-authoritative rewards were applied.</p>
         <button onClick={finalize} className="mt-5 px-5 py-3 rounded-xl bg-violet-600 text-white text-xs font-bold">Finalize completion</button>
       </section>
     </div>
