@@ -26,7 +26,7 @@ export const api={
   me:()=>request<any>('/v1/auth/me'), login:(username:string,password:string)=>request<any>('/v1/auth/login',{method:'POST',body:JSON.stringify({username,password})}),
   register:(data:any)=>request<any>('/v1/auth/register',{method:'POST',body:JSON.stringify(data)}), logout:()=>request<any>('/v1/auth/logout',{method:'POST'}),
   dashboard:()=>request<any>('/v1/dashboard'), profile:()=>request<any>('/v1/profile'), updateProfile:(data:any)=>request<any>('/v1/profile',{method:'PATCH',body:JSON.stringify(data)}),
-  settings:()=>request<any>('/v1/settings'), updateSettings:(data:any)=>request<any>('/v1/settings',{method:'PATCH',body:JSON.stringify(data)}), streak:()=>request<any>('/v1/streak'),
+  settings:()=>request<any>('/v1/settings'), freezeStreak:(days:number)=>request<any>('/v1/streak/freeze',{method:'POST',body:JSON.stringify({days})}), updateSettings:(data:any)=>request<any>('/v1/settings',{method:'PATCH',body:JSON.stringify(data)}), streak:()=>request<any>('/v1/streak'),
   leaderboard:()=>request<any>('/v1/leaderboard'), joinLeague:()=>request<any>('/v1/league/join',{method:'POST'}), badges:()=>request<any>('/v1/badges'),
   directives:()=>request<any>('/v1/directives'), claimDirective:(id:string)=>request<any>('/v1/directives/'+id+'/claim',{method:'POST'}), quote:()=>request<any>('/v1/quotes/daily'),
   feedback:(category:string,message:string)=>request<any>('/v1/feedback',{method:'POST',body:JSON.stringify({category,message})}),
