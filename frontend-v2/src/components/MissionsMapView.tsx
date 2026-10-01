@@ -143,7 +143,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                 <button
                   onClick={() => { setSelectedKey(mission.id); setPreviewMission(mission); }}
                   className="group relative flex items-center gap-4 text-left"
-                  aria-label={`Open mission details for ${mission.title}`}
+                  aria-label={`Select mission ${mission.title}`}
                 >
                   <div className={`relative ${!left ? 'order-2' : ''}`}>
                     {selected && <div className="absolute -inset-2.5 rounded-full bg-violet-500/20 blur-lg animate-pulse" />}
