@@ -109,7 +109,7 @@ test('guest progress can be converted into an authenticated account', async ({ p
 
 
 test('API exposes health, readiness, correlation and security headers', async ({ page }) => {
-  const apiBase = process.env.E2E_API_BASE_URL || 'http://localhost:4000';
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
   const response = await page.request.get(apiBase + '/health', {
     headers: { 'X-Request-Id': 'e2e-health-check' },
   });
