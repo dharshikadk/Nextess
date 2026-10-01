@@ -48,25 +48,29 @@ export default function App() {
   const [showStartAnimation, setShowStartAnimation] = useState(false);
 
   const refresh=async()=>{
-    try{const q=await api.quote();setQuote(q.quote||null)}catch{setQuote(null)}
-    try{
-      const me=await api.me();
-      if(!me?.user) throw new Error('guest');
-      const d=await api.dashboard();
-            const u=d.user;
-      setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,streakDays:d?.streakDays??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false,badgesCount:d?.badgesCount??0}));
-      setActiveProgress(d?.activeProgress||[]);
-      const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
-      setDirectives(ds?.directives||[]);
-      setBadges(bs?.badges||[]);
-      setLeaderboard(lb||{opened:false,entries:[]});
-    }catch{
+    let me:any=null;
+    try{me=await api.me()}catch{
       setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
-      setActiveProgress([]);
-      setDirectives([]);
-      setBadges([]);
+      setActiveProgress([]);setDirectives([]);setBadges([]);
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
+      return;
     }
+    if(!me?.user){
+      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setActiveProgress([]);setDirectives([]);setBadges([]);
+      return;
+    }
+    const u=me.user;
+    setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false}));
+    try{
+      const d=await api.dashboard();
+      setStats(prev=>({...prev,kp:d.user?.xp??prev.kp,coins:d.user?.coins??prev.coins,streakDays:d?.streakDays??prev.streakDays,level:d.user?.level??prev.level,name:d?.name??prev.name,handle:d.user?.username?'@'+d.user.username:prev.handle,userClass:d.user?.schoolClass||d.user?.gradeClass||prev.userClass,college:d.user?.fieldOfStudy||prev.college,profession:d.user?.profession||prev.profession,profileType:d.user?.profileType||prev.profileType,profileStatus:d.user?.profileStatus||prev.profileStatus,profileImageData:d.user?.profileImageData||prev.profileImageData,badgesCount:d?.badgesCount??prev.badgesCount,isGuest:false}));
+      setActiveProgress(d?.activeProgress||[]);
+    }catch{}
+    try{
+      const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
+      setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});
+    }catch{}
   };
   useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
