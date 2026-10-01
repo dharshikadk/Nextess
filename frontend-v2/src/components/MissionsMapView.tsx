@@ -253,12 +253,13 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-violet-500/15">
-                <span className="font-mono text-[10px] text-slate-500">Double-click a mission node or use the button.</span>
+                <span className="font-mono text-[10px] text-slate-500">Click a mission node to inspect it.</span>
                 <button
                   onClick={() => openMission(selectedMission)}
+                  disabled={selectedMission.unlocked === false}
                   className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6] active:translate-y-0.5 transition-all"
                 >
-                  Start Solving Mission
+                  {selectedMission.unlocked === false ? 'Previous mission required' : selectedMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Solving Mission'}
                 </button>
               </div>
 
