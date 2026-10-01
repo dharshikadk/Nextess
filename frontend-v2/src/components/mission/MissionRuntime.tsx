@@ -334,12 +334,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
-          <div className={\`rounded-2xl border p-6 \${dark ? 'border-amber-500/40 bg-[#0f1017]' : 'border-amber-200 bg-amber-50/70'}\`}>
+          <div className={`rounded-2xl border p-6 \${dark ? 'border-amber-500/40 bg-[#0f1017]' : 'border-amber-200 bg-amber-50/70'}`}>
             <div className="font-mono text-[10px] text-amber-400 uppercase">Case File · Overview</div>
-            <h2 className={\`text-lg font-bold mt-1 \${dark ? 'text-white' : 'text-slate-900'}\`}>{mission.title}</h2>
-            <div className={\`mt-4 rounded-xl border p-4 \${dark ? 'border-amber-500/20 bg-[#12131b]' : 'border-amber-200 bg-white'}\`}>
+            <h2 className={`text-lg font-bold mt-1 \${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
+            <div className={`mt-4 rounded-xl border p-4 \${dark ? 'border-amber-500/20 bg-[#12131b]' : 'border-amber-200 bg-white'}`}>
               <div className="font-mono text-[10px] text-amber-400 uppercase font-bold">Primary Objective</div>
-              <p className={\`text-base leading-7 mt-2 \${dark ? 'text-slate-200' : 'text-slate-700'}\`}>{mission.mission}</p>
+              <p className={`text-base leading-7 mt-2 \${dark ? 'text-slate-200' : 'text-slate-700'}`}>{mission.mission}</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
               <Meta label="Role" value={mission.role || '—'} />
@@ -348,7 +348,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             </div>
             <div className="mt-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
               <div className="font-mono text-[9px] text-emerald-400 uppercase">Evidence requirement</div>
-              <p className={\`text-xs mt-1 \${dark ? 'text-slate-300' : 'text-slate-600'}\`}>{mission.requiredEvidence?.instruction || 'Use the provided mission evidence.'}</p>
+              <p className={`text-xs mt-1 \${dark ? 'text-slate-300' : 'text-slate-600'}`}>{mission.requiredEvidence?.instruction || 'Use the provided mission evidence.'}</p>
             </div>
           </div>
           <div className="flex justify-end mt-5">
