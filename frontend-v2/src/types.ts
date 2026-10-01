@@ -25,6 +25,7 @@ export interface UserStats {
   userClass: string;
   college: string;
   profession: string;
+  profileType: 'STUDENT' | 'WORKING_PROFESSIONAL' | 'OTHER';
   profileStatus: string;
   profileImageData: string;
   isGuest: boolean;
