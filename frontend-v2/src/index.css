@@ -108,3 +108,10 @@ html, body, #root {
 .mission-runtime-light [class*="border-slate-700"]{border-color:#cbd5e1!important}
 .mission-runtime-light [class*="bg-slate-700"]{background:#e2e8f0!important}
 .mission-runtime-light [class*="text-slate-400"]{color:#64748b!important}
+
+.mission-runtime-light [class*="bg-slate-900"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-slate-700"]{background:#e2e8f0!important}
+.mission-runtime-light [class*="bg-[#181926]/90"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-[#181926]"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-[#07080c]"]{background:#ffffff!important}
+.mission-runtime-light [class*="text-slate-500"]{color:#64748b!important}
