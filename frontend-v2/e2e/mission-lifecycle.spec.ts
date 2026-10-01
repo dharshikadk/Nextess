@@ -16,9 +16,8 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   const missionTitle = missionLabel!.replace(/^Select mission /, '');
   await missionNode.click();
   // Selecting a mission opens the mission-preview dialog. Close that overlay
+  // before interacting with the detail-panel CTA underneath it.
   const missionPreview = page.getByRole('dialog', { name: missionTitle, exact: true });
-  // here would otherwise resolve the covered button and wait for it to become clickable.
-  const missionPreview = page.getByRole('dialog', { name: new RegExp(missionTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\const missionPreview = page.getByRole('dialog', { name: /The Bicycle That Would Not Stop/i });'), 'i') });
   if (await missionPreview.isVisible().catch(() => false)) {
     await missionPreview.getByRole('button', { name: /Close mission details/i }).click();
     await expect(missionPreview).toBeHidden({ timeout: 5000 });
