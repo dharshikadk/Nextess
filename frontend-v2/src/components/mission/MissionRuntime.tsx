@@ -335,6 +335,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     );
   };
 
+  useEffect(() => {
+    if (!investigation?.state?.simulations?.[simulation?.id]) return;
+    const timer = window.setTimeout(restoreSimulation, 50);
+    return () => window.clearTimeout(timer);
+  }, [investigation?.state?.simulations, simulation?.id]);
+
   const shell = `rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
 
   if (loading) return <div data-testid="mission-runtime-loading" className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
