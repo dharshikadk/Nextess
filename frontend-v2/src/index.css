@@ -93,3 +93,18 @@ html, body, #root {
   max-width: 100%;
   overflow-x: hidden;
 }
+
+
+/* Mission runtime light surface: keep the existing mission design while replacing dark-only surfaces with readable light tokens. */
+.mission-runtime-light [class*="text-white"]{color:#0f172a!important}
+.mission-runtime-light [class*="text-slate-200"]{color:#334155!important}
+.mission-runtime-light [class*="text-slate-300"]{color:#475569!important}
+.mission-runtime-light [class*="bg-[#12131b]"]{background:#ffffff!important}
+.mission-runtime-light [class*="bg-[#181926]"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-[#07080c]"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-[#0f1017]"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-[#13141f]"]{background:#f8fafc!important}
+.mission-runtime-light [class*="bg-[#1f2030]"]{background:#eef2ff!important}
+.mission-runtime-light [class*="border-slate-700"]{border-color:#cbd5e1!important}
+.mission-runtime-light [class*="bg-slate-700"]{background:#e2e8f0!important}
+.mission-runtime-light [class*="text-slate-400"]{color:#64748b!important}
