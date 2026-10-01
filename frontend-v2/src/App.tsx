@@ -105,7 +105,7 @@ export default function App() {
   const handleAwardKP=(_amount:number)=>refresh();
   const handleClaimSurge=()=>{setToastMessage('Rewards are issued by the server after eligible activity.');refresh()};
 
-  const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
+  const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
   const handleAuthSuccess = () => { setShowStartAnimation(true); refresh(); setToastMessage('Account synchronized with Nextess.'); };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
