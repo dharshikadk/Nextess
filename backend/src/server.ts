@@ -271,38 +271,134 @@ app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
   return fail(res,'INTERNAL_ERROR','Unable to reveal hint.',500);
  }
 });
-app.post('/v1/investigations/:id/reveal-answer',optionalAuth,async(req:R,res)=>{
- const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
- const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}});
+app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res) => {
+ const identity=await learner(req,res,false);
+ if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+
+ const inv:any=await prisma.investigation.findFirst({
+  where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})}
+ });
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  if(!validateUuid(String(req.body?.questionId)))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
  if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId)return fail(res,'TASK_NOT_AVAILABLE','Reveal is only available for the current task.',409);
- const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
+
+ const q=await prisma.question.findFirst({
+  where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}
+ });
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
- const def:any=q.evaluationDefinition||{},base='reveal:'+inv.id+':'+q.id,state:any=inv.state&&typeof inv.state==='object'?inv.state:{};const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));if(submitted)return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:identity.userId?(await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})??{xp:0,coins:0}):{xp:0,coins:0},anonymous:identity.anonymous});
- if(!identity.userId){
-  if(state.reveals?.[q.id])return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:{xp:0,coins:0},anonymous:true});
-  await prisma.investigation.update({where:{id:inv.id},data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}});
-  return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:false,balances:{xp:0,coins:0},anonymous:true});
+
+ const def:any=q.evaluationDefinition||{};
+ const base='reveal:'+inv.id+':'+q.id;
+ const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
+
+ const submitted=Boolean(await prisma.investigationAnswer.findFirst({
+  where:{investigationId:inv.id,questionId:q.id},
+  select:{id:true}
+ }));
+ if(submitted){
+  return res.json({
+   answer:def.answer,
+   explanation:q.explanation,
+   cost:{xp:0,coins:0},
+   alreadyCharged:true,
+   balances:identity.userId
+    ? (await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})??{xp:0,coins:0})
+    : {xp:0,coins:0},
+   anonymous:identity.anonymous
+  });
  }
- const already=await prisma.rewardLedger.findFirst({where:{idempotencyKey:base+':xp'}});
- if(already){if(!state.reveals?.[q.id])await prisma.investigation.update({where:{id:inv.id},data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}});return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
+
+ if(!identity.userId){
+  if(state.reveals?.[q.id]){
+   return res.json({
+    answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},
+    alreadyCharged:true,balances:{xp:0,coins:0},anonymous:true
+   });
+  }
+
+  await prisma.investigation.update({
+   where:{id:inv.id},
+   data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}
+  });
+
+  return res.json({
+   answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},
+   alreadyCharged:false,balances:{xp:0,coins:0},anonymous:true
+  });
+ }
+
+ const already=await prisma.rewardLedger.findFirst({
+  where:{idempotencyKey:base+':xp'}
+ });
+ if(already){
+  if(!state.reveals?.[q.id]){
+   await prisma.investigation.update({
+    where:{id:inv.id},
+    data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}
+   });
+  }
+
+  return res.json({
+   answer:def.answer,
+   explanation:q.explanation,
+   cost:{xp:0,coins:0},
+   alreadyCharged:true,
+   balances:await prisma.user.findUnique({
+    where:{id:identity.userId!},
+    select:{xp:true,coins:true}
+   })
+  });
+ }
+
  try{
   await prisma.$transaction(async tx=>{
-   const updated=await tx.user.updateMany({where:{id:identity.userId!,xp:{gte:5},coins:{gte:2}},data:{xp:{decrement:5},coins:{decrement:2},lastActivityAt:new Date()}});
+   const updated=await tx.user.updateMany({
+    where:{id:identity.userId!,xp:{gte:5},coins:{gte:2}},
+    data:{xp:{decrement:5},coins:{decrement:2},lastActivityAt:new Date()}
+   });
    if(updated.count!==1)throw new Error('INSUFFICIENT_FUNDS');
-   await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-5,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':xp'}});
-   await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-2,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':coins'}});
-   await tx.investigation.update({where:{id:inv.id},data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}});
+
+   await tx.rewardLedger.create({
+    data:{
+     userId:identity.userId!,investigationId:inv.id,sourceId:q.id,
+     rewardType:RewardType.XP,amount:-5,reasonCode:'MISSION_REVEAL',
+     idempotencyKey:base+':xp'
+    }
+   });
+   await tx.rewardLedger.create({
+    data:{
+     userId:identity.userId!,investigationId:inv.id,sourceId:q.id,
+     rewardType:RewardType.COINS,amount:-2,reasonCode:'MISSION_REVEAL',
+     idempotencyKey:base+':coins'
+    }
+   });
+   await tx.investigation.update({
+    where:{id:inv.id},
+    data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}
+   });
   });
-  res.json({answer:def.answer,explanation:q.explanation,cost:{xp:5,coins:2},balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
+
+  return res.json({
+   answer:def.answer,
+   explanation:q.explanation,
+   cost:{xp:5,coins:2},
+   balances:await prisma.user.findUnique({
+    where:{id:identity.userId!},
+    select:{xp:true,coins:true}
+   })
+  });
  }catch(e:any){
-  if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Revealing an answer costs 5 KP and 2 coins.',409);
-  if(e?.code==='P2002')return fail(res,'REVEAL_ALREADY_USED','The answer has already been revealed for this question.',409);
+  if(e?.message==='INSUFFICIENT_FUNDS'){
+   return fail(res,'INSUFFICIENT_FUNDS','Revealing an answer costs 5 KP and 2 coins.',409);
+  }
+  if(e?.code==='P2002'){
+   return fail(res,'REVEAL_ALREADY_USED','The answer has already been revealed for this question.',409);
+  }
   return fail(res,'INTERNAL_ERROR','Unable to reveal answer.',500);
  }
 });
+
 app.post('/v1/investigations/:id/complete',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{include:{questions:true}}}},project:true}});
