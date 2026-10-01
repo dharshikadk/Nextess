@@ -14,6 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activePage,
   onNavigate,
   onOpenAuth,
+  isGuest,
 }) => {
   const isDark = theme === 'dark';
 
