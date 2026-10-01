@@ -101,9 +101,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           // A persisted mission-chamber route must be recoverable after a hard
           // reload even when the project response has not yet reflected the
           // previous investigation as IN_PROGRESS.
-          const started = await api.startMission(missionId);
+          const existingInvestigationId = result.progress?.investigationId || result.progress?.investigation?.id;
+          const investigationId = existingInvestigationId || (await api.startMission(missionId)).investigationId;
           if (cancelled) return;
-          const investigationResult = await api.investigation(started.investigationId);
+          const investigationResult = await api.investigation(investigationId);
           if (cancelled) return;
           const inv = investigationResult.investigation;
           setInvestigation(inv);
