@@ -69,6 +69,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     setBusy(true);
     try {
       const started = await api.startMission(missionId);
+      localStorage.setItem('nextess_investigation_id', started.investigationId);
       const result = await api.investigation(started.investigationId);
       const inv = result.investigation;
       setInvestigation(inv);
@@ -101,10 +102,26 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           // A persisted mission-chamber route must be recoverable after a hard
           // reload even when the project response has not yet reflected the
           // previous investigation as IN_PROGRESS.
-          const existingInvestigationId = result.progress?.investigationId || result.progress?.investigation?.id;
-          const investigationId = existingInvestigationId || (await api.startMission(missionId)).investigationId;
+          const persistedInvestigationId = localStorage.getItem('nextess_investigation_id');
+          const existingInvestigationId = result.progress?.investigationId || result.progress?.investigation?.id || persistedInvestigationId;
+          let investigationId = existingInvestigationId;
+          let investigationResult: any;
+          try {
+            investigationResult = investigationId
+              ? await api.investigation(investigationId)
+              : await api.startMission(missionId).then((started) => {
+                  investigationId = started.investigationId;
+                  localStorage.setItem('nextess_investigation_id', started.investigationId);
+                  return api.investigation(started.investigationId);
+                });
+          } catch (investigationError) {
+            if (!investigationId) throw investigationError;
+            const started = await api.startMission(missionId);
+            investigationId = started.investigationId;
+            localStorage.setItem('nextess_investigation_id', started.investigationId);
+            investigationResult = await api.investigation(started.investigationId);
+          }
           if (cancelled) return;
-          const investigationResult = await api.investigation(investigationId);
           if (cancelled) return;
           const inv = investigationResult.investigation;
           setInvestigation(inv);
