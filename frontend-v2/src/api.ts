@@ -1,4 +1,4 @@
-export const API_BASE=(import.meta.env.VITE_API_BASE_URL||'http://localhost:4000').replace(/\/$/,'');
+export const API_BASE=(import.meta.env.VITE_API_BASE_URL||'http://127.0.0.1:4000').replace(/\/$/,'');
 export type ApiErrorCode =
   | 'VALIDATION_ERROR' | 'AUTH_REQUIRED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT'
   | 'RATE_LIMITED' | 'MISSION_UNAVAILABLE' | 'INVALID_VERSION' | 'INVALID_TASK'
