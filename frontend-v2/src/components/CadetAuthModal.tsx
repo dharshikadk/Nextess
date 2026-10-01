@@ -42,7 +42,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
     finally{setLoading(false);}
   };
 
-  return <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+  return <div role="dialog" aria-label="Cadet Access Station" className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
     <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border p-6 shadow-2xl ${dark?'bg-[#12131b] border-violet-500/30 text-white':'bg-white border-slate-200 text-slate-900'}`}>
       <div className="flex items-start justify-between gap-3 mb-5">
         <div><div className="font-mono text-[10px] text-violet-400 uppercase">Cadet Access</div><h2 className="text-xl font-bold mt-1">{tab==='signup'?'Create your learner profile':'Sign in to Nextess'}</h2><p className="text-xs text-slate-400 mt-1">{tab==='signup'?'Add your profile details now; you can edit them later.':'Continue with your saved progress.'}</p></div>
