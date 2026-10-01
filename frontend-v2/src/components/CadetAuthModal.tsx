@@ -68,7 +68,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
           <div className="p-2.5 rounded-xl bg-violet-600/10 border border-violet-500/20 text-xs text-violet-300">New accounts receive 100 KP and 100 Coins once.</div>
         </>}
         {error&&<div role="alert" className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>}
-        <button type="submit" disabled={loading} aria-label={tab==='signup'?'Create account':'Log in'} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs disabled:opacity-50">{loading?'Working…':tab==='signin'?'Log In':'Sign Up'}</button>
+        <button type="submit" disabled={loading} aria-label={tab==='signup'?'Create account':'Log in'} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs disabled:opacity-50">{loading?'Working…':tab==='signin'?'Log In':'Create account'}</button>
       </form>
     </div>
   </div>;
