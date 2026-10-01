@@ -436,4 +436,5 @@ app.use((err:any,_req:express.Request,res:express.Response,next:express.NextFunc
  console.error(JSON.stringify({requestId:res.getHeader('X-Request-Id'),error:err instanceof Error?err.message:'unknown error'}));
  return fail(res,'INTERNAL_ERROR','An unexpected server error occurred.',500);
 });
-app.listen(port,()=>console.log('Nextess API listening on '+port));
+const host=process.env.HOST||'127.0.0.1';
+app.listen(port,host,()=>console.log('Nextess API listening on '+host+':'+port));
