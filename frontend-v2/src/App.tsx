@@ -118,7 +118,7 @@ export default function App() {
 
   const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
-  const handleAuthSuccess = () => { setShowStartAnimation(true); refresh(); setToastMessage('Account synchronized with Nextess.'); };
+  const handleAuthSuccess = async () => { await refresh(); setShowStartAnimation(true); setToastMessage('Account synchronized with Nextess.'); };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
   const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
