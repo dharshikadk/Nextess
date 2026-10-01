@@ -9,8 +9,9 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
   await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
-  const missionNode = page.getByRole('button', { name: /Select mission The Bicycle That Would Not Stop/i });
+  const missionNode = page.getByTestId('mission-node').first();
   await expect(missionNode).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(missionNode).toHaveAttribute('aria-label', /Select mission .+/);
   await missionNode.click();
   // Selecting a mission opens the mission-preview dialog. Close that overlay
   // before interacting with the detail-panel CTA underneath it; using .first()
