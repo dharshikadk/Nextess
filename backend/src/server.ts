@@ -247,9 +247,9 @@ app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}},include:{hints:{orderBy:{level:'asc'}}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
- const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));const ledgerUsed=identity.userId?await prisma.rewardLedger.count({where:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}}):0;const used=Math.max(Number(state.hints?.[q.id]||0),ledgerUsed);
+ const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));const revealedAlready=Boolean(state.reveals?.[q.id]);const ledgerUsed=identity.userId?await prisma.rewardLedger.count({where:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}}):0;const used=Math.max(Number(state.hints?.[q.id]||0),ledgerUsed);
  const next=q.hints.find((h:any)=>h.level===used+1);if(!next)return fail(res,'NO_MORE_HINTS','All hints for this question have already been revealed.',409);
- const costCoins=identity.userId&&!submitted?5:0;
+ const costCoins=identity.userId&&!submitted&&!revealedAlready?5:0;
  try{
   if(identity.userId){
    await prisma.$transaction(async tx=>{
@@ -287,13 +287,14 @@ app.post('/v1/investigations/:id/reveal-answer',optionalAuth,async(req:R,res)=>{
   return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:false,balances:{xp:0,coins:0},anonymous:true});
  }
  const already=await prisma.rewardLedger.findFirst({where:{idempotencyKey:base+':xp'}});
- if(already)return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
+ if(already){if(!state.reveals?.[q.id])await prisma.investigation.update({where:{id:inv.id},data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}});return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
  try{
   await prisma.$transaction(async tx=>{
    const updated=await tx.user.updateMany({where:{id:identity.userId!,xp:{gte:5},coins:{gte:2}},data:{xp:{decrement:5},coins:{decrement:2},lastActivityAt:new Date()}});
    if(updated.count!==1)throw new Error('INSUFFICIENT_FUNDS');
    await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.XP,amount:-5,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':xp'}});
    await tx.rewardLedger.create({data:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,amount:-2,reasonCode:'MISSION_REVEAL',idempotencyKey:base+':coins'}});
+   await tx.investigation.update({where:{id:inv.id},data:{state:{...state,reveals:{...(state.reveals||{}),[q.id]:true}}}});
   });
   res.json({answer:def.answer,explanation:q.explanation,cost:{xp:5,coins:2},balances:await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})});
  }catch(e:any){
