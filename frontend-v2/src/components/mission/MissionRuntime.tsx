@@ -211,7 +211,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       if (question + 1 < questions.length) {
         setQuestion(v => v + 1);
         setAnswer('');
-        setFeedback({ correct: false, message: 'This challenge was revealed. Answer it before submitting the following challenges.' });
+        setRevealed(null);
+        setFeedback({ correct: false, message: 'This challenge was revealed. Return to it and answer it before submitting the following challenges.' });
         return;
       }
       setFeedback({ correct: false, message: 'Answer this revealed challenge before finishing the mission.' });
@@ -245,7 +246,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   };
 
   const useHint = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -265,7 +266,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
       setRevealedQuestionId(currentQuestion.id);
-      setRevealLock(true);
+      setRevealLock(!hasSubmittedCurrent);
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
@@ -468,17 +469,19 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           </div>
           <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
             <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
-            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
+            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy || revealLock} theme={theme} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
           </div>
           {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
           {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <button onClick={useHint} disabled={busy} className="px-3 py-2 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs">Hint</button>
-              <button onClick={revealAnswer} disabled={busy} className="px-3 py-2 rounded-xl border border-amber-500/30 bg-[#181926] text-slate-300 text-xs">Reveal answer</button>
+              <button onClick={useHint} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
+              <button onClick={revealAnswer} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
-            <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>
+            {revealed || hasCorrectCurrent
+              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
+              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion || revealLock} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
         <aside className="col-span-12 lg:col-span-3">
