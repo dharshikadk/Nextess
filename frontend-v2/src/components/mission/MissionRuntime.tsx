@@ -70,6 +70,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     try {
       const started = await api.startMission(missionId);
       localStorage.setItem('nextess_investigation_id', started.investigationId);
+      localStorage.setItem('nextess_investigation_mission_id', missionId);
       const result = await api.investigation(started.investigationId);
       const inv = result.investigation;
       setInvestigation(inv);
@@ -102,7 +103,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           // A persisted mission-chamber route must be recoverable after a hard
           // reload even when the project response has not yet reflected the
           // previous investigation as IN_PROGRESS.
-          const persistedInvestigationId = localStorage.getItem('nextess_investigation_id');
+          const persistedInvestigationId = localStorage.getItem('nextess_investigation_mission_id') === missionId
+            ? localStorage.getItem('nextess_investigation_id')
+            : null;
           const existingInvestigationId = result.progress?.investigationId || result.progress?.investigation?.id || persistedInvestigationId;
           let investigationId = existingInvestigationId;
           let investigationResult: any;
