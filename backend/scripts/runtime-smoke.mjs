@@ -35,18 +35,21 @@ const concurrent=await Promise.all([request('/v1/investigations/'+start.body.inv
 expect(concurrent.every(x=>x.response.ok),'concurrent idempotent submissions failed');
 expect(new Set(concurrent.map(x=>x.body.answerId)).size===1,'concurrent idempotent submissions created multiple answers');
 expect(replay.body.answerId===first.body.answerId,'answer retry created another answer');
-const secondProject=catalogue.body.projects.find(p=>p.id!==project.id);
-if(secondProject){
-  const secondStart=await request('/v1/projects/'+secondProject.id+'/start',{method:'POST',headers:{Cookie:cookieA}});
-  expect(secondStart.response.ok&&secondStart.body.investigationId,'second mission start failed');
-  const secondInvestigation=await request('/v1/investigations/'+secondStart.body.investigationId,{headers:{Cookie:cookieA}});
-  const secondQuestion=secondInvestigation.body.investigation?.projectVersion?.levels?.[0]?.questions?.[0];
-  expect(secondQuestion,'second mission has no first question');
-  const secondAnswer=secondQuestion.questionType==='numerical'?0:(secondQuestion.options?.[0]?.optionText??'');
-  const second=await request('/v1/investigations/'+secondStart.body.investigationId+'/answers',{method:'POST',headers:{'Content-Type':'application/json','Cookie':cookieA,'Idempotency-Key':key},body:JSON.stringify({questionId:secondQuestion.id,answer:{value:secondAnswer}})});
-  expect(second.response.ok,'same idempotency key was incorrectly shared across investigations');
-  expect(second.body.answerId!==first.body.answerId,'idempotency key leaked across investigations');
-}
+const secondSubject=subjects.body.subjects.find(s=>s.key.toLowerCase()==='economics'&&s.id!==physics.id);
+expect(secondSubject,'second smoke subject is missing');
+const secondCatalogue=await request('/v1/subjects/'+secondSubject.id+'/projects');
+expect(secondCatalogue.response.ok&&secondCatalogue.body.projects?.length>0,'second mission catalogue failed');
+const secondProject=secondCatalogue.body.projects[0];
+const secondStart=await request('/v1/projects/'+secondProject.id+'/start',{method:'POST',headers:{Cookie:cookieA}});
+expect(secondStart.response.ok&&secondStart.body.investigationId,'second mission start failed');
+const secondInvestigation=await request('/v1/investigations/'+secondStart.body.investigationId,{headers:{Cookie:cookieA}});
+expect(secondInvestigation.response.ok,'second investigation retrieval failed');
+const secondQuestion=secondInvestigation.body.investigation?.projectVersion?.levels?.[0]?.questions?.[0];
+expect(secondQuestion,'second mission has no first question');
+const secondAnswer=secondQuestion.questionType==='numerical'?0:(secondQuestion.options?.[0]?.optionText??'');
+const second=await request('/v1/investigations/'+secondStart.body.investigationId+'/answers',{method:'POST',headers:{'Content-Type':'application/json','Cookie':cookieA,'Idempotency-Key':key},body:JSON.stringify({questionId:secondQuestion.id,answer:{value:secondAnswer}})});
+expect(second.response.ok,'same idempotency key was incorrectly shared across investigations');
+expect(second.body.answerId!==first.body.answerId,'idempotency key leaked across investigations');
 const malformed=await request('/v1/investigations/not-a-uuid/answers',{method:'POST',headers:{'Content-Type':'application/json','Cookie':cookieA,'Idempotency-Key':'bad-input'},body:JSON.stringify({questionId:'bad',answer:{value:'x'}})});
 expect(malformed.response.status===400&&malformed.body.error?.code==='VALIDATION_ERROR','invalid investigation IDs are not validated consistently');
 const cookieB=await register('smoke-b-'+unique);
