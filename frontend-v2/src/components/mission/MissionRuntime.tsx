@@ -289,17 +289,25 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   useEffect(() => {
     if (!investigation?.id || !simulation?.id || !simulationSrc) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let saveSequence = 0;
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== simulationFrameRef.current?.contentWindow) return;
       const payload = event.data;
       if (payload?.type !== 'nextess-simulation-state' || !payload.state || typeof payload.state !== 'object') return;
+      const sequence = ++saveSequence;
       if (timer) clearTimeout(timer);
       setSimulationSaving(true);
-      timer = setTimeout(() => {
-        api.simulationState(investigation.id, simulation.id, payload.state)
-          .catch((e: any) => setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' }))
-          .finally(() => setSimulationSaving(false));
-      }, 250);
+      timer = setTimeout(async () => {
+        try {
+          await api.simulationState(investigation.id!, simulation.id!, payload.state);
+          if (sequence === saveSequence) setSimulationSaving(false);
+        } catch (e: any) {
+          if (sequence === saveSequence) {
+            setSimulationSaving(false);
+            setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' });
+          }
+        }
+      }, 100);
     };
     window.addEventListener('message', onMessage);
     return () => {
