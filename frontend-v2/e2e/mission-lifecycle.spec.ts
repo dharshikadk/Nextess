@@ -9,7 +9,9 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
   await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
-  await page.getByRole('button', { name: /Select mission /i }).first().click();
+  const missionNode = page.getByRole('button', { name: /Select mission The Bicycle That Would Not Stop/i });
+  await expect(missionNode).toBeVisible({ timeout: UI_TIMEOUT });
+  await missionNode.click();
   // Selecting a mission opens the mission-preview dialog. Close that overlay
   // before interacting with the detail-panel CTA underneath it; using .first()
   // here would otherwise resolve the covered button and wait for it to become clickable.
@@ -113,7 +115,8 @@ test('guest progress can be converted into an authenticated account', async ({ p
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: UI_TIMEOUT });
   await authMeResponse;
   await page.reload();
-  await expect(page.getByText(/E2E Cadet|@e2e_cadet_/i).first()).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('authenticated-user-name')).toHaveText('E2E Cadet', { timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('authenticated-user-handle')).toContainText('e2e_cadet_', { timeout: UI_TIMEOUT });
   await expect(page.getByText('The Bicycle That Would Not Stop')).toBeVisible({ timeout: UI_TIMEOUT });
 });
 
@@ -190,7 +193,11 @@ test('mission simulation asset loads and controller state restores after refresh
   await expect.poll(async () => mass.inputValue()).toBe('72');
 
   await page.reload();
+  await expect(page.getByTestId('mission-runtime-loading')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-runtime-error')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-runtime')).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task')).toHaveAttribute('aria-busy', 'false', { timeout: UI_TIMEOUT });
   const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
   await expect(restoredFrame.locator('[aria-label="Bicycle braking simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
   const restoredMass = restoredFrame.getByLabel('Total mass');
