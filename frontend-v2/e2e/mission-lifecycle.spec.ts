@@ -11,12 +11,14 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
   const missionNode = page.getByTestId('mission-node').first();
   await expect(missionNode).toBeVisible({ timeout: UI_TIMEOUT });
-  await expect(missionNode).toHaveAttribute('aria-label', /Select mission .+/);
+  const missionLabel = await missionNode.getAttribute('aria-label');
+  expect(missionLabel).toMatch(/^Select mission .+/);
+  const missionTitle = missionLabel!.replace(/^Select mission /, '');
   await missionNode.click();
   // Selecting a mission opens the mission-preview dialog. Close that overlay
   // before interacting with the detail-panel CTA underneath it; using .first()
   // here would otherwise resolve the covered button and wait for it to become clickable.
-  const missionPreview = page.getByRole('dialog', { name: /The Bicycle That Would Not Stop/i });
+  const missionPreview = page.getByRole('dialog', { name: new RegExp(missionTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\const missionPreview = page.getByRole('dialog', { name: /The Bicycle That Would Not Stop/i });'), 'i') });
   if (await missionPreview.isVisible().catch(() => false)) {
     await missionPreview.getByRole('button', { name: /Close mission details/i }).click();
     await expect(missionPreview).toBeHidden({ timeout: 5000 });
@@ -29,7 +31,7 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
 
   // "Start Solving Mission" opens the mission file. The runtime is entered
   // from the mission-detail page through its explicit stage control.
-  await expect(page.getByRole('heading', { name: /The Bicycle That Would Not Stop/i })).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByRole('heading', { name: missionTitle, exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
   const openStages = page.getByRole('button', { name: /Open Mission Stages/i });
   await expect(openStages).toBeVisible({ timeout: UI_TIMEOUT });
   await openStages.click();
