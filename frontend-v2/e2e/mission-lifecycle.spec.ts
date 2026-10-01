@@ -6,8 +6,18 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: /Select mission /i }).first().click();
-  const open = page.getByRole('button', { name: /Start Solving Mission/i }).first();
+  // Selecting a mission opens the mission-preview dialog. Close that overlay
+  // before interacting with the detail-panel CTA underneath it; using .first()
+  // here would otherwise resolve the covered button and wait for it to become clickable.
+  const missionPreview = page.getByRole('dialog', { name: /The Bicycle That Would Not Stop/i });
+  if (await missionPreview.isVisible().catch(() => false)) {
+    await missionPreview.getByRole('button', { name: /Close mission details/i }).click();
+    await expect(missionPreview).toBeHidden({ timeout: 5000 });
+  }
+
+  const open = page.getByRole('button', { name: /Start Solving Mission/i });
   await expect(open).toBeVisible({ timeout: 15000 });
+  await expect(open).toBeEnabled({ timeout: 15000 });
   await open.click();
 
   // "Start Solving Mission" opens the mission file. The runtime is entered
