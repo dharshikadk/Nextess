@@ -11,7 +11,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const missionId = localStorage.getItem('nextess_selected_mission') || '';
   const [mission, setMission] = useState<any>(null);
   const [investigation, setInvestigation] = useState<any>(null);
-  const [stage, setStage] = useState<'brief' | 'capsule' | 'level' | 'complete'>('brief');
+  const [stage, setStage] = useState<'brief' | 'capsule' | 'level' | 'complete'>(() => {
+    const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
+    if (savedStage >= 3) return 'level';
+    if (savedStage === 2) return 'capsule';
+    return 'brief';
+  });
   const [capsule, setCapsule] = useState(0);
   const [level, setLevel] = useState(0);
   const [question, setQuestion] = useState(0);
@@ -26,6 +31,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
+
+  useEffect(() => {
+    const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'level' ? Math.max(3, level + 3) : 999;
+    localStorage.setItem('nextess_mission_stage', String(stageNumber));
+  }, [stage, level]);
   const simulationFrameRef = React.useRef<HTMLIFrameElement>(null);
 
   const capsules = mission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections || [];
