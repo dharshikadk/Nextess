@@ -125,7 +125,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             investigationResult = await api.investigation(started.investigationId);
           }
           if (cancelled) return;
-          if (cancelled) return;
+          if (investigationId) {
+            localStorage.setItem('nextess_investigation_id', investigationId);
+            localStorage.setItem('nextess_investigation_mission_id', missionId);
+          }
           const inv = investigationResult.investigation;
           setInvestigation(inv);
           const invLevels = inv?.projectVersion?.levels || result.project?.currentPublishedVersion?.levels || [];
