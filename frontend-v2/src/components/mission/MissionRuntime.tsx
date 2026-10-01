@@ -107,28 +107,32 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             ? localStorage.getItem('nextess_investigation_id')
             : null;
           const existingInvestigationId = result.progress?.investigationId || result.progress?.investigation?.id || persistedInvestigationId;
+          // Opening a mission must preserve the Mission Brief/learning flow. Do not
+          // create a new server investigation merely because the mission page was
+          // opened: starting the investigation is an explicit learner action.
+          // Existing progress (including a persisted investigation ID) is resumed
+          // immediately so refresh/re-entry remains server-authoritative.
+          if (!existingInvestigationId) {
+            setStage('brief');
+            return;
+          }
+
           let investigationId = existingInvestigationId;
           let investigationResult: any;
           try {
-            investigationResult = investigationId
-              ? await api.investigation(investigationId)
-              : await api.startMission(missionId).then((started) => {
-                  investigationId = started.investigationId;
-                  localStorage.setItem('nextess_investigation_id', started.investigationId);
-                  return api.investigation(started.investigationId);
-                });
+            investigationResult = await api.investigation(investigationId);
           } catch (investigationError) {
-            if (!investigationId) throw investigationError;
+            // A stale persisted investigation may no longer be available. Start a
+            // fresh investigation only after an actual resume attempt failed.
             const started = await api.startMission(missionId);
             investigationId = started.investigationId;
             localStorage.setItem('nextess_investigation_id', started.investigationId);
+            localStorage.setItem('nextess_investigation_mission_id', missionId);
             investigationResult = await api.investigation(started.investigationId);
           }
           if (cancelled) return;
-          if (investigationId) {
-            localStorage.setItem('nextess_investigation_id', investigationId);
-            localStorage.setItem('nextess_investigation_mission_id', missionId);
-          }
+          localStorage.setItem('nextess_investigation_id', investigationId);
+          localStorage.setItem('nextess_investigation_mission_id', missionId);
           const inv = investigationResult.investigation;
           setInvestigation(inv);
           const invLevels = inv?.projectVersion?.levels || result.project?.currentPublishedVersion?.levels || [];
