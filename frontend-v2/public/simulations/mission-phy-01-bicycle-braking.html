@@ -127,7 +127,9 @@
       function frame(now){const p=Math.min(1,(now-start)/duration);state.t=1-(1-p)*(1-p);draw();if(p<1)requestAnimationFrame(frame);else{state.running=false;state.t=1;draw()}}
       requestAnimationFrame(frame);
     }
-    function emitState(){if(window.parent!==window)window.parent.postMessage({type:'nextess-simulation-state',state:{mass:+massR.value,speed:+speedR.value}},window.location.origin)}\n    window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==window.parent)return;const data=event.data;if(data?.type!=='nextess-simulation-restore'||!data.state||typeof data.state!=='object')return;if(Number.isFinite(Number(data.state.mass)))massR.value=String(Math.max(40,Math.min(100,Number(data.state.mass))));if(Number.isFinite(Number(data.state.speed)))speedR.value=String(Math.max(2,Math.min(10,Number(data.state.speed))));calc()});\n    massR.addEventListener('input',()=>{calc();emitState()});speedR.addEventListener('input',()=>{calc();emitState()});run.addEventListener('click',runTest);
+    function emitState(){if(window.parent!==window)window.parent.postMessage({type:'nextess-simulation-state',state:{mass:+massR.value,speed:+speedR.value}},window.location.origin)}
+    window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==window.parent)return;const data=event.data;if(data?.type!=='nextess-simulation-restore'||!data.state||typeof data.state!=='object')return;if(Number.isFinite(Number(data.state.mass)))massR.value=String(Math.max(40,Math.min(100,Number(data.state.mass))));if(Number.isFinite(Number(data.state.speed)))speedR.value=String(Math.max(2,Math.min(10,Number(data.state.speed))));calc()});
+    massR.addEventListener('input',()=>{calc();emitState()});speedR.addEventListener('input',()=>{calc();emitState()});run.addEventListener('click',runTest);
     calc();
   })();
   </script>
