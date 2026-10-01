@@ -14,13 +14,28 @@ export class ApiError extends Error {
   }
 }
 async function request<T>(path:string,init:RequestInit={}):Promise<T>{
-  const response=await fetch(API_BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers||{})}});
-  const body=await response.json().catch(()=>({}));
-  if(!response.ok){
-    const error=body?.error;
-    throw new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+  const method=(init.method||'GET').toUpperCase();
+  const maxAttempts=method==='GET'?3:1;
+  let lastError: unknown;
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    try{
+      const response=await fetch(API_BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers||{})}});
+      const body=await response.json().catch(()=>({}));
+      if(response.ok)return body as T;
+      const error=body?.error;
+      const retryable=response.status>=500&&response.status<=599;
+      if(!retryable||attempt===maxAttempts){
+        throw new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+      }
+      lastError=new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+    }catch(error){
+      lastError=error;
+      if(error instanceof ApiError && error.status<500)throw error;
+      if(attempt===maxAttempts)throw error;
+    }
+    await new Promise(resolve=>setTimeout(resolve,attempt*400));
   }
-  return body as T;
+  throw lastError instanceof Error?lastError:new Error('Request failed.');
 }
 export const api={
   me:()=>request<any>('/v1/auth/me'), login:(username:string,password:string)=>request<any>('/v1/auth/login',{method:'POST',body:JSON.stringify({username,password})}),
