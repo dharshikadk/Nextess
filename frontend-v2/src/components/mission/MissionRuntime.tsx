@@ -20,6 +20,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [hints, setHints] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<any>(null);
   const [revealLock, setRevealLock] = useState(false);
+  const [revealedQuestionId, setRevealedQuestionId] = useState<string | null>(null);
   const [fileIndex, setFileIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -158,6 +159,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         setFeedback(null);
         setHints([]);
         setRevealed(null);
+        setRevealedQuestionId(null);
+        setRevealLock(false);
         setStage('level');
       }
     }
@@ -193,6 +196,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
       await refreshInvestigation();
       setRevealLock(false);
+      setRevealedQuestionId(null);
       setRevealed(null);
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
@@ -260,6 +264,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
+      setRevealedQuestionId(currentQuestion.id);
       setRevealLock(true);
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
     } catch (e: any) {
@@ -450,11 +455,14 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
           <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 gap-3">
             <button onClick={() => {
+              const targetQuestion = question > 0 ? questions[question - 1] : null;
+              const targetId = targetQuestion?.id || (level > 0 ? levels[level - 1]?.questions?.at(-1)?.id : null);
               if (question > 0) setQuestion((v) => v - 1);
-              else if (level > 0) setLevel((v) => v - 1);
+              else if (level > 0) { setLevel((v) => v - 1); setQuestion(Math.max(0, (levels[level - 1]?.questions?.length || 1) - 1)); }
               else setStage('capsule');
-              setAnswer(''); setFeedback(null); setHints([]); setRevealed(null);
-            }} className="px-3 py-1.5 rounded-xl border bg-[#181926] border-cyan-500/30 text-xs text-slate-300">← Previous</button>
+              setRevealLock(Boolean(revealedQuestionId && targetId && revealedQuestionId !== targetId));
+              setAnswer(''); setFeedback(null); setHints([]);
+            }} className={`px-3 py-1.5 rounded-xl border text-xs ${dark ? 'bg-[#181926] border-cyan-500/30 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>← Previous</button>
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
           </div>
