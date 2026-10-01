@@ -74,7 +74,14 @@ export default function App() {
   };
   useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
-  useEffect(() => { let mounted = true; refresh().finally(() => { if (mounted) setAppReady(true); }); return () => { mounted = false; }; }, []);
+  useEffect(() => {
+    let mounted = true;
+    const readyFallback = new Promise<void>((resolve) => setTimeout(resolve, 10000));
+    Promise.race([refresh(), readyFallback]).finally(() => {
+      if (mounted) setAppReady(true);
+    });
+    return () => { mounted = false; };
+  }, []);
   // Synchronize document element class with current theme
   useEffect(() => {
     const root = document.documentElement;
