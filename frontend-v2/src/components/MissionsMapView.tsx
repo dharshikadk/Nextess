@@ -141,6 +141,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                 className={`relative z-10 w-full flex ${left ? 'justify-start pl-4 md:pl-16' : 'justify-end pr-4 md:pr-16'} mb-20`}
               >
                 <button
+                  data-testid="mission-node"
                   onClick={() => { setSelectedKey(mission.id); setPreviewMission(mission); }}
                   className="group relative flex items-center gap-4 text-left"
                   aria-label={`Select mission ${mission.title}`}
