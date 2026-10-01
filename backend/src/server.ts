@@ -54,7 +54,11 @@ async function migrateGuestSessionToUser(req:express.Request,res:express.Respons
   try{await tx.rewardLedger.create({data:{userId,investigationId,sourceId:levelId,rewardType:RewardType.COINS,amount:safeCoins,reasonCode:isFinal?'MISSION_FINAL_LEVEL':'MISSION_LEVEL',idempotencyKey:base+":coins"}});ac=true}catch(e:any){if(e?.code!=='P2002')throw e}
   if(ax||ac){await tx.user.update({where:{id:userId},data:{...(ax?{xp:{increment:safeXp}}:{}),...(ac?{coins:{increment:safeCoins}}:{}),lastActivityAt:new Date()}});const c=await tx.leagueCycle.findFirst({where:{status:'OPEN'},orderBy:{startsAt:'desc'}});if(c&&ax)await tx.leagueParticipant.upsert({where:{cycleId_userId:{cycleId:c.id,userId}},update:{kp:{increment:safeXp}},create:{cycleId:c.id,userId,kp:safeXp}})}
   return {xp:ax?safeXp:0,coins:ac?safeCoins:0};
-}app.get('/health',(_,r)=>r.json({ok:true,service:'nextess-api'}));app.get('/ready', async (_req, res) => {
+}app.get('/health',(_,r)=>{
+ r.setHeader('X-Content-Type-Options','nosniff');
+ r.setHeader('X-Frame-Options','DENY');
+ return r.json({ok:true,service:'nextess-api'});
+});app.get('/ready', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return res.json({ ok: true, ready: true });
