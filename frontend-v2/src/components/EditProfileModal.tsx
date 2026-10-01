@@ -26,7 +26,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
   useEffect(() => {
     if (!isOpen) return;
     setName(stats.name || '');
-    setProfileType(stats.profession ? 'WORKING_PROFESSIONAL' : 'STUDENT');
+    setProfileType(stats.profileType || 'STUDENT');
     setStatus(stats.profileStatus || '');
     setEducationStage(stats.userClass ? 'SCHOOL' : 'COLLEGE');
     setSchoolClass(stats.userClass || '');
