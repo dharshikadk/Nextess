@@ -155,10 +155,10 @@ export const TopBar: React.FC<TopBarProps> = ({
             <span className={`font-mono text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Lvl {stats.level}
             </span>
-            <span className="text-[10px] text-violet-400 leading-none font-semibold truncate max-w-[120px]">
+            <span data-testid="authenticated-user-name" className="text-[10px] text-violet-400 leading-none font-semibold truncate max-w-[120px]">
               {stats.name || stats.title}
             </span>
-            {stats.handle && <span className="text-[9px] text-slate-400 leading-none truncate max-w-[120px]">{stats.handle}</span>}
+            {stats.handle && <span data-testid="authenticated-user-handle" className="text-[9px] text-slate-400 leading-none truncate max-w-[120px]">{stats.handle}</span>}
           </div>
         </button>
       </div>
