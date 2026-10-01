@@ -202,7 +202,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
             onClick={() => openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1)}
             className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
           >
-            {progressStatus==='IN_PROGRESS'?'Continue Mission':'Open Mission Stages'}
+            {progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Solving Mission'}
           </button>
         </div>
       </div>
