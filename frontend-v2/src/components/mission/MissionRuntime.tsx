@@ -20,7 +20,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [hints, setHints] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<any>(null);
   const [revealLock, setRevealLock] = useState(false);
-  const [reward, setReward] = useState<any>(null);
   const [fileIndex, setFileIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -195,9 +194,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       await refreshInvestigation();
       setRevealLock(false);
       setRevealed(null);
-      if (result.result === 'CORRECT' && result.levelCompleted) {
-        setReward({ title: currentLevel?.title || `Level ${level + 1}`, result, final: Boolean(result.missionCompleted) });
-      }
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
     } finally {
@@ -228,7 +224,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       }
       const refreshed = await refreshInvestigation();
       const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
-      setReward(null);
       setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
       setQuestion(0);
     } else if (question + 1 < questions.length) {
@@ -272,22 +267,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     } finally {
       setBusy(false);
     }
-  };
-
-  const continueReward = async () => {
-    const final = reward?.final;
-    setReward(null);
-    setFeedback(null);
-    setAnswer('');
-    setHints([]);
-    setRevealed(null);
-    if (final) { setStage('complete'); return; }
-    try {
-      const refreshed = await refreshInvestigation();
-      const index = (refreshed?.projectVersion?.levels || []).findIndex((item: any) => item.id === refreshed?.currentLevelId);
-      setLevel(index >= 0 ? index : level + 1);
-      setQuestion(0);
-    } catch {}
   };
 
   const finalize = async () => {
@@ -509,19 +488,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           </div>
         </aside>
       </div>
-      {reward && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-[430px] rounded-3xl border-2 border-violet-500/50 bg-[#12131b] shadow-2xl p-6">
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-300"><span className="material-symbols-outlined text-[34px]">celebration</span></div>
-              <div className="font-mono text-[10px] text-emerald-400 uppercase tracking-[.2em] mt-4">Level completed</div>
-              <h2 className="text-2xl font-bold text-white mt-1">{reward.title}</h2>
-              <div className="grid grid-cols-2 gap-3 mt-5"><Meta label="KP earned" value={`+${reward.result?.reward?.xp || 0}`} /><Meta label="Coins earned" value={`+${reward.result?.reward?.coins || 0}`} /></div>
-              <button onClick={continueReward} className="w-full mt-5 py-3 rounded-xl bg-violet-600 text-white text-xs font-bold">{reward.final ? 'View Mission Celebration' : 'Continue to Next Level'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
