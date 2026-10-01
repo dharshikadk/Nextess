@@ -41,7 +41,11 @@ jobs:
     env:
       DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
       FRONTEND_ORIGIN: http://127.0.0.1:3000
+      # The browser suite runs three engines in parallel against one local API
+      # process. Keep production throttling unchanged while preventing the
+      # shared CI test process from rate-limiting legitimate E2E traffic.
       RATE_LIMIT_AUTH: 100
+      RATE_LIMIT_STATEFUL: 1000
     defaults:
       run:
         working-directory: backend
