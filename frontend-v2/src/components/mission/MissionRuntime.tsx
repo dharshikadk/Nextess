@@ -97,7 +97,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         if (cancelled) return;
         setMission(result.project);
 
-        if (result.progress?.status === 'IN_PROGRESS') {
+        if (result.progress?.status !== 'COMPLETED') {
+          // A persisted mission-chamber route must be recoverable after a hard
+          // reload even when the project response has not yet reflected the
+          // previous investigation as IN_PROGRESS.
           const started = await api.startMission(missionId);
           if (cancelled) return;
           const investigationResult = await api.investigation(started.investigationId);
