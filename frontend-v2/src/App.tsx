@@ -30,7 +30,12 @@ export default function App() {
   });
 
   // Active Screen
-  const [activePage, setActivePage] = useState<ActivePage>(() => localStorage.getItem('nextess_selected_mission') ? 'mission-detail' : 'dashboard');
+  const [activePage, setActivePage] = useState<ActivePage>(() => {
+    const saved = localStorage.getItem('nextess_active_page') as ActivePage | null;
+    if (saved === 'mission-chamber' && localStorage.getItem('nextess_selected_mission')) return 'mission-chamber';
+    if (saved === 'mission-detail' && localStorage.getItem('nextess_selected_mission')) return 'mission-detail';
+    return localStorage.getItem('nextess_selected_mission') ? 'mission-detail' : 'dashboard';
+  });
 
   // Modals & Notifications
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -38,7 +43,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sessionBannerDismissed, setSessionBannerDismissed] = useState(false);
 
-  const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
+  const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
   const [quote,setQuote]=useState<any>(null);
   const [directives,setDirectives]=useState<any[]>([]);
   const [badges,setBadges]=useState<any[]>([]);
@@ -48,29 +53,41 @@ export default function App() {
   const [showStartAnimation, setShowStartAnimation] = useState(false);
 
   const refresh=async()=>{
-    try{const q=await api.quote();setQuote(q.quote||null)}catch{setQuote(null)}
-    try{
-      const me=await api.me();
-      if(!me?.user) throw new Error('guest');
-      const d=await api.dashboard();
-      try { const setting = await api.settings(); if (setting?.settings?.theme === 'light' || setting?.settings?.theme === 'dark') setTheme(setting.settings.theme); } catch {}
-      const u=d.user;
-      setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,streakDays:d?.streakDays??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',isGuest:false,badgesCount:d?.badgesCount??0}));
-      setActiveProgress(d?.activeProgress||[]);
-      const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
-      setDirectives(ds?.directives||[]);
-      setBadges(bs?.badges||[]);
-      setLeaderboard(lb||{opened:false,entries:[]});
-    }catch{
-      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',isGuest:true,badgesCount:0}));
-      setActiveProgress([]);
-      setDirectives([]);
-      setBadges([]);
+    let me:any=null;
+    try{me=await api.me()}catch{
+      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setActiveProgress([]);setDirectives([]);setBadges([]);
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
+      return;
     }
+    if(!me?.user){
+      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setActiveProgress([]);setDirectives([]);setBadges([]);
+      return;
+    }
+    const u=me.user;
+    setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false}));
+    try{
+      const d=await api.dashboard();
+      setStats(prev=>({...prev,kp:d.user?.xp??prev.kp,coins:d.user?.coins??prev.coins,streakDays:d?.streakDays??prev.streakDays,level:d.user?.level??prev.level,name:d?.name??prev.name,handle:d.user?.username?'@'+d.user.username:prev.handle,userClass:d.user?.schoolClass||d.user?.gradeClass||prev.userClass,college:d.user?.fieldOfStudy||prev.college,profession:d.user?.profession||prev.profession,profileType:d.user?.profileType||prev.profileType,profileStatus:d.user?.profileStatus||prev.profileStatus,profileImageData:d.user?.profileImageData||prev.profileImageData,badgesCount:d?.badgesCount??prev.badgesCount,isGuest:false}));
+      setActiveProgress(d?.activeProgress||[]);
+    }catch{}
+    try{
+      const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
+      setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});
+    }catch{}
   };
   useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
-  useEffect(() => { let mounted = true; refresh().finally(() => { if (mounted) setAppReady(true); }); return () => { mounted = false; }; }, []);
+  useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
+  useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
+  useEffect(() => {
+    let mounted = true;
+    const readyFallback = new Promise<void>((resolve) => setTimeout(resolve, 10000));
+    Promise.race([refresh(), readyFallback]).finally(() => {
+      if (mounted) setAppReady(true);
+    });
+    return () => { mounted = false; };
+  }, []);
   // Synchronize document element class with current theme
   useEffect(() => {
     const root = document.documentElement;
@@ -105,12 +122,12 @@ export default function App() {
   const handleAwardKP=(_amount:number)=>refresh();
   const handleClaimSurge=()=>{setToastMessage('Rewards are issued by the server after eligible activity.');refresh()};
 
-  const handleSaveProfile=(name:string,handle:string,userClass:string,college:string,profession:string)=>{api.updateProfile({name,schoolClass:userClass,fieldOfStudy:college,profession}).then(()=>{setToastMessage('Profile updated successfully.');refresh()}).catch(e=>setToastMessage(e.message))};
+  const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
-  const handleAuthSuccess = () => { setShowStartAnimation(true); refresh(); setToastMessage('Account synchronized with Nextess.'); };
+  const handleAuthSuccess = async () => { await refresh(); setShowStartAnimation(true); setToastMessage('Account synchronized with Nextess.'); };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
-  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
+  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');localStorage.removeItem('nextess_active_page');localStorage.removeItem('nextess_investigation_id');localStorage.removeItem('nextess_investigation_mission_id');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 
   const isDark = theme === 'dark';
 
@@ -129,6 +146,7 @@ export default function App() {
         activePage={activePage}
         onNavigate={setActivePage}
         onOpenAuth={() => setAuthModalOpen(true)}
+        isGuest={stats.isGuest}
       />
 
       {/* Main Content Area */}

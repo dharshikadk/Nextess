@@ -40,8 +40,12 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://nextess:nextess@localhost:5432/nextess_ci
-      FRONTEND_ORIGIN: http://localhost:3000
+      FRONTEND_ORIGIN: http://127.0.0.1:3000
+      # The browser suite runs three engines in parallel against one local API
+      # process. Keep production throttling unchanged while preventing the
+      # shared CI test process from rate-limiting legitimate E2E traffic.
       RATE_LIMIT_AUTH: 100
+      RATE_LIMIT_STATEFUL: 1000
     defaults:
       run:
         working-directory: backend
@@ -58,9 +62,9 @@ jobs:
           node-version: 22
           package-manager-cache: false
       - run: npm install
+      - run: npm --prefix ../database install
       - run: npm run prisma:generate
       - run: npm run prisma:migrate
-      - run: npm --prefix ../database install
       - run: npm --prefix ../database run generate
       - run: npm --prefix ../database run seed
       - run: npm test
@@ -95,7 +99,7 @@ jobs:
           echo "$API_PID" >/tmp/nextess-api.pid
 
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:4000/health >/dev/null 2>&1; then
+            if curl -fsS http://127.0.0.1:4000/health >/dev/null 2>&1; then
               echo "API server started successfully on attempt $i"
               exit 0
             fi
@@ -117,19 +121,19 @@ jobs:
 
       - name: Verify API readiness
         run: |
-          curl -fsS http://localhost:4000/ready
+          curl -fsS http://127.0.0.1:4000/ready
       - name: Verify API catalogue and quote contracts
         run: |
-          curl -fsS http://localhost:4000/v1/subjects | grep -q '"displayName":"Physics"'
-          curl -fsS http://localhost:4000/v1/subjects | grep -q '"status":"FUTURE"'
-          curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"author"'
-          curl -fsS http://localhost:4000/v1/quotes/daily | grep -q '"date"'
+          curl -fsS http://127.0.0.1:4000/v1/subjects | grep -q '"displayName":"Physics"'
+          curl -fsS http://127.0.0.1:4000/v1/subjects | grep -q '"status":"FUTURE"'
+          curl -fsS http://127.0.0.1:4000/v1/quotes/daily | grep -q '"author"'
+          curl -fsS http://127.0.0.1:4000/v1/quotes/daily | grep -q '"date"'
       - name: Run database-backed mission runtime smoke test
         run: node scripts/runtime-smoke.mjs
       - name: Build frontend for browser E2E
         working-directory: frontend-v2
         env:
-          VITE_API_BASE_URL: http://localhost:4000
+          VITE_API_BASE_URL: http://127.0.0.1:4000
         run: |
           npm install
           npm run build
@@ -137,7 +141,7 @@ jobs:
       - name: Start frontend for browser E2E
         working-directory: frontend-v2
         env:
-          VITE_API_BASE_URL: http://localhost:4000
+          VITE_API_BASE_URL: http://127.0.0.1:4000
         run: |
           nohup npm run preview -- --host 127.0.0.1 --port 3000 >/tmp/nextess-frontend.log 2>&1 &
           FRONTEND_PID=$!
@@ -162,17 +166,17 @@ jobs:
           echo "Frontend failed to start after 60 seconds. Logs:"
           cat /tmp/nextess-frontend.log
           exit 1
-      - name: Install Chromium for browser E2E
+      - name: Install Playwright browsers for browser E2E
         working-directory: frontend-v2
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
       - name: Verify API is still ready before browser E2E
-        run: curl -fsS http://localhost:4000/ready
+        run: curl -fsS http://127.0.0.1:4000/ready
 
       - name: Run browser E2E
         working-directory: frontend-v2
         env:
-          E2E_BASE_URL: http://localhost:3000
-          E2E_API_BASE_URL: http://localhost:4000
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_API_BASE_URL: http://127.0.0.1:4000
         run: npm run e2e
 
   database:

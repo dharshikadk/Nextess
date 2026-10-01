@@ -113,6 +113,8 @@ model User {
   educationStage String? @db.VarChar(30)
   schoolClass String? @db.VarChar(50)
   fieldOfStudy String? @db.VarChar(100)
+  profileStatus String? @db.VarChar(60)
+  profileImageData String?
 
   settings       UserSetting?
   sessions       AuthSession[]

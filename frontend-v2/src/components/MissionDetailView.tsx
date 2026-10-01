@@ -15,6 +15,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
   const isDark = theme === 'dark';
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedSection, setExpandedSection] = useState<'capsule'|'metadata'|'files'|null>(null);
 
   useEffect(() => {
     let cancelled=false;
@@ -162,63 +163,46 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
         </div>
 
         <div className="xl:col-span-4 flex flex-col gap-4 sticky top-20">
-          <div className={`rounded-2xl p-5 border shadow-xl ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-violet-400">badge</span>
-              <span className={`font-headline-sm text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Mission Metadata</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">ROLE</span><span className="block text-xs font-semibold mt-1">{mission.role}</span></div>
-              <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">TYPE</span><span className="block text-xs font-semibold mt-1">{mission.problemType}</span></div>
-              <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">LENGTH</span><span className="block text-xs font-semibold mt-1">{mission.estimatedLength}</span></div>
-              <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">VERSION</span><span className="block text-xs font-semibold mt-1">{mission.version}</span></div>
-            </div>
+          <div className="flex flex-col gap-2">
+            {([
+              ['metadata','Mission Metadata','badge'],
+              ['capsule','Learning Capsule','menu_book'],
+              ['files','Files','folder_copy'],
+            ] as const).map(([key,label,icon]) => (
+              <button key={key} type="button" onClick={() => setExpandedSection(expandedSection===key ? null : key)} className={`w-full flex items-center justify-between gap-3 rounded-2xl border p-4 text-left transition-all ${expandedSection===key ? (isDark ? 'bg-violet-500/10 border-violet-400/40' : 'bg-violet-50 border-violet-300') : (isDark ? 'bg-[#12131b] border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:bg-slate-50')}`}>
+                <span className="flex items-center gap-2"><span className="material-symbols-outlined text-violet-400">{icon}</span><span className="text-sm font-bold">{label}</span></span>
+                <span className="material-symbols-outlined text-[18px] text-slate-400">{expandedSection===key ? 'expand_less' : 'expand_more'}</span>
+              </button>
+            ))}
           </div>
 
-          <div className={`rounded-2xl p-5 border shadow-xl ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-violet-400">menu_book</span>
-              <span className={`font-headline-sm text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Learning Capsule</span>
-            </div>
-            <h3 className="text-sm font-bold text-violet-400">{mission.learningCapsule.title}</h3>
-            <div className="mt-3 flex flex-col gap-2">
-              {mission.learningCapsule.sections.map((section: any) => (
-                <div key={section.title} className={`p-3 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
-                  <span className="text-xs font-semibold">{section.title}</span>
-                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{section.content}</p>
+          {expandedSection && (
+            <div className={`rounded-2xl p-5 border shadow-xl ${isDark ? 'bg-[#12131b] border-violet-500/20' : 'bg-white border-slate-200'}`}>
+              {expandedSection === 'metadata' && <div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">ROLE</span><span className="block text-xs font-semibold mt-1">{mission.role}</span></div>
+                  <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">TYPE</span><span className="block text-xs font-semibold mt-1">{mission.problemType}</span></div>
+                  <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">LENGTH</span><span className="block text-xs font-semibold mt-1">{mission.estimatedLength}</span></div>
+                  <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15"><span className="font-mono text-[9px] text-slate-400">VERSION</span><span className="block text-xs font-semibold mt-1">{mission.version}</span></div>
                 </div>
-              ))}
+              </div>}
+              {expandedSection === 'capsule' && <div>
+                <h3 className="text-sm font-bold text-violet-400">{mission.learningCapsule.title}</h3>
+                <div className="mt-3 flex flex-col gap-2">{mission.learningCapsule.sections.map((section: any) => <div key={section.title} className={`p-3 rounded-xl border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}><span className="text-xs font-semibold">{section.title}</span><p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{section.content}</p></div>)}</div>
+              </div>}
+              {expandedSection === 'files' && <div>
+                <p className="text-xs text-slate-400 mb-2">{mission.requiredEvidence?.instruction}</p>
+                <div className="flex flex-col gap-2">{(mission.requiredEvidence?.files || []).map((file: any) => <div key={file.fileName} className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-emerald-500/15' : 'bg-emerald-50 border-emerald-200'}`}><div className="text-xs font-semibold">{file.fileName}</div><div className="text-[10px] text-slate-400 mt-0.5">{file.purpose}</div></div>)}</div>
+                {mission.requiredSimulation && <div className="mt-3 p-3 rounded-xl border border-violet-500/20 bg-violet-500/5"><span className="font-mono text-[9px] text-violet-400 uppercase">Required Simulation</span><div className="text-xs font-semibold mt-1">{mission.requiredSimulation.fileName}</div><p className="text-[10px] text-slate-400 mt-1">{mission.requiredSimulation.description}</p></div>}
+              </div>}
             </div>
-          </div>
-
-          <div className={`rounded-2xl p-5 border shadow-xl ${isDark ? 'bg-[#12131b] border-emerald-500/20' : 'bg-white border-emerald-200'}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-emerald-400">folder_copy</span>
-              <span className={`font-headline-sm text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Mission Resources</span>
-            </div>
-            <p className="text-xs text-slate-400 mb-2">{mission.requiredEvidence?.instruction}</p>
-            <div className="flex flex-col gap-2">
-              {(mission.requiredEvidence?.files || []).map((file: any) => (
-                <div key={file.fileName} className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-emerald-500/15' : 'bg-emerald-50 border-emerald-200'}`}>
-                  <div className="text-xs font-semibold">{file.fileName}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{file.purpose}</div>
-                </div>
-              ))}
-            </div>
-            {mission.requiredSimulation && (
-              <div className="mt-3 p-3 rounded-xl border border-violet-500/20 bg-violet-500/5">
-                <span className="font-mono text-[9px] text-violet-400 uppercase">Required Simulation</span>
-                <div className="text-xs font-semibold mt-1">{mission.requiredSimulation.fileName}</div>
-                <p className="text-[10px] text-slate-400 mt-1">{mission.requiredSimulation.description}</p>
-              </div>
-            )}
-          </div>
+          )}
 
           <button
             onClick={() => openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1)}
-            className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
+            aria-label="Start Solving Mission — Open Mission Stages" className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
           >
-            {progressStatus==='IN_PROGRESS'?'Continue Mission':'Open Mission Stages'}
+            {progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Solving Mission'}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-export const API_BASE=(import.meta.env.VITE_API_BASE_URL||'http://localhost:4000').replace(/\/$/,'');
+export const API_BASE=(import.meta.env.VITE_API_BASE_URL||'http://127.0.0.1:4000').replace(/\/$/,'');
 export type ApiErrorCode =
   | 'VALIDATION_ERROR' | 'AUTH_REQUIRED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT'
   | 'RATE_LIMITED' | 'MISSION_UNAVAILABLE' | 'INVALID_VERSION' | 'INVALID_TASK'
@@ -14,19 +14,34 @@ export class ApiError extends Error {
   }
 }
 async function request<T>(path:string,init:RequestInit={}):Promise<T>{
-  const response=await fetch(API_BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers||{})}});
-  const body=await response.json().catch(()=>({}));
-  if(!response.ok){
-    const error=body?.error;
-    throw new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+  const method=(init.method||'GET').toUpperCase();
+  const maxAttempts=method==='GET'?3:1;
+  let lastError: unknown;
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    try{
+      const response=await fetch(API_BASE+path,{...init,credentials:'include',headers:{'Content-Type':'application/json',...(init.headers||{})}});
+      const body=await response.json().catch(()=>({}));
+      if(response.ok)return body as T;
+      const error=body?.error;
+      const retryable=response.status>=500&&response.status<=599;
+      if(!retryable||attempt===maxAttempts){
+        throw new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+      }
+      lastError=new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+    }catch(error){
+      lastError=error;
+      if(error instanceof ApiError && error.status<500)throw error;
+      if(attempt===maxAttempts)throw error;
+    }
+    await new Promise(resolve=>setTimeout(resolve,attempt*400));
   }
-  return body as T;
+  throw lastError instanceof Error?lastError:new Error('Request failed.');
 }
 export const api={
   me:()=>request<any>('/v1/auth/me'), login:(username:string,password:string)=>request<any>('/v1/auth/login',{method:'POST',body:JSON.stringify({username,password})}),
   register:(data:any)=>request<any>('/v1/auth/register',{method:'POST',body:JSON.stringify(data)}), logout:()=>request<any>('/v1/auth/logout',{method:'POST'}),
   dashboard:()=>request<any>('/v1/dashboard'), profile:()=>request<any>('/v1/profile'), updateProfile:(data:any)=>request<any>('/v1/profile',{method:'PATCH',body:JSON.stringify(data)}),
-  settings:()=>request<any>('/v1/settings'), updateSettings:(data:any)=>request<any>('/v1/settings',{method:'PATCH',body:JSON.stringify(data)}), streak:()=>request<any>('/v1/streak'),
+  settings:()=>request<any>('/v1/settings'), freezeStreak:(days:number)=>request<any>('/v1/streak/freeze',{method:'POST',body:JSON.stringify({days})}), updateSettings:(data:any)=>request<any>('/v1/settings',{method:'PATCH',body:JSON.stringify(data)}), streak:()=>request<any>('/v1/streak'),
   leaderboard:()=>request<any>('/v1/leaderboard'), joinLeague:()=>request<any>('/v1/league/join',{method:'POST'}), badges:()=>request<any>('/v1/badges'),
   directives:()=>request<any>('/v1/directives'), claimDirective:(id:string)=>request<any>('/v1/directives/'+id+'/claim',{method:'POST'}), quote:()=>request<any>('/v1/quotes/daily'),
   feedback:(category:string,message:string)=>request<any>('/v1/feedback',{method:'POST',body:JSON.stringify({category,message})}),

@@ -18,6 +18,8 @@ type Mission = {
     levels:Array<{id:string;levelNumber:number;title:string;rewardXp:number;rewardCoins:number;questions:any[]}>;
   }|null;
   levelsCount:number;
+  progressStatus?:string;
+  unlocked?:boolean;
 };
 
 export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
@@ -31,6 +33,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   const [missions,setMissions]=useState<Mission[]>([]);
   const [selectedSubjectKey,setSelectedSubjectKey]=useState(()=>localStorage.getItem('nextess_selected_subject')||'');
   const [selectedKey,setSelectedKey]=useState('');
+  const [previewMission,setPreviewMission]=useState<Mission|null>(null);
   const [loading,setLoading]=useState(true);
 
   useEffect(()=>{
@@ -64,10 +67,8 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
 
 
   const openMission = (mission: Mission) => {
-    if (!missions.some((item) => item.id === mission.id)) {
-      onShowToast('Invalid mission selection.');
-      return;
-    }
+    if (!missions.some((item) => item.id === mission.id)) { onShowToast('Invalid mission selection.'); return; }
+    if (mission.unlocked === false) { onShowToast('Complete the previous mission before starting this one.'); return; }
     localStorage.setItem('nextess_selected_mission', mission.id);
     localStorage.removeItem('nextess_mission_stage');
     onNavigate('mission-detail');
@@ -140,8 +141,8 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                 className={`relative z-10 w-full flex ${left ? 'justify-start pl-4 md:pl-16' : 'justify-end pr-4 md:pr-16'} mb-20`}
               >
                 <button
-                  onClick={() => setSelectedKey(mission.id)}
-                  onDoubleClick={() => openMission(mission)}
+                  data-testid="mission-node"
+                  onClick={() => { setSelectedKey(mission.id); setPreviewMission(mission); }}
                   className="group relative flex items-center gap-4 text-left"
                   aria-label={`Select mission ${mission.title}`}
                 >
@@ -156,15 +157,15 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                         <span className="font-mono text-lg font-bold">{number}</span>
                       </div>
                     </div>
-                    <span className="absolute -bottom-1 -right-1 bg-violet-600 text-white font-mono text-[9px] px-2 py-0.5 rounded-full font-bold shadow-md border border-violet-400/40">
-                      READY
+                    <span className={`absolute -bottom-1 -right-1 font-mono text-[9px] px-2 py-0.5 rounded-full font-bold shadow-md border ${mission.unlocked === false ? 'bg-slate-500 text-white border-slate-400/40' : mission.progressStatus === 'COMPLETED' ? 'bg-emerald-600 text-white border-emerald-400/40' : 'bg-violet-600 text-white border-violet-400/40'}`}>
+                      {mission.unlocked === false ? 'LOCKED' : mission.progressStatus === 'COMPLETED' ? 'DONE' : mission.progressStatus === 'IN_PROGRESS' ? 'CONTINUE' : 'READY'}
                     </span>
                   </div>
 
                   <div className={`flex flex-col px-4 py-3 rounded-2xl shadow-xl max-w-xs border transition-all ${selected ? (isDark ? 'bg-[#181926] border-violet-400' : 'bg-white border-violet-400 ring-2 ring-violet-200') : (isDark ? 'bg-[#12131b]/95 border-violet-500/20' : 'bg-white/95 border-slate-200')}`}>
                     <div className={`flex items-center gap-1.5 mb-1 ${!left ? 'justify-end' : ''}`}>
                       <span className="font-mono text-[10px] text-violet-400 font-bold uppercase tracking-wider">
-                        Mission {number} // Not Started
+                        Mission {number} // {mission.progressStatus || 'NOT_STARTED'}
                       </span>
                     </div>
                     <span className={`font-bold text-sm leading-snug ${isDark ? 'text-white' : 'text-slate-900'} ${!left ? 'text-right' : ''}`}>
@@ -196,7 +197,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                   </div>
                   <h2 className={`font-headline-md text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedMission.title}</h2>
                 </div>
-                <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-[9px] font-bold">NOT STARTED</span>
+                <span className={`px-2 py-1 rounded-lg border font-mono text-[9px] font-bold ${selectedMission.unlocked === false ? 'bg-slate-500/10 border-slate-400/20 text-slate-500' : selectedMission.progressStatus === 'COMPLETED' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : selectedMission.progressStatus === 'IN_PROGRESS' ? 'bg-violet-500/10 border-violet-500/20 text-violet-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>{selectedMission.unlocked === false ? 'LOCKED' : selectedMission.progressStatus || 'NOT STARTED'}</span>
               </div>
 
               <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{selectedMission.mission}</p>
@@ -253,12 +254,13 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-violet-500/15">
-                <span className="font-mono text-[10px] text-slate-500">Double-click a mission node or use the button.</span>
+                <span className="font-mono text-[10px] text-slate-500">Click a mission node to inspect it.</span>
                 <button
                   onClick={() => openMission(selectedMission)}
+                  disabled={selectedMission.unlocked === false}
                   className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6] active:translate-y-0.5 transition-all"
                 >
-                  Start Solving Mission
+                  {selectedMission.unlocked === false ? 'Previous mission required' : selectedMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Solving Mission'}
                 </button>
               </div>
 
@@ -270,6 +272,28 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
           )}
         </div>
       </div>
+      )}
+
+      {previewMission && (
+        <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={previewMission.title}>
+          <div className={`w-full max-w-lg rounded-3xl border p-6 shadow-2xl ${isDark ? 'bg-[#12131b] border-violet-500/30 text-white' : 'bg-white border-violet-200 text-slate-900'}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div><span className="font-mono text-[10px] text-violet-400 uppercase">Mission {String(missions.findIndex(m=>m.id===previewMission.id)+1).padStart(2,'0')}</span><h2 className="text-xl font-bold mt-1">{previewMission.title}</h2></div>
+              <button type="button" onClick={() => setPreviewMission(null)} className="p-1.5 text-slate-400" aria-label="Close mission details">✕</button>
+            </div>
+            <p className={`text-sm leading-6 mt-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{previewMission.mission}</p>
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">Role</span><span className="block text-xs font-semibold mt-1">{previewMission.role || '—'}</span></div>
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">Concept used</span><span className="block text-xs font-semibold mt-1">{((previewMission.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections || [])[0]?.title) || 'Mission concepts'}</span></div>
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-violet-50 border-violet-200'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">KP earned</span><span className="block text-lg font-bold text-violet-500 mt-1">+{(previewMission.currentPublishedVersion?.levels || []).reduce((n:any,l:any)=>n+(Number(l.rewardXp)||0),0)}</span></div>
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-amber-500/15' : 'bg-amber-50 border-amber-200'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">Coins earned</span><span className="block text-lg font-bold text-amber-500 mt-1">+{(previewMission.currentPublishedVersion?.levels || []).reduce((n:any,l:any)=>n+(Number(l.rewardCoins)||0),0)}</span></div>
+            </div>
+            <div className="flex items-center justify-between gap-3 mt-5">
+              <span className="text-xs text-slate-500">{previewMission.unlocked === false ? 'Locked until the previous mission is completed.' : previewMission.progressStatus === 'COMPLETED' ? 'Mission completed.' : previewMission.progressStatus === 'IN_PROGRESS' ? 'Mission in progress.' : 'Mission ready.'}</span>
+              <button type="button" disabled={previewMission.unlocked === false} onClick={() => { setPreviewMission(null); openMission(previewMission); }} className="px-4 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40">{previewMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Mission'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {futureSubjects.length > 0 && (

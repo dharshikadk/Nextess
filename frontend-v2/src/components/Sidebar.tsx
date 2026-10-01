@@ -6,6 +6,7 @@ interface SidebarProps {
   activePage: ActivePage;
   onNavigate: (page: ActivePage) => void;
   onOpenAuth: () => void;
+  isGuest: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -13,6 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activePage,
   onNavigate,
   onOpenAuth,
+  isGuest,
 }) => {
   const isDark = theme === 'dark';
 
@@ -212,55 +214,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Cadet Access Box (Bottom of Sidebar) */}
-      <div className="flex flex-col gap-2 p-1">
-        <div
-          className={`p-3.5 rounded-2xl flex flex-col gap-2 border transition-all ${
-            isDark
-              ? 'bg-[#12131b] border-violet-500/25 shadow-lg'
-              : 'bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 border-violet-200 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-amber-500 text-[18px]">
-                workspace_premium
-              </span>
-              <span className="font-mono text-xs font-bold text-amber-500">Cadet Access</span>
+      {isGuest && (
+        <div className="flex flex-col gap-2 p-1">
+          <div className={`p-3.5 rounded-2xl flex flex-col gap-2 border transition-all ${isDark ? 'bg-[#12131b] border-violet-500/25 shadow-lg' : 'bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 border-violet-200 shadow-sm'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-amber-500 text-[18px]">workspace_premium</span><span className="font-mono text-xs font-bold text-amber-500">Cadet Access</span></div>
+              <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-semibold ${isDark ? 'bg-[#181926] text-violet-300 border border-violet-500/20' : 'bg-white text-violet-800 border border-violet-200'}`}>Guest</span>
             </div>
-            <span
-              className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                isDark ? 'bg-[#181926] text-violet-300 border border-violet-500/20' : 'bg-white text-violet-800 border border-violet-200'
-              }`}
-            >
-              Guest
-            </span>
-          </div>
-          <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Unlock persistent progress sync & ranked simulation bouts.
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={onOpenAuth}
-              className="flex-1 flex items-center justify-center py-2 px-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-all shadow-[0_2px_8px_rgba(139,92,246,0.35)]"
-            >
-              <span className="material-symbols-outlined text-[15px] mr-1">login</span>
-              Sign In / Sign Up
-            </button>
-            <button
-              onClick={onOpenAuth}
-              title="Sync Station"
-              className={`p-2 rounded-xl border transition-all ${
-                isDark
-                  ? 'bg-[#1f2030] text-violet-300 border-violet-500/30 hover:bg-violet-600 hover:text-white'
-                  : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">sync</span>
-            </button>
+            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Unlock persistent progress sync &amp; ranked simulation bouts.</p>
+            <div className="flex items-center gap-2 mt-1">
+              <button onClick={onOpenAuth} className="flex-1 flex items-center justify-center py-2 px-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-all shadow-[0_2px_8px_rgba(139,92,246,0.35)]"><span className="material-symbols-outlined text-[15px] mr-1">login</span>Sign In / Sign Up</button>
+              <button onClick={onOpenAuth} title="Sync Station" className={`p-2 rounded-xl border transition-all ${isDark ? 'bg-[#1f2030] text-violet-300 border-violet-500/30 hover:bg-violet-600 hover:text-white' : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50'}`}><span className="material-symbols-outlined text-[16px]">sync</span></button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 };

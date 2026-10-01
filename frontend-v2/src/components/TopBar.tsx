@@ -139,7 +139,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* User Avatar + Level Badge (Clickable to open profile) */}
         <button
           onClick={() => onNavigate('profile')}
-          title="Open Alex Vektor Profile"
+          title={`Open ${stats.name || 'Cadet'} Profile`}
           className={`flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-all hover:scale-105 ${
             isDark
               ? 'bg-[#181926] border-[rgba(167,139,250,0.25)] hover:border-violet-400'
@@ -155,9 +155,10 @@ export const TopBar: React.FC<TopBarProps> = ({
             <span className={`font-mono text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Lvl {stats.level}
             </span>
-            <span className="text-[10px] text-violet-400 leading-none font-semibold uppercase truncate max-w-[90px]">
-              {stats.profession || stats.title}
+            <span data-testid="authenticated-user-name" className="text-[10px] text-violet-400 leading-none font-semibold truncate max-w-[120px]">
+              {stats.name || stats.title}
             </span>
+            {stats.handle && <span data-testid="authenticated-user-handle" className="text-[9px] text-slate-400 leading-none truncate max-w-[120px]">{stats.handle}</span>}
           </div>
         </button>
       </div>

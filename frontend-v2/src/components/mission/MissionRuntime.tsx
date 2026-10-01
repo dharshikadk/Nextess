@@ -11,7 +11,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const missionId = localStorage.getItem('nextess_selected_mission') || '';
   const [mission, setMission] = useState<any>(null);
   const [investigation, setInvestigation] = useState<any>(null);
-  const [stage, setStage] = useState<'brief' | 'capsule' | 'level' | 'complete'>('brief');
+  const [stage, setStage] = useState<'brief' | 'capsule' | 'level' | 'complete'>(() => {
+    const savedStage = Number(localStorage.getItem('nextess_mission_stage') || '1');
+    if (savedStage >= 3) return 'level';
+    if (savedStage === 2) return 'capsule';
+    return 'brief';
+  });
   const [capsule, setCapsule] = useState(0);
   const [level, setLevel] = useState(0);
   const [question, setQuestion] = useState(0);
@@ -19,12 +24,18 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const [feedback, setFeedback] = useState<any>(null);
   const [hints, setHints] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<any>(null);
-  const [reward, setReward] = useState<any>(null);
+  const [revealLock, setRevealLock] = useState(false);
+  const [revealedQuestionId, setRevealedQuestionId] = useState<string | null>(null);
   const [fileIndex, setFileIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
+
+  useEffect(() => {
+    const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'level' ? Math.max(3, level + 3) : 999;
+    localStorage.setItem('nextess_mission_stage', String(stageNumber));
+  }, [stage, level]);
   const simulationFrameRef = React.useRef<HTMLIFrameElement>(null);
 
   const capsules = mission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections || [];
@@ -41,6 +52,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const simulation = currentLevel?.simulation;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
   const simulationSrc = resolveSimulationSource(simulationFile);
+  const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
+  const hasSubmittedCurrent = currentAnswers.length > 0;
+  const hasCorrectCurrent = currentAnswers.some((item:any) => item.result === 'CORRECT');
+  const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
@@ -54,6 +69,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     setBusy(true);
     try {
       const started = await api.startMission(missionId);
+      localStorage.setItem('nextess_investigation_id', started.investigationId);
+      localStorage.setItem('nextess_investigation_mission_id', missionId);
       const result = await api.investigation(started.investigationId);
       const inv = result.investigation;
       setInvestigation(inv);
@@ -82,11 +99,40 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         if (cancelled) return;
         setMission(result.project);
 
-        if (result.progress?.status === 'IN_PROGRESS') {
-          const started = await api.startMission(missionId);
+        if (result.progress?.status !== 'COMPLETED') {
+          // A persisted mission-chamber route must be recoverable after a hard
+          // reload even when the project response has not yet reflected the
+          // previous investigation as IN_PROGRESS.
+          const persistedInvestigationId = localStorage.getItem('nextess_investigation_mission_id') === missionId
+            ? localStorage.getItem('nextess_investigation_id')
+            : null;
+          const existingInvestigationId = result.progress?.investigationId || result.progress?.investigation?.id || persistedInvestigationId;
+          // Opening a mission must preserve the Mission Brief/learning flow. Do not
+          // create a new server investigation merely because the mission page was
+          // opened: starting the investigation is an explicit learner action.
+          // Existing progress (including a persisted investigation ID) is resumed
+          // immediately so refresh/re-entry remains server-authoritative.
+          if (!existingInvestigationId) {
+            setStage('brief');
+            return;
+          }
+
+          let investigationId = existingInvestigationId;
+          let investigationResult: any;
+          try {
+            investigationResult = await api.investigation(investigationId);
+          } catch (investigationError) {
+            // A stale persisted investigation may no longer be available. Start a
+            // fresh investigation only after an actual resume attempt failed.
+            const started = await api.startMission(missionId);
+            investigationId = started.investigationId;
+            localStorage.setItem('nextess_investigation_id', started.investigationId);
+            localStorage.setItem('nextess_investigation_mission_id', missionId);
+            investigationResult = await api.investigation(started.investigationId);
+          }
           if (cancelled) return;
-          const investigationResult = await api.investigation(started.investigationId);
-          if (cancelled) return;
+          localStorage.setItem('nextess_investigation_id', investigationId);
+          localStorage.setItem('nextess_investigation_mission_id', missionId);
           const inv = investigationResult.investigation;
           setInvestigation(inv);
           const invLevels = inv?.projectVersion?.levels || result.project?.currentPublishedVersion?.levels || [];
@@ -154,6 +200,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         setFeedback(null);
         setHints([]);
         setRevealed(null);
+        setRevealedQuestionId(null);
+        setRevealLock(false);
         setStage('level');
       }
     }
@@ -165,7 +213,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
 
 
   const submit = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
     if (answer === '' || answer == null) {
       setFeedback({ correct: false, message: 'Select an option or enter an answer before submitting.' });
       return;
@@ -181,25 +229,16 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
       setFeedback({
         correct: result.result === 'CORRECT',
         message: result.result === 'CORRECT'
-          ? 'Correct.'
+          ? `Correct.${result.reward?.xp || result.reward?.coins ? ` +${result.reward.xp || 0} KP, +${result.reward.coins || 0} coins.` : ''}`
           : (result.penalty?.xp || result.penalty?.coins
             ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. Try again.`
             : 'Not correct. Try again.'),
       });
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
-      const refreshed = await refreshInvestigation();
-      if (result.levelCompleted) {
-        setReward({ title: currentLevel?.title || `Level ${level + 1}`, result, final: Boolean(result.missionCompleted) });
-      } else if (result.result === 'CORRECT') {
-        const refreshedQuestions = refreshed?.projectVersion?.levels?.[level]?.questions || [];
-        const next = refreshedQuestions.findIndex((item: any) =>
-          !(refreshed?.answers || []).some((a: any) => a.questionId === item.id && a.result === 'CORRECT')
-        );
-        setQuestion(next >= 0 ? next : question + 1);
-        setAnswer('');
-        setHints([]);
-        setRevealed(null);
-      }
+      await refreshInvestigation();
+      setRevealLock(false);
+      setRevealedQuestionId(null);
+      setRevealed(null);
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
     } finally {
@@ -207,8 +246,48 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     }
   };
 
+  const moveNext = async () => {
+    if (!currentQuestion || busy) return;
+    if (revealLock) {
+      if (question + 1 < questions.length) {
+        setQuestion(v => v + 1);
+        setAnswer('');
+        setRevealed(null);
+        setFeedback({ correct: false, message: 'This challenge was revealed. Return to it and answer it before submitting the following challenges.' });
+        return;
+      }
+      setFeedback({ correct: false, message: 'Answer this revealed challenge before finishing the mission.' });
+      return;
+    }
+    const currentLevelComplete = hasCorrectCurrent && questions.length > 0 && questions.every((q:any) =>
+      (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
+    );
+    if (currentLevelComplete) {
+      if (isFinalChallenge) {
+        await finalize();
+        setStage('complete');
+        return;
+      }
+      const refreshed = await refreshInvestigation();
+      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
+      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
+      setQuestion(0);
+    } else if (question + 1 < questions.length) {
+      setQuestion(v => v + 1);
+    } else if (level + 1 < levels.length) {
+      const refreshed = await refreshInvestigation();
+      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
+      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
+      setQuestion(0);
+    }
+    setAnswer('');
+    setFeedback(null);
+    setHints([]);
+    setRevealed(null);
+  };
+
   const useHint = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -227,28 +306,14 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
+      setRevealedQuestionId(currentQuestion.id);
+      setRevealLock(!hasSubmittedCurrent);
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
     } finally {
       setBusy(false);
     }
-  };
-
-  const continueReward = async () => {
-    const final = reward?.final;
-    setReward(null);
-    setFeedback(null);
-    setAnswer('');
-    setHints([]);
-    setRevealed(null);
-    if (final) { setStage('complete'); return; }
-    try {
-      const refreshed = await refreshInvestigation();
-      const index = (refreshed?.projectVersion?.levels || []).findIndex((item: any) => item.id === refreshed?.currentLevelId);
-      setLevel(index >= 0 ? index : level + 1);
-      setQuestion(0);
-    } catch {}
   };
 
   const finalize = async () => {
@@ -265,17 +330,25 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   useEffect(() => {
     if (!investigation?.id || !simulation?.id || !simulationSrc) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let saveSequence = 0;
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== simulationFrameRef.current?.contentWindow) return;
       const payload = event.data;
       if (payload?.type !== 'nextess-simulation-state' || !payload.state || typeof payload.state !== 'object') return;
+      const sequence = ++saveSequence;
       if (timer) clearTimeout(timer);
       setSimulationSaving(true);
-      timer = setTimeout(() => {
-        api.simulationState(investigation.id, simulation.id, payload.state)
-          .catch((e: any) => setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' }))
-          .finally(() => setSimulationSaving(false));
-      }, 250);
+      timer = setTimeout(async () => {
+        try {
+          await api.simulationState(investigation.id!, simulation.id!, payload.state);
+          if (sequence === saveSequence) setSimulationSaving(false);
+        } catch (e: any) {
+          if (sequence === saveSequence) {
+            setSimulationSaving(false);
+            setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' });
+          }
+        }
+      }, 100);
     };
     window.addEventListener('message', onMessage);
     return () => {
@@ -293,6 +366,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     );
   };
 
+  useEffect(() => {
+    if (!investigation?.state?.simulations?.[simulation?.id]) return;
+    const timer = window.setTimeout(restoreSimulation, 50);
+    return () => window.clearTimeout(timer);
+  }, [investigation?.state?.simulations, simulation?.id]);
+
   const shell = `rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
 
   if (loading) return <div data-testid="mission-runtime-loading" className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
@@ -306,16 +385,16 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 
   if (stage === 'brief') return (
-    <div data-testid="mission-runtime" className="w-full pb-16">
+    <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
       <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
-          <div className="rounded-2xl border border-amber-500/40 bg-[#0f1017] p-6">
+          <div className={`rounded-2xl border p-6 ${dark ? 'border-amber-500/40 bg-[#0f1017]' : 'border-amber-200 bg-amber-50/70'}`}>
             <div className="font-mono text-[10px] text-amber-400 uppercase">Case File · Overview</div>
-            <h2 className="text-lg font-bold text-white mt-1">{mission.title}</h2>
-            <div className="mt-4 rounded-xl border border-amber-500/20 bg-[#12131b] p-4">
+            <h2 className={`text-lg font-bold mt-1 ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
+            <div className={`mt-4 rounded-xl border p-4 ${dark ? 'border-amber-500/20 bg-[#12131b]' : 'border-amber-200 bg-white'}`}>
               <div className="font-mono text-[10px] text-amber-400 uppercase font-bold">Primary Objective</div>
-              <p className="text-base leading-7 text-slate-200 mt-2">{mission.mission}</p>
+              <p className={`text-base leading-7 mt-2 ${dark ? 'text-slate-200' : 'text-slate-700'}`}>{mission.mission}</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
               <Meta label="Role" value={mission.role || '—'} />
@@ -324,7 +403,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
             </div>
             <div className="mt-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
               <div className="font-mono text-[9px] text-emerald-400 uppercase">Evidence requirement</div>
-              <p className="text-xs text-slate-300 mt-1">{mission.requiredEvidence?.instruction || 'Use the provided mission evidence.'}</p>
+              <p className={`text-xs mt-1 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{mission.requiredEvidence?.instruction || 'Use the provided mission evidence.'}</p>
             </div>
           </div>
           <div className="flex justify-end mt-5">
@@ -345,28 +424,28 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   if (stage === 'capsule') {
     const section = capsules[capsule];
     return (
-      <div className="w-full pb-16">
+      <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
         <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
         <section className={`${shell} mt-5 p-6`}>
           <div className="max-w-[1000px] mx-auto">
             <div className="flex gap-2 mb-5 overflow-x-auto">
               {capsules.map((item: any, index: number) => (
-                <button key={item.title} onClick={() => setCapsule(index)} className={`px-3 py-2 rounded-xl text-xs font-mono min-w-[140px] ${index === capsule ? 'bg-violet-600 text-white font-bold' : 'bg-[#181926] text-slate-400'}`}>
+                <button key={item.title} onClick={() => setCapsule(index)} className={`px-3 py-2 rounded-xl text-xs font-mono min-w-[140px] ${index === capsule ? 'bg-violet-600 text-white font-bold' : dark ? 'bg-[#181926] text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
                   {index + 1}. {item.title}
                 </button>
               ))}
             </div>
-            <article className="max-w-[700px] min-h-[360px] mx-auto rounded-[24px] border-2 border-violet-500/40 bg-[#12131b] p-8 flex flex-col justify-between">
+            <article className={`max-w-[700px] min-h-[360px] mx-auto rounded-[24px] border-2 border-violet-500/40 p-8 flex flex-col justify-between ${dark ? 'bg-[#12131b]' : 'bg-white'}`}>
               <div>
                 <span className="font-mono text-[10px] text-violet-400">CONCEPT {capsule + 1} / {capsules.length}</span>
-                <h2 className="text-2xl font-bold text-white mt-3">{section?.title}</h2>
+                <h2 className={`text-2xl font-bold mt-3 ${dark ? 'text-white' : 'text-slate-900'}`}>{section?.title}</h2>
                 <div className="w-12 h-1 rounded-full bg-violet-500 mt-3" />
-                <p className="text-base leading-7 text-slate-200 mt-5">{section?.content}</p>
+                <p className={`text-base leading-7 mt-5 ${dark ? 'text-slate-200' : 'text-slate-700'}`}>{section?.content}</p>
               </div>
               <div className="flex flex-wrap justify-between gap-2 mt-8">
-                <button disabled={capsule === 0} onClick={() => setCapsule((v) => Math.max(0, v - 1))} className="px-4 py-2.5 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs disabled:opacity-40">Previous</button>
+                <button disabled={capsule === 0} onClick={() => setCapsule((v) => Math.max(0, v - 1))} className={`px-4 py-2.5 rounded-xl border border-violet-500/30 text-xs disabled:opacity-40 ${dark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700'}`}>Previous</button>
                 <div className="flex gap-2">
-                  <button onClick={startMission} disabled={busy} className="px-4 py-2.5 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs">Skip to levels</button>
+                  <button onClick={startMission} disabled={busy} className={`px-4 py-2.5 rounded-xl border border-violet-500/30 text-xs ${dark ? 'bg-[#181926] text-slate-300' : 'bg-white text-slate-700'}`}>Skip to levels</button>
                   <button onClick={() => capsule + 1 < capsules.length ? setCapsule((v) => v + 1) : startMission()} disabled={busy} className="px-5 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold">
                     {capsule + 1 < capsules.length ? 'Next Concept' : 'Continue to Level 1'}
                   </button>
@@ -380,15 +459,15 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   }
 
   if (stage === 'complete') return (
-    <div className="w-full pb-16">
+    <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
       <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
-      <section className="mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 bg-[#0f1017] p-8 text-center">
+      <section className={`mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 p-8 text-center ${dark ? 'bg-[#0f1017]' : 'bg-white'}`}>
         <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center">
           <span className="material-symbols-outlined text-[42px]">celebration</span>
         </div>
         <div className="font-mono text-[10px] text-emerald-400 uppercase tracking-[.2em] mt-5">Investigation completed</div>
-        <h2 className="text-3xl font-bold text-white mt-2">{mission.title}</h2>
-        <p className="text-slate-300 text-sm leading-6 mt-3">All mission levels were completed and server-authoritative rewards were applied.</p>
+        <h2 className={`text-3xl font-bold mt-2 ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
+        <p className={`text-sm leading-6 mt-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>All mission levels were completed and server-authoritative rewards were applied.</p>
         <button onClick={finalize} className="mt-5 px-5 py-3 rounded-xl bg-violet-600 text-white text-xs font-bold">Finalize completion</button>
       </section>
     </div>
@@ -425,34 +504,40 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 
   return (
-    <div className="w-full pb-16">
+    <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
       <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <div className="flex justify-end mt-3"><button type="button" onClick={onExit} className={`px-4 py-2 rounded-xl border text-xs font-semibold ${dark ? 'bg-[#12131b] border-rose-500/30 text-slate-300' : 'bg-white border-rose-200 text-rose-700'}`}>Exit Mission</button></div>
       <div className="grid grid-cols-12 gap-5 mt-5 items-start">
         <div className="col-span-12 lg:col-span-3">{missionPanel}</div>
         <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
           <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 gap-3">
             <button onClick={() => {
+              const targetQuestion = question > 0 ? questions[question - 1] : null;
+              const targetId = targetQuestion?.id || (level > 0 ? levels[level - 1]?.questions?.at(-1)?.id : null);
               if (question > 0) setQuestion((v) => v - 1);
-              else if (level > 0) setLevel((v) => v - 1);
+              else if (level > 0) { setLevel((v) => v - 1); setQuestion(Math.max(0, (levels[level - 1]?.questions?.length || 1) - 1)); }
               else setStage('capsule');
-              setAnswer(''); setFeedback(null); setHints([]); setRevealed(null);
-            }} className="px-3 py-1.5 rounded-xl border bg-[#181926] border-cyan-500/30 text-xs text-slate-300">← Previous</button>
+              setRevealLock(Boolean(revealedQuestionId && targetId && revealedQuestionId !== targetId));
+              setAnswer(''); setFeedback(null); setHints([]);
+            }} className={`px-3 py-1.5 rounded-xl border text-xs ${dark ? 'bg-[#181926] border-cyan-500/30 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>← Previous</button>
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
           </div>
           <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
             <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
-            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
+            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy || revealLock} theme={theme} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
           </div>
           {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
           {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <button onClick={useHint} disabled={busy} className="px-3 py-2 rounded-xl border border-violet-500/30 bg-[#181926] text-slate-300 text-xs">Hint</button>
-              <button onClick={revealAnswer} disabled={busy} className="px-3 py-2 rounded-xl border border-amber-500/30 bg-[#181926] text-slate-300 text-xs">Reveal answer</button>
+              <button onClick={useHint} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
+              <button onClick={revealAnswer} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
-            <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>
+            {revealed || hasCorrectCurrent
+              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
+              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion || revealLock} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
         <aside className="col-span-12 lg:col-span-3">
@@ -470,19 +555,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           </div>
         </aside>
       </div>
-      {reward && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-[430px] rounded-3xl border-2 border-violet-500/50 bg-[#12131b] shadow-2xl p-6">
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-300"><span className="material-symbols-outlined text-[34px]">celebration</span></div>
-              <div className="font-mono text-[10px] text-emerald-400 uppercase tracking-[.2em] mt-4">Level completed</div>
-              <h2 className="text-2xl font-bold text-white mt-1">{reward.title}</h2>
-              <div className="grid grid-cols-2 gap-3 mt-5"><Meta label="KP earned" value={`+${reward.result?.reward?.xp || 0}`} /><Meta label="Coins earned" value={`+${reward.result?.reward?.coins || 0}`} /></div>
-              <button onClick={continueReward} className="w-full mt-5 py-3 rounded-xl bg-violet-600 text-white text-xs font-bold">{reward.final ? 'View Mission Celebration' : 'Continue to Next Level'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
