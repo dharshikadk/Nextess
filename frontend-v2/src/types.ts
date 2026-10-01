@@ -25,6 +25,8 @@ export interface UserStats {
   userClass: string;
   college: string;
   profession: string;
+  profileStatus: string;
+  profileImageData: string;
   isGuest: boolean;
   division: string;
   rank: number;
