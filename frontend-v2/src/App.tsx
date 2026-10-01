@@ -30,7 +30,12 @@ export default function App() {
   });
 
   // Active Screen
-  const [activePage, setActivePage] = useState<ActivePage>(() => localStorage.getItem('nextess_selected_mission') ? 'mission-detail' : 'dashboard');
+  const [activePage, setActivePage] = useState<ActivePage>(() => {
+    const saved = localStorage.getItem('nextess_active_page') as ActivePage | null;
+    if (saved === 'mission-chamber' && localStorage.getItem('nextess_selected_mission')) return 'mission-chamber';
+    if (saved === 'mission-detail' && localStorage.getItem('nextess_selected_mission')) return 'mission-detail';
+    return localStorage.getItem('nextess_selected_mission') ? 'mission-detail' : 'dashboard';
+  });
 
   // Modals & Notifications
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -73,6 +78,7 @@ export default function App() {
     }catch{}
   };
   useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
+  useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
   useEffect(() => {
     let mounted = true;
@@ -121,7 +127,7 @@ export default function App() {
   const handleAuthSuccess = async () => { await refresh(); setShowStartAnimation(true); setToastMessage('Account synchronized with Nextess.'); };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
-  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
+  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');localStorage.removeItem('nextess_active_page');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 
   const isDark = theme === 'dark';
 
