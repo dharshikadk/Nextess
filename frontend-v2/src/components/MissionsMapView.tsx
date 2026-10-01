@@ -196,7 +196,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                   </div>
                   <h2 className={`font-headline-md text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedMission.title}</h2>
                 </div>
-                <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-[9px] font-bold">NOT STARTED</span>
+                <span className={`px-2 py-1 rounded-lg border font-mono text-[9px] font-bold ${selectedMission.unlocked === false ? 'bg-slate-500/10 border-slate-400/20 text-slate-500' : selectedMission.progressStatus === 'COMPLETED' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : selectedMission.progressStatus === 'IN_PROGRESS' ? 'bg-violet-500/10 border-violet-500/20 text-violet-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>{selectedMission.unlocked === false ? 'LOCKED' : selectedMission.progressStatus || 'NOT STARTED'}</span>
               </div>
 
               <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{selectedMission.mission}</p>
