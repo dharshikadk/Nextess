@@ -4,10 +4,26 @@ import { api } from '../api';
 
 interface LeaderboardViewProps { theme: ThemeMode; stats: UserStats; onNavigate: (page: ActivePage) => void; onShowToast: (msg: string) => void; }
 
-export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, onNavigate }) => {
+export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, onNavigate, onShowToast }) => {
   const isDark = theme === 'dark';
   const [board, setBoard] = useState<any>({ opened: false, entries: [] });
+  const [freezing, setFreezing] = useState(false);
   useEffect(() => { api.leaderboard().then(setBoard).catch(() => setBoard({ opened: false, entries: [] })); }, []);
+
+  const freeze = async (days:number) => {
+    if (stats.isGuest || freezing) return;
+    setFreezing(true);
+    try {
+      const result = await api.freezeStreak(days);
+      onShowToast(days + '-day streak freeze applied for ' + result.costCoins + ' coins.');
+      window.dispatchEvent(new Event('nextess-mission-updated'));
+    } catch (e:any) {
+      onShowToast(e?.message || 'Streak freeze could not be applied.');
+    } finally {
+      setFreezing(false);
+    }
+  };
+
   const entries = board.entries || [];
   return (
     <div className="flex flex-col w-full pb-20">
@@ -19,6 +35,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
         <div className="xl:col-span-4 flex flex-col gap-5">
           <div className={isDark ? 'rounded-2xl p-6 border shadow-xl bg-[#12131b] border-orange-500/20' : 'rounded-2xl p-6 border shadow-xl bg-orange-50/60 border-orange-200'}>
             <div className="flex items-center gap-4"><div className="w-16 h-16 rounded-2xl bg-orange-500/15 flex items-center justify-center text-orange-500"><span className="material-symbols-outlined text-[40px]">local_fire_department</span></div><div><span className="font-mono text-[10px] text-slate-400 uppercase">Current Streak</span><div className="text-2xl font-bold text-orange-500">{stats.streakDays} days</div><span className="text-xs text-slate-400">Server-calculated activity streak</span></div></div>
+            {!stats.isGuest && <div className={`mt-5 pt-4 border-t ${isDark ? 'border-orange-500/15' : 'border-orange-200'}`}>
+              <div className="font-mono text-[10px] text-slate-400 uppercase">Streak Freeze</div>
+              <p className="text-xs text-slate-500 mt-1">Recover missed consecutive days with coins.</p>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <button type="button" disabled={freezing} onClick={() => freeze(1)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">1 day · 60 coins</button>
+                <button type="button" disabled={freezing} onClick={() => freeze(2)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">2 days · 120 coins</button>
+              </div>
+            </div>}
           </div>
           <div className={isDark ? 'rounded-2xl p-6 border shadow-xl bg-[#12131b] border-violet-500/20' : 'rounded-2xl p-6 border shadow-xl bg-white border-slate-200'}>
             <span className="font-mono text-[10px] text-slate-400 uppercase">Your account</span><div className="mt-2 text-lg font-bold">{stats.isGuest ? 'Guest explorer' : stats.name}</div><div className="mt-1 text-xs text-slate-400">{stats.kp.toLocaleString()} KP • {stats.coins.toLocaleString()} Coins</div>
