@@ -53,8 +53,7 @@ export default function App() {
       const me=await api.me();
       if(!me?.user) throw new Error('guest');
       const d=await api.dashboard();
-      try { const setting = await api.settings(); if (setting?.settings?.theme === 'light' || setting?.settings?.theme === 'dark') setTheme(setting.settings.theme); } catch {}
-      const u=d.user;
+            const u=d.user;
       setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,streakDays:d?.streakDays??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false,badgesCount:d?.badgesCount??0}));
       setActiveProgress(d?.activeProgress||[]);
       const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
@@ -70,6 +69,7 @@ export default function App() {
     }
   };
   useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
+  useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
   useEffect(() => { let mounted = true; refresh().finally(() => { if (mounted) setAppReady(true); }); return () => { mounted = false; }; }, []);
   // Synchronize document element class with current theme
   useEffect(() => {
