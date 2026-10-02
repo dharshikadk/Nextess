@@ -130,3 +130,20 @@ Frontend, Backend, Content and Simulation AIs must treat this directory as a con
 ## Runtime mission integrity
 
 `InvestigationAnswer.idempotencyKey` is the database boundary for retry-safe answer submissions. Published mission versions remain the runtime source of truth; frontend navigation state is not authoritative.
+
+### Docker-backed Prisma commands (recommended when host Prisma gets P1000)
+
+If PostgreSQL works inside the Docker container but a Windows-host Prisma command reports P1000, run Prisma from the backend container so it uses the canonical Docker network URL instead of the host `localhost` connection:
+
+```bash
+npm run migrate:docker
+```
+
+For a complete local database setup:
+
+```bash
+npm run setup:docker
+npm run seed:docker
+```
+
+These commands do not require PostgreSQL/psql to be installed on the host. They also avoid changing or exposing database credentials in the host environment.
