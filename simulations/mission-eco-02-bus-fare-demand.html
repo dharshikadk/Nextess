@@ -155,12 +155,31 @@
     if(competitor){ctx.fillStyle='#f97386';ctx.font='700 9px ui-monospace,monospace';ctx.fillText('SCENARIO: COMPETITOR',pad.l+5,pad.t+11)}
   }
 
-  fareR.addEventListener('input',update);
+  function emitState(){
+    if(window.parent!==window){
+      window.parent.postMessage({
+        type:'nextess-simulation-state',
+        state:{fare:+fareR.value,competitor}
+      },window.location.origin);
+    }
+  }
+  fareR.addEventListener('input',()=>{update();emitState()});
   competitorBtn.addEventListener('click',()=>{
     competitor=!competitor;
     competitorBtn.classList.toggle('on',competitor);
     competitorBtn.textContent=competitor?'ON — DEMAND SHIFT':'OFF — ORIGINAL MARKET';
-    update();emitState()
+    update();
+    emitState();
+  });
+  window.addEventListener('message',event=>{
+    if(event.origin!==window.location.origin||event.source!==window.parent)return;
+    const data=event.data;
+    if(data?.type!=='nextess-simulation-restore'||!data.state||typeof data.state!=='object')return;
+    if(Number.isFinite(Number(data.state.fare)))fareR.value=String(Math.max(10,Math.min(15,Number(data.state.fare))));
+    if(typeof data.state.competitor==='boolean')competitor=data.state.competitor;
+    competitorBtn.classList.toggle('on',competitor);
+    competitorBtn.textContent=competitor?'ON — DEMAND SHIFT':'OFF — ORIGINAL MARKET';
+    update();
   });
   update();
 })();
