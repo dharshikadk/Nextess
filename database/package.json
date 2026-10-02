@@ -13,7 +13,10 @@
     "mission:validate": "tsx src/mission-cli.ts validate",
     "mission:import": "tsx src/mission-cli.ts import",
     "mission:publish": "tsx src/mission-cli.ts publish",
-    "test": "tsx src/*.test.ts"
+    "test": "tsx src/*.test.ts",
+    "migrate:docker": "docker compose run --rm backend npm run prisma:migrate",
+    "setup:docker": "docker compose up -d postgres && docker compose run --rm backend npm run prisma:migrate",
+    "seed:docker": "docker compose run --rm backend npm --prefix ../database run seed"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0"
