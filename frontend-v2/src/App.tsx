@@ -278,7 +278,7 @@ export default function App() {
             <button
               onClick={() => setSessionBannerDismissed(true)}
               aria-label="Close unsaved session notification"
-              className={`absolute top-2.5 right-2.5 p-1 rounded-lg text-slate-400 hover:text-white transition-colors ${
+              className={`absolute top-2.5 right-2.5 p-1 rounded-lg text-slate-400 hover:text-white transition-colors pointer-events-auto ${
                 isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
