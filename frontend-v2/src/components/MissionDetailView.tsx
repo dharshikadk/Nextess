@@ -363,7 +363,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
               </div>
             </div>
 
-            {stagePreview.stage >= 3 && (
+            {stagePreview.stage >= 1 && (
               <div className="grid grid-cols-2 gap-2 mt-3" aria-label="Level rewards">
                 <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-violet-50 border-violet-200'}`}>
                   <span className="font-mono text-[9px] uppercase text-slate-400">KP earned</span>
