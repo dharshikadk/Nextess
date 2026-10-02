@@ -589,27 +589,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     </aside>
   );
 
-  const floatingContinue = (
-    <div className={`fixed bottom-4 left-4 sm:left-[calc(18rem+1.5rem)] right-4 sm:right-6 z-30 pointer-events-none`}>
-      <div className={`mx-auto max-w-4xl rounded-2xl border p-3 shadow-2xl backdrop-blur-xl pointer-events-auto ${dark ? 'bg-[#12131b]/95 border-cyan-500/30' : 'bg-white/95 border-cyan-200'}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-mono text-[9px] uppercase tracking-wider text-cyan-400">Mission Stages</div>
-            <div className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-900'}`}>Continue your investigation</div>
-          </div>
-          <button type="button" onClick={moveNext} disabled={busy || !canMoveNext} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">Continue Mission</button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-32`}>
       <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <div className="flex justify-end mt-3"><button type="button" onClick={onExit} className={`px-4 py-2 rounded-xl border text-xs font-semibold ${dark ? 'bg-[#12131b] border-rose-500/30 text-slate-300' : 'bg-white border-rose-200 text-rose-700'}`}>Exit Mission</button></div>
-      <div className="grid grid-cols-12 gap-5 mt-5 items-start">
-        <div className="col-span-12 lg:col-span-3">{missionPanel}</div>
-        <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
+      <div className="grid grid-cols-12 xl:grid-cols-[5fr_9fr_6fr] gap-5 mt-5 items-start">
+        <div className="col-span-12 xl:col-span-1">{missionPanel}</div>
+        <section className={`${shell} col-span-12 xl:col-span-1 p-6`}>
           <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 gap-3">
             <button onClick={() => {
               if (question > 0) setQuestion((v) => v - 1);
@@ -649,15 +635,15 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
               : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
-        <aside className="col-span-12 lg:col-span-3">
+        <aside className="col-span-12 xl:col-span-1 min-w-0">
           <div className={`rounded-2xl border p-4 ${dark ? 'bg-[#12131b] border-indigo-500/40' : 'bg-white border-indigo-200'}`}>
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] text-indigo-300 uppercase">Simulation Sandbox</span>
               <span className="font-mono text-[9px] text-indigo-300">{simulation ? (simulationSaving ? 'SAVING…' : 'LIVE') : 'NOT CONFIGURED'}</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-2">{mission.requiredSimulation?.description || simulation?.purpose || 'Use the simulation to investigate the mission variables.'}</p>
-            <div className="mt-3">
-              {simulationSrc ? <iframe ref={simulationFrameRef} title="Nextess mission simulation" src={simulationSrc} onLoad={restoreSimulation} className="w-full h-[450px] border-0 rounded-xl" allow="fullscreen" loading="eager" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
+            <div className="mt-3 max-h-[68vh] overflow-y-auto overflow-x-hidden overscroll-contain pr-1">
+              {simulationSrc ? <iframe ref={simulationFrameRef} title="Nextess mission simulation" src={simulationSrc} onLoad={restoreSimulation} className="block w-full h-[760px] border-0 rounded-xl" allow="fullscreen" loading="eager" scrolling="no" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
             </div>
             {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className="px-2 py-1 rounded-lg bg-[#181926] border border-indigo-500/20 text-[9px] text-slate-300">{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
             {simulation?.consequences?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Consequences</div>{simulation.consequences.map((item: any) => <div key={item.id || item.ordering} className="text-[9px] text-slate-400 mt-1">• {item.label}</div>)}</div>}
@@ -690,7 +676,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         </div>
       )}
 
-      {floatingContinue}
     </div>
   );
 };
@@ -698,7 +683,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any) => (
   <div className="relative overflow-hidden rounded-2xl p-5 border border-violet-500/40 bg-[#12131b] shadow-2xl">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-      <div>
+      <div className="min-w-0">
+        <button type="button" onClick={onExit} aria-label="Go back to mission stages" className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-[#181926] text-xs font-semibold text-slate-200 hover:bg-[#202131] transition-colors">
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          Go Back
+        </button>
         <div className="flex flex-wrap gap-2 mb-2">
           <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/40 text-violet-400 font-mono text-[10px] uppercase">Discipline: {mission.subject?.displayName || ''}</span>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 font-mono text-[10px] uppercase">Difficulty: {mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'}</span>
@@ -707,7 +696,7 @@ const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any
       </div>
       <div className="flex items-center gap-4 px-5 py-3 rounded-2xl border bg-[#181926]/90 border-cyan-500/30">
         <div><span className="font-mono text-[10px] text-slate-400 uppercase">Path Progress</span><div className="flex items-baseline gap-1.5"><span className="text-xl text-violet-400 font-bold">{progress}%</span><span className="text-xs text-slate-400 font-mono">{label}</span></div><div className="w-40 h-2 rounded-full bg-slate-700/30 overflow-hidden mt-1"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{ width: `${progress}%` }} /></div></div>
-        <button onClick={onExit} className="px-3 py-2 rounded-xl border border-rose-500/30 bg-[#181926] text-xs text-slate-300">Exit</button>
+
       </div>
     </div>
     {stages?.length > 0 && <MissionStageNavigator stages={stages} onSelect={onStageSelect} />}
