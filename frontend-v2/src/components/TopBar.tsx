@@ -146,11 +146,20 @@ export const TopBar: React.FC<TopBarProps> = ({
               : 'bg-white border-slate-200 hover:border-violet-400 shadow-sm'
           }`}
         >
-          <img
-            src="https://lh3.googleusercontent.com/aida/AEtjO1VhA8U4sQc_e762c_uQ70JcglQxTfG_F0rV5780-hC_bBshzBwG98X9s3x2p_1Qp56QyHkZ-9E1n1kRjX4_qA48i74pW_8lM27eA3P7x3zFz6F6sR9zD9uJpXN7Q"
-            alt="Alex Vektor"
-            className="w-8 h-8 rounded-full object-cover ring-1 ring-violet-500/40"
-          />
+          {stats.profileImageData ? (
+            <img
+              src={stats.profileImageData}
+              alt={`${stats.name || 'Cadet'} profile`}
+              className="w-8 h-8 rounded-full object-cover ring-1 ring-violet-500/40"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className={`w-8 h-8 rounded-full flex items-center justify-center ring-1 ring-violet-500/40 ${isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-100 text-violet-700'}`}
+            >
+              <span className="material-symbols-outlined text-[18px]">account_circle</span>
+            </div>
+          )}
           <div className="flex flex-col text-left">
             <span className={`font-mono text-xs font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Lvl {stats.level}
