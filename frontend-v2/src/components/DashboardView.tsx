@@ -31,6 +31,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [futureSubjects, setFutureSubjects] = useState<Array<{ id: string; displayName: string }>>([]);
   const [claimingDirectiveId, setClaimingDirectiveId] = useState<string | null>(null);
 
+  const fallbackQuotes = [
+    { quote: 'The important thing is not to stop questioning.', author: 'Albert Einstein', date: '', category: 'science' },
+    { quote: 'Nothing in life is to be feared, it is only to be understood.', author: 'Marie Curie', date: '', category: 'science' },
+    { quote: 'If I have seen further it is by standing on the shoulders of giants.', author: 'Isaac Newton', date: '', category: 'science' },
+    { quote: 'The important thing is to know what is important.', author: 'Albert Einstein', date: '', category: 'science' },
+  ];
+  const displayQuote = dailyQuote || fallbackQuotes[Math.floor(Date.now() / 86400000) % fallbackQuotes.length];
+
   useEffect(() => {
     let cancelled = false;
     api.subjects()
@@ -61,8 +69,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span className="material-symbols-outlined text-[18px]">format_quote</span>
               </span>
               <p className="text-xs truncate">
-                <span className="italic">{dailyQuote?.quote || 'No daily quote available.'}</span>
-                <span className={`ml-2 font-mono font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>— {dailyQuote?.author || 'Nextess'}</span>
+                <span className="italic">{displayQuote.quote}</span>
+                <span className={`ml-2 font-mono font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>— {displayQuote.author}</span>
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0"><span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" /><span className="font-mono text-[11px] text-violet-400">DAILY QUOTES</span></div>

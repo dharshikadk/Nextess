@@ -24,13 +24,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const [feedback, setFeedback] = useState<any>(null);
   const [hints, setHints] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<any>(null);
-  const [revealLock, setRevealLock] = useState(false);
-  const [revealedQuestionId, setRevealedQuestionId] = useState<string | null>(null);
   const [fileIndex, setFileIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
+  const [levelReward, setLevelReward] = useState({open:false, level:0, xp:0, coins:0, balances:null as any});
 
   useEffect(() => {
     const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'level' ? Math.max(3, level + 3) : 999;
@@ -54,9 +53,48 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
   const simulationSrc = resolveSimulationSource(simulationFile);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
-  const hasSubmittedCurrent = currentAnswers.length > 0;
-  const hasCorrectCurrent = currentAnswers.some((item:any) => item.result === 'CORRECT');
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
+  const latestCurrentAnswer = currentAnswers.length
+    ? [...currentAnswers].sort((a:any,b:any) => String(a.submittedAt || '').localeCompare(String(b.submittedAt || ''))).at(-1)
+    : null;
+  const hasSubmittedCurrent = Boolean(latestCurrentAnswer);
+  const hasCorrectCurrent = latestCurrentAnswer?.result === 'CORRECT';
+  const canMoveNext = hasSubmittedCurrent || Boolean(revealed);
+  const hasInputAnswer = !(answer === '' || answer == null || (typeof answer === 'string' && answer.trim() === ''));
+  const canUseHint = !hasCorrectCurrent && !revealed && (!hasInputAnswer || (hasSubmittedCurrent && !hasCorrectCurrent));
+  const canRevealAnswer = !hasCorrectCurrent && !revealed && (!hasInputAnswer || (hasSubmittedCurrent && !hasCorrectCurrent));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentQuestion) return;
+    if (!latestCurrentAnswer) {
+      setAnswer('');
+      setRevealed(null);
+      setFeedback(null);
+      setHints([]);
+      return;
+    }
+    const payload = latestCurrentAnswer.answerPayload;
+    const previousValue = payload && typeof payload === 'object'
+      ? (Object.prototype.hasOwnProperty.call(payload, 'value') ? payload.value
+        : Object.prototype.hasOwnProperty.call(payload, 'text') ? payload.text : '')
+      : payload ?? '';
+    setAnswer(previousValue);
+    setFeedback({
+      correct: latestCurrentAnswer.result === 'CORRECT',
+      message: latestCurrentAnswer.result === 'CORRECT'
+        ? 'Already answered correctly. This challenge is locked.'
+        : 'Already answered incorrectly. You can move on or reveal the answer.'
+    });
+    setHints([]);
+    setRevealed(null);
+    if (investigation?.id) {
+      api.revealAnswer(investigation.id, currentQuestion.id)
+        .then((result:any) => { if (!cancelled) setRevealed(result); })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [currentQuestion?.id]);
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
@@ -201,9 +239,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         setFeedback(null);
         setHints([]);
         setRevealed(null);
-        setRevealedQuestionId(null);
-        setRevealLock(false);
-        setStage('level');
+                        setStage('level');
       }
     }
   };
@@ -214,7 +250,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
 
   const submit = async () => {
-    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
+    if (!investigation?.id || !currentQuestion || busy) return;
+    if (hasSubmittedCurrent) {
+      setFeedback({ correct: hasCorrectCurrent, message: hasCorrectCurrent ? 'Already answered correctly.' : 'Already answered. Use Move to Next or reveal the actual answer.' });
+      return;
+    }
     if (answer === '' || answer == null) {
       setFeedback({ correct: false, message: 'Select an option or enter an answer before submitting.' });
       return;
@@ -227,19 +267,41 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         { value: typeof answer === 'string' ? answer.trim() : answer },
         globalThis.crypto.randomUUID()
       );
+      const correct = result.result === 'CORRECT';
       setFeedback({
-        correct: result.result === 'CORRECT',
-        message: result.result === 'CORRECT'
+        correct,
+        message: correct
           ? `Correct.${result.reward?.xp || result.reward?.coins ? ` +${result.reward.xp || 0} KP, +${result.reward.coins || 0} coins.` : ''}`
           : (result.penalty?.xp || result.penalty?.coins
-            ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. Try again.`
-            : 'Not correct. Try again.'),
+            ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. You may move on or reveal the answer.`
+            : 'Not correct. You may move on or reveal the answer.'),
       });
+
+      if (result.levelCompleted) {
+        setLevelReward({
+          open: true,
+          level: currentLevel?.levelNumber ?? level + 1,
+          xp: result.reward?.xp || 0,
+          coins: result.reward?.coins || 0,
+          balances: result.balances || null,
+        });
+      }
+
+      if (correct) {
+        if (result.answer !== undefined) {
+          setRevealed({ answer: result.answer, explanation: result.explanation || '' });
+        } else {
+          try {
+            const answerResult = await api.revealAnswer(investigation.id, currentQuestion.id);
+            setRevealed(answerResult);
+          } catch {}
+        }
+      } else {
+        setRevealed(null);
+      }
+
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
       await refreshInvestigation();
-      setRevealLock(false);
-      setRevealedQuestionId(null);
-      setRevealed(null);
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
     } finally {
@@ -249,38 +311,24 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   const moveNext = async () => {
     if (!currentQuestion || busy) return;
-    if (revealLock) {
-      if (question + 1 < questions.length) {
-        setQuestion(v => v + 1);
-        setAnswer('');
-        setRevealed(null);
-        setFeedback({ correct: false, message: 'This challenge was revealed. Return to it and answer it before submitting the following challenges.' });
-        return;
-      }
-      setFeedback({ correct: false, message: 'Answer this revealed challenge before finishing the mission.' });
+    if (!canMoveNext) {
+      setFeedback({ correct: false, message: 'Answer this challenge or reveal its answer before moving on.' });
       return;
     }
-    const currentLevelComplete = hasCorrectCurrent && questions.length > 0 && questions.every((q:any) =>
-      (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
-    );
-    if (currentLevelComplete) {
-      if (isFinalChallenge) {
-        await finalize();
-        setStage('complete');
-        return;
-      }
-      const refreshed = await refreshInvestigation();
-      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
-      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
-      setQuestion(0);
-    } else if (question + 1 < questions.length) {
+
+    if (question + 1 < questions.length) {
       setQuestion(v => v + 1);
     } else if (level + 1 < levels.length) {
       const refreshed = await refreshInvestigation();
       const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
       setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
       setQuestion(0);
+    } else {
+      await finalize();
+      setStage('complete');
+      return;
     }
+
     setAnswer('');
     setFeedback(null);
     setHints([]);
@@ -288,7 +336,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const useHint = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || !canUseHint) return;
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -302,13 +350,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const revealAnswer = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || !canRevealAnswer) return;
     setBusy(true);
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
-      setRevealedQuestionId(currentQuestion.id);
-      setRevealLock(!hasSubmittedCurrent);
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
@@ -551,7 +597,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             <div className="font-mono text-[9px] uppercase tracking-wider text-cyan-400">Mission Stages</div>
             <div className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-900'}`}>Continue your investigation</div>
           </div>
-          <button type="button" onClick={moveNext} disabled={busy || (!revealed && !hasCorrectCurrent) || (revealLock && isFinalChallenge)} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">{revealLock && isFinalChallenge ? "Answer to Finish" : "Continue Mission"}</button>
+          <button type="button" onClick={moveNext} disabled={busy || !canMoveNext} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">Continue Mission</button>
         </div>
       </div>
     </div>
@@ -566,12 +612,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
           <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 gap-3">
             <button onClick={() => {
-              const targetQuestion = question > 0 ? questions[question - 1] : null;
-              const targetId = targetQuestion?.id || (level > 0 ? levels[level - 1]?.questions?.at(-1)?.id : null);
               if (question > 0) setQuestion((v) => v - 1);
               else if (level > 0) { setLevel((v) => v - 1); setQuestion(Math.max(0, (levels[level - 1]?.questions?.length || 1) - 1)); }
               else setStage('capsule');
-              setRevealLock(Boolean(revealedQuestionId && targetId && revealedQuestionId !== targetId));
               setAnswer(''); setFeedback(null); setHints([]);
             }} className={`px-3 py-1.5 rounded-xl border text-xs ${dark ? 'bg-[#181926] border-cyan-500/30 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>← Previous</button>
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
@@ -579,19 +622,31 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
           </div>
           <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
             <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
-            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy || revealLock} theme={theme} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
+            <div className="mt-4">{currentQuestion ? <TaskRenderer
+                task={currentQuestion}
+                value={answer}
+                onChange={(value) => {
+                  if (hasSubmittedCurrent) {
+                    setFeedback({ correct: hasCorrectCurrent, message: 'Already answered. Your previous response is locked.' });
+                    return;
+                  }
+                  setAnswer(value);
+                }}
+                disabled={busy}
+                theme={theme}
+              /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
           </div>
           {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
           {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <button onClick={useHint} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
-              <button onClick={revealAnswer} disabled={busy} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
+              <button onClick={useHint} disabled={busy || !canUseHint} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
+              <button onClick={revealAnswer} disabled={busy || !canRevealAnswer} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
-            {revealed || hasCorrectCurrent
-              ? <button data-testid="mission-next" aria-label={revealLock && isFinalChallenge ? 'Answer to Finish' : (isFinalChallenge ? 'Finish Mission' : 'Move to Next')} onClick={moveNext} disabled={busy || (revealLock && isFinalChallenge)} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{revealLock && isFinalChallenge ? 'Answer to Finish' : (isFinalChallenge ? 'Finish Mission' : 'Move to Next')}</button>
-              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion || revealLock} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
+            {canMoveNext
+              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
+              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
         <aside className="col-span-12 lg:col-span-3">
@@ -609,6 +664,32 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
           </div>
         </aside>
       </div>
+      {levelReward.open && (
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Level reward">
+          <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${dark ? 'bg-[#12131b] border-amber-500/40 text-white' : 'bg-white border-amber-200 text-slate-900'}`}>
+            <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[34px]">workspace_premium</span>
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[.2em] text-amber-400 mt-4">Level {levelReward.level} completed</div>
+            <h2 className="text-2xl font-bold mt-2">Rewards earned</h2>
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}>
+                <div className="font-mono text-[10px] uppercase text-violet-400">KP</div>
+                <div className="text-2xl font-bold mt-1">{levelReward.xp}</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}>
+                <div className="font-mono text-[10px] uppercase text-amber-400">Coins</div>
+                <div className="text-2xl font-bold mt-1">{levelReward.coins}</div>
+              </div>
+            </div>
+            {levelReward.balances && (
+              <p className="mt-4 text-xs text-slate-400">Balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>
+            )}
+            <button type="button" onClick={() => setLevelReward(v => ({...v, open:false}))} className="w-full mt-6 px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">Continue Mission</button>
+          </div>
+        </div>
+      )}
+
       {floatingContinue}
     </div>
   );
