@@ -310,38 +310,24 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   const moveNext = async () => {
     if (!currentQuestion || busy) return;
-    if (revealLock) {
-      if (question + 1 < questions.length) {
-        setQuestion(v => v + 1);
-        setAnswer('');
-        setRevealed(null);
-        setFeedback({ correct: false, message: 'This challenge was revealed. Return to it and answer it before submitting the following challenges.' });
-        return;
-      }
-      setFeedback({ correct: false, message: 'Answer this revealed challenge before finishing the mission.' });
+    if (!canMoveNext) {
+      setFeedback({ correct: false, message: 'Answer this challenge or reveal its answer before moving on.' });
       return;
     }
-    const currentLevelComplete = hasCorrectCurrent && questions.length > 0 && questions.every((q:any) =>
-      (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
-    );
-    if (currentLevelComplete) {
-      if (isFinalChallenge) {
-        await finalize();
-        setStage('complete');
-        return;
-      }
-      const refreshed = await refreshInvestigation();
-      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
-      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
-      setQuestion(0);
-    } else if (question + 1 < questions.length) {
+
+    if (question + 1 < questions.length) {
       setQuestion(v => v + 1);
     } else if (level + 1 < levels.length) {
       const refreshed = await refreshInvestigation();
       const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
       setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
       setQuestion(0);
+    } else {
+      await finalize();
+      setStage('complete');
+      return;
     }
+
     setAnswer('');
     setFeedback(null);
     setHints([]);
@@ -349,7 +335,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const useHint = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || hasCorrectCurrent || Boolean(revealed)) return;
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -363,13 +349,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const revealAnswer = async () => {
-    if (!investigation?.id || !currentQuestion || busy) return;
+    if (!investigation?.id || !currentQuestion || busy || hasCorrectCurrent || Boolean(revealed)) return;
     setBusy(true);
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
-      setRevealedQuestionId(currentQuestion.id);
-      setRevealLock(!hasSubmittedCurrent);
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
