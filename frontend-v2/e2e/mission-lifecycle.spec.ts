@@ -90,6 +90,14 @@ test('mission stage opens its metadata panel on the first click', async ({ page 
   await preview.getByRole('button', { name: /Close mission details/i }).click();
   await expect(preview).toBeHidden({ timeout: 5000 });
 
+  // The mission preview is an overlay on the mission map. Close it, then enter
+  // the mission detail view through the real user-facing CTA before inspecting
+  // the stage ladder.
+  const startMission = page.getByRole('button', { name: /Start Solving Mission/i });
+  await expect(startMission).toBeVisible({ timeout: UI_TIMEOUT });
+  await startMission.click();
+  await expect(page.getByRole('heading', { name: missionTitle, exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+
   const stage = page.getByRole('button', { name: /Stage 01.*Mission Brief/i });
   await expect(stage).toBeVisible({ timeout: UI_TIMEOUT });
   await stage.click();
