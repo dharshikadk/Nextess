@@ -4,9 +4,9 @@ import { TaskRenderer, MissionTask } from './TaskRendererRegistry';
 import { MissionStageNavigator, MissionStage } from './MissionStageNavigator';
 import { resolveSimulationSource } from '../../data/simulationRegistry';
 
-type Props = { theme: 'dark' | 'light'; onExit: () => void; onShowToast: (message: string) => void };
+type Props = { theme: 'dark' | 'light'; onNavigate: (page: 'missions-map' | 'mission-detail' | 'mission-chamber') => void; onExit: () => void; onShowToast: (message: string) => void };
 
-export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) => {
+export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onShowToast }) => {
   const dark = theme === 'dark';
   const missionId = localStorage.getItem('nextess_selected_mission') || '';
   const [mission, setMission] = useState<any>(null);
@@ -98,7 +98,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         if (!missionId) throw new Error('No mission was selected.');
         const result = await api.project(missionId);
         if (cancelled) return;
-        setMission(result.project);
+        setMission({...result.project, nextMission: result.nextMission || null});
 
         if (result.progress?.status !== 'COMPLETED') {
           // A persisted mission-chamber route must be recoverable after a hard
@@ -526,7 +526,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   );
 
   const floatingContinue = (
-    <div className={`fixed bottom-4 left-[calc(18rem+1.5rem)] right-6 z-30 pointer-events-none`}>
+    <div className={`fixed bottom-4 left-4 sm:left-[calc(18rem+1.5rem)] right-4 sm:right-6 z-30 pointer-events-none`}>
       <div className={`mx-auto max-w-4xl rounded-2xl border p-3 shadow-2xl backdrop-blur-xl pointer-events-auto ${dark ? 'bg-[#12131b]/95 border-cyan-500/30' : 'bg-white/95 border-cyan-200'}`}>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
