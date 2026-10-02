@@ -31,6 +31,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
+  const [levelReward, setLevelReward] = useState({open:false, level:0, xp:0, coins:0, balances:null as any});
 
   useEffect(() => {
     const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'level' ? Math.max(3, level + 3) : 999;
@@ -57,6 +58,44 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const hasSubmittedCurrent = currentAnswers.length > 0;
   const hasCorrectCurrent = currentAnswers.some((item:any) => item.result === 'CORRECT');
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
+  const latestCurrentAnswer = currentAnswers.length
+    ? [...currentAnswers].sort((a:any,b:any) => String(a.submittedAt || '').localeCompare(String(b.submittedAt || ''))).at(-1)
+    : null;
+  const hasSubmittedCurrent = Boolean(latestCurrentAnswer);
+  const hasCorrectCurrent = latestCurrentAnswer?.result === 'CORRECT';
+  const canMoveNext = hasSubmittedCurrent || Boolean(revealed);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentQuestion) return;
+    if (!latestCurrentAnswer) {
+      setAnswer('');
+      setRevealed(null);
+      setFeedback(null);
+      setHints([]);
+      return;
+    }
+    const payload = latestCurrentAnswer.answerPayload;
+    const previousValue = payload && typeof payload === 'object'
+      ? (Object.prototype.hasOwnProperty.call(payload, 'value') ? payload.value
+        : Object.prototype.hasOwnProperty.call(payload, 'text') ? payload.text : '')
+      : payload ?? '';
+    setAnswer(previousValue);
+    setFeedback({
+      correct: latestCurrentAnswer.result === 'CORRECT',
+      message: latestCurrentAnswer.result === 'CORRECT'
+        ? 'Already answered correctly. This challenge is locked.'
+        : 'Already answered incorrectly. You can move on or reveal the answer.'
+    });
+    setHints([]);
+    setRevealed(null);
+    if (investigation?.id) {
+      api.revealAnswer(investigation.id, currentQuestion.id)
+        .then((result:any) => { if (!cancelled) setRevealed(result); })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [currentQuestion?.id]);
 
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
