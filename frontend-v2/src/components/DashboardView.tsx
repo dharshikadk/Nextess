@@ -27,6 +27,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const [futureSubjects, setFutureSubjects] = useState<Array<{ id: string; displayName: string }>>([]);
+  const [claimingDirectiveId, setClaimingDirectiveId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,10 +167,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => onClaimDirective(d.id)}
-                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[10px] transition-colors"
+                        onClick={async () => {
+                          if (claimingDirectiveId) return;
+                          setClaimingDirectiveId(d.id);
+                          try { await onClaimDirective(d.id); } finally { setClaimingDirectiveId(null); }
+                        }}
+                        disabled={claimingDirectiveId !== null}
+                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Claim
+                        {claimingDirectiveId === d.id ? 'Claiming…' : 'Claim'}
                       </button>
                     )}
                   </li>
