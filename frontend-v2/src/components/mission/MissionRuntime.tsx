@@ -470,8 +470,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         <h2 className={`text-3xl font-bold mt-2 ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
         <p className={`text-sm leading-6 mt-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>All mission levels were completed and server-authoritative rewards were applied.</p>
         <div className="mt-5">
-          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Your final mission rewards are ready to be claimed.</p>
-          <button onClick={finalize} className="mt-3 px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold">Gain Your Final Rewards</button>
+          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Your final mission rewards have already been issued by the server as each eligible level was completed.</p>
+          <div role="status" aria-label="Final rewards granted" className={`mt-3 px-5 py-3 rounded-xl border text-xs font-bold ${dark ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>Final rewards granted</div>
         </div>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button type="button" onClick={onExit} className={`px-5 py-3 rounded-xl border text-xs font-bold ${dark ? 'bg-[#181926] border-violet-500/30 text-slate-200 hover:bg-[#202131]' : 'bg-white border-violet-200 text-slate-800 hover:bg-violet-50'}`}>Move to Mission Path</button>
