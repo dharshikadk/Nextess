@@ -46,6 +46,8 @@ jobs:
       # shared CI test process from rate-limiting legitimate E2E traffic.
       RATE_LIMIT_AUTH: 100
       RATE_LIMIT_STATEFUL: 1000
+      E2E_TEST_MODE: 1
+      E2E_TEST_TOKEN: nextess-ci-e2e-token
     defaults:
       run:
         working-directory: backend
@@ -177,6 +179,7 @@ jobs:
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
           E2E_API_BASE_URL: http://127.0.0.1:4000
+          E2E_TEST_TOKEN: nextess-ci-e2e-token
         run: npm run e2e
 
   database:

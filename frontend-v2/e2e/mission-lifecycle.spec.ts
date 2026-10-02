@@ -4,19 +4,45 @@ test.describe.configure({ timeout: 90_000 });
 
 const UI_TIMEOUT = 30_000;
 
-async function reachFirstMissionTask(page: import('@playwright/test').Page) {
+async function prepareMissionAccess(
+  page: import('@playwright/test').Page,
+  missionTitle: string,
+) {
+  const token = process.env.E2E_TEST_TOKEN;
+  if (!token) throw new Error('E2E_TEST_TOKEN is required for locked mission fixtures.');
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const response = await page.request.post(apiBase + '/v1/test/prepare-mission-access', {
+    headers: { 'X-E2E-Token': token },
+    data: { missionTitle },
+  });
+  expect(response.ok()).toBeTruthy();
+  const credentials = await response.json();
+  const login = await page.request.post(apiBase + '/v1/auth/login', { data: {
+    username: credentials.username,
+    password: credentials.password,
+  }});
+  expect(login.ok()).toBeTruthy();
+}
+
+async function reachMissionTask(
+  page: import('@playwright/test').Page,
+  missionTitle = 'The Bicycle That Would Not Stop',
+  options: { prepareAccess?: boolean } = {},
+) {
+  if (options.prepareAccess) await prepareMissionAccess(page, missionTitle);
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
-  await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
+
+  const trackPattern = /The Bus Fare Decision|The Canteen Price Problem/.test(missionTitle)
+    ? /Open Economics Missions/i
+    : /Open Physics Missions/i;
+  await page.getByRole('button', { name: trackPattern }).first().click();
+
   await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
-  const missionNode = page.getByTestId('mission-node').first();
+  const missionNode = page.getByRole('button', { name: `Select mission ${missionTitle}`, exact: true });
   await expect(missionNode).toBeVisible({ timeout: UI_TIMEOUT });
-  const missionLabel = await missionNode.getAttribute('aria-label');
-  expect(missionLabel).toMatch(/^Select mission .+/);
-  const missionTitle = missionLabel!.replace(/^Select mission /, '');
   await missionNode.click();
-  // Selecting a mission opens the mission-preview dialog. Close that overlay
-  // before interacting with the detail-panel CTA underneath it.
+
   const missionPreview = page.getByRole('dialog', { name: missionTitle, exact: true });
   if (await missionPreview.isVisible().catch(() => false)) {
     await missionPreview.getByRole('button', { name: /Close mission details/i }).click();
@@ -28,8 +54,6 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await expect(open).toBeEnabled({ timeout: UI_TIMEOUT });
   await open.click();
 
-  // "Start Solving Mission" opens the mission file. The runtime is entered
-  // from the mission-detail page through its explicit stage control.
   await expect(page.getByRole('heading', { name: missionTitle, exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
   const openStages = page.getByRole('button', { name: /Open Mission Stages/i });
   await expect(openStages).toBeVisible({ timeout: UI_TIMEOUT });
@@ -54,11 +78,9 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
         await continueButton.click();
         break;
       }
-
       await expect(nextConceptButton).toBeVisible({ timeout: UI_TIMEOUT });
       await nextConceptButton.click();
     }
-
     await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
   }
 
@@ -67,6 +89,10 @@ async function reachFirstMissionTask(page: import('@playwright/test').Page) {
   await expect(missionTask).toHaveAttribute('aria-busy', 'false', { timeout: UI_TIMEOUT });
   await expect(missionTask.locator('h2')).not.toContainText('Loading investigation task', { timeout: UI_TIMEOUT });
   await expect(page.getByTestId('mission-submit')).toBeVisible({ timeout: UI_TIMEOUT });
+}
+
+async function reachFirstMissionTask(page: import('@playwright/test').Page) {
+  return reachMissionTask(page);
 }
 
 test('guest can open the Nextess shell', async ({ page }) => {
@@ -126,6 +152,92 @@ test('mission catalogue, first task, feedback, and refresh resume are reachable 
   await expect(page.getByRole('status')).toBeVisible({ timeout: UI_TIMEOUT });
   await page.reload();
   await expect(page.getByText(/LEVEL|Mission Brief|Learning Capsule/i).first()).toBeVisible({ timeout: UI_TIMEOUT });
+});
+
+
+test('solar panel simulation controller state persists after refresh', async ({ page }) => {
+  await page.goto('/');
+  await reachMissionTask(page, 'The Solar Panel That Lost Power', { prepareAccess: true });
+
+  const iframe = page.locator('iframe[title="Nextess mission simulation"]');
+  await expect(iframe).toBeVisible({ timeout: UI_TIMEOUT });
+  const frame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(frame.locator('[aria-label="Solar panel angle simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const angle = frame.locator('input[type="range"][aria-label="Sunlight angle"]');
+  const power = frame.locator('input[type="range"][aria-label="Maximum panel power"]');
+  const saveResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/simulation-state') &&
+    response.request().method() === 'POST',
+  );
+  await angle.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '42';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const solarSave = await saveResponse;
+  expect(solarSave.status(), await solarSave.text()).toBe(200);
+  await expect.poll(async () => angle.inputValue()).toBe('42');
+
+  const powerSave = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/simulation-state') &&
+    response.request().method() === 'POST',
+  );
+  await power.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '150';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const powerResponse = await powerSave;
+  expect(powerResponse.status(), await powerResponse.text()).toBe(200);
+
+  await page.reload();
+  const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(restoredFrame.locator('[aria-label="Solar panel angle simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect.poll(async () => restoredFrame.locator('input[type="range"][aria-label="Sunlight angle"]').inputValue()).toBe('42');
+  await expect.poll(async () => restoredFrame.locator('input[type="range"][aria-label="Maximum panel power"]').inputValue()).toBe('150');
+});
+
+test('bus fare simulation controller state persists after refresh', async ({ page }) => {
+  await page.goto('/');
+  await reachMissionTask(page, 'The Bus Fare Decision', { prepareAccess: true });
+
+  const iframe = page.locator('iframe[title="Nextess mission simulation"]');
+  await expect(iframe).toBeVisible({ timeout: UI_TIMEOUT });
+  const frame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(frame.locator('[aria-label="Bus fare demand simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const fare = frame.locator('input[type="range"][aria-label="Bus fare"]');
+  const saveResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/simulation-state') &&
+    response.request().method() === 'POST',
+  );
+  await fare.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '14';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const busSave = await saveResponse;
+  expect(busSave.status(), await busSave.text()).toBe(200);
+
+  const competitor = frame.getByRole('button', { name: /OFF — ORIGINAL MARKET/i });
+  const competitorSave = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/simulation-state') &&
+    response.request().method() === 'POST',
+  );
+  await competitor.click();
+  const competitorResponse = await competitorSave;
+  expect(competitorResponse.status(), await competitorResponse.text()).toBe(200);
+
+  await page.reload();
+  const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
+  await expect(restoredFrame.locator('[aria-label="Bus fare demand simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect.poll(async () => restoredFrame.locator('input[type="range"][aria-label="Bus fare"]').inputValue()).toBe('14');
+  await expect(restoredFrame.getByRole('button', { name: /ON — DEMAND SHIFT/i })).toBeVisible();
 });
 
 test('guest progress can be converted into an authenticated account', async ({ page }) => {

@@ -145,10 +145,32 @@
     ctx.fillStyle='rgba(255,214,102,.12)';ctx.beginPath();ctx.arc(48,48,27,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#ffd666';ctx.beginPath();ctx.arc(48,48,12,0,Math.PI*2);ctx.fill();
   }
-  angleR.addEventListener('input',update);pmaxR.addEventListener('input',update);
+  function emitState(){
+    if(window.parent!==window){
+      window.parent.postMessage({
+        type:'nextess-simulation-state',
+        state:{angle:+angleR.value,pmax:+pmaxR.value}
+      },'*');
+    }
+  }
+  angleR.addEventListener('input',()=>{update();emitState()});
+  pmaxR.addEventListener('input',()=>{update();emitState()});
   buttons.forEach(b=>b.addEventListener('click',()=>{
-    const m=+b.dataset.mode;pmaxR.value=m;buttons.forEach(x=>x.classList.toggle('active',x===b));update();emitState()
+    const m=+b.dataset.mode;
+    pmaxR.value=m;
+    buttons.forEach(x=>x.classList.toggle('active',x===b));
+    update();
+    emitState();
   }));
+  window.addEventListener('message',event=>{
+    if(event.origin!==window.location.origin||event.source!==window.parent)return;
+    const data=event.data;
+    if(data?.type!=='nextess-simulation-restore'||!data.state||typeof data.state!=='object')return;
+    if(Number.isFinite(Number(data.state.angle)))angleR.value=String(Math.max(0,Math.min(90,Number(data.state.angle))));
+    if(Number.isFinite(Number(data.state.pmax)))pmaxR.value=String(Math.max(100,Math.min(200,Number(data.state.pmax))));
+    buttons.forEach(x=>x.classList.toggle('active',Number(x.dataset.mode)===Number(pmaxR.value)));
+    update();
+  });
   update();
 })();
 </script>
