@@ -75,6 +75,41 @@ test('guest can open the Nextess shell', async ({ page }) => {
   await expect(page.locator('body')).toContainText('Nextess');
 });
 
+test('mission stage opens its metadata panel on the first click', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
+  await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const missionNode = page.getByTestId('mission-node').first();
+  await missionNode.click();
+  const missionTitle = (await missionNode.getAttribute('aria-label'))!.replace(/^Select mission /, '');
+  const preview = page.getByRole('dialog', { name: missionTitle, exact: true });
+  await expect(preview).toBeVisible({ timeout: UI_TIMEOUT });
+  await preview.getByRole('button', { name: /Close mission details/i }).click();
+  await expect(preview).toBeHidden({ timeout: 5000 });
+
+  // The mission preview is an overlay on the mission map. Close it, then enter
+  // the mission detail view through the real user-facing CTA before inspecting
+  // the stage ladder.
+  const startMission = page.getByRole('button', { name: /Start Solving Mission/i });
+  await expect(startMission).toBeVisible({ timeout: UI_TIMEOUT });
+  await startMission.click();
+  await expect(page.getByRole('heading', { name: missionTitle, exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const stage = page.getByRole('button', { name: /Stage 01.*Mission Brief/i });
+  await expect(stage).toBeVisible({ timeout: UI_TIMEOUT });
+  await stage.click();
+
+  const stageDialog = page.getByRole('dialog', { name: 'Mission Brief', exact: true });
+  await expect(stageDialog).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(stageDialog).toContainText('Role');
+  await expect(stageDialog).toContainText('Concept used');
+  await expect(stageDialog).toContainText('KP earned');
+  await expect(stageDialog).toContainText('Coins earned');
+});
+
 test('mission catalogue, first task, feedback, and refresh resume are reachable through the real UI', async ({ page }) => {
   await page.goto('/');
   await reachFirstMissionTask(page);

@@ -17,6 +17,15 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<'capsule'|'metadata'|'files'|null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [stagePreview, setStagePreview] = useState<{
+    stage:number;
+    label:string;
+    title:string;
+    role:string;
+    concept:string;
+    kp:number|null;
+    coins:number|null;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled=false;
@@ -78,6 +87,47 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
     localStorage.setItem('nextess_selected_mission', mission.id);
     localStorage.setItem('nextess_mission_stage', String(stage));
     onNavigate('mission-chamber');
+  };
+
+  const showStagePreview = (stage:number) => {
+    if (stage === 1) {
+      setStagePreview({
+        stage,
+        label:'Stage 01',
+        title:'Mission Brief',
+        role:mission.role || 'Mission role',
+        concept:mission.mission || 'Mission objective and evidence brief',
+        kp:null,
+        coins:null,
+      });
+      return;
+    }
+    if (stage === 2) {
+      setStagePreview({
+        stage,
+        label:'Stage 02',
+        title:mission.learningCapsule?.title || 'Learning Capsule',
+        role:mission.role || 'Mission role',
+        concept:mission.learningCapsule?.sections?.[0]?.title || 'Core concepts required for the investigation',
+        kp:null,
+        coins:null,
+      });
+      return;
+    }
+    const level=mission.levels?.find((item:any)=>item.number+2===stage);
+    if (!level) {
+      onShowToast('Invalid mission stage.');
+      return;
+    }
+    setStagePreview({
+      stage,
+      label:'Level '+level.number,
+      title:level.title || 'Investigation Level',
+      role:mission.role || 'Mission role',
+      concept:level.concept || level.topic || mission.learningCapsule?.sections?.[Math.max(0,level.number-1)]?.title || mission.problemType || 'Mission investigation concept',
+      kp:Number.isFinite(Number(level.rewardXp)) ? Number(level.rewardXp) : null,
+      coins:Number.isFinite(Number(level.rewardCoins)) ? Number(level.rewardCoins) : null,
+    });
   };
 
   const reviewMission = async () => {
@@ -156,7 +206,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
               { stage:1, label:'Stage 01', title:'Mission Brief', meta:'Understand the mission objective before starting.' },
               { stage:2, label:'Stage 02', title:'Learning Capsule', meta:'Review the concepts needed for the investigation.' },
             ].map((stage) => (
-              <button key={stage.stage} onClick={() => openStage(stage.stage)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
+              <button key={stage.stage} type="button" onClick={() => showStagePreview(stage.stage)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
                 <div className="w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50"><span className="font-mono text-xs font-bold">{String(stage.stage).padStart(2,'0')}</span></div>
                 <div className="flex flex-col flex-1 gap-1 min-w-0">
                   <div className="flex items-center justify-between gap-2"><div><span className="font-mono text-[11px] font-bold text-violet-400 uppercase">{stage.label}</span><span className={`ml-2 font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{stage.title}</span></div><span className="px-2 py-0.5 rounded bg-slate-700/30 text-slate-400 font-mono text-[10px] font-semibold border border-slate-500/10">OPEN</span></div>
@@ -165,7 +215,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
               </button>
             ))}
             {mission.levels.map((level: any) => (
-              <button key={level.number} onClick={() => openStage(level.number + 2)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
+              <button key={level.number} type="button" onClick={() => showStagePreview(level.number + 2)} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm'}`}>
                 <div className="w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50"><span className="font-mono text-xs font-bold">{String(level.number + 2).padStart(2, '0')}</span></div>
                 <div className="flex flex-col flex-1 gap-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -243,6 +293,74 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
           )}
         </div>
       </div>
+      {stagePreview && (
+        <div
+          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={stagePreview.title}
+          onClick={() => setStagePreview(null)}
+        >
+          <div
+            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${isDark ? 'bg-[#12131b] border-violet-500/30 text-white' : 'bg-white border-violet-200 text-slate-900'}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="font-mono text-[10px] uppercase text-violet-400">{stagePreview.label}</span>
+                <h2 className="text-xl font-bold mt-1">{stagePreview.title}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStagePreview(null)}
+                aria-label="Close mission stage details"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 mt-5">
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-violet-50 border-violet-200'}`}>
+                <span className="font-mono text-[9px] uppercase text-slate-400">Role</span>
+                <span className="block text-sm font-semibold mt-1">{stagePreview.role}</span>
+              </div>
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-slate-50 border-slate-200'}`}>
+                <span className="font-mono text-[9px] uppercase text-slate-400">Concept used</span>
+                <span className="block text-sm font-semibold mt-1">{stagePreview.concept}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-violet-50 border-violet-200'}`}>
+                <span className="font-mono text-[9px] uppercase text-slate-400">KP earned</span>
+                <span className="block text-lg font-bold text-violet-400 mt-1">
+                  {stagePreview.kp === null ? 'Included' : '+' + stagePreview.kp}
+                </span>
+              </div>
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                <span className="font-mono text-[9px] uppercase text-slate-400">Coins earned</span>
+                <span className="block text-lg font-bold text-amber-400 mt-1">
+                  {stagePreview.coins === null ? 'Included' : '+' + stagePreview.coins}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const stage=stagePreview.stage;
+                setStagePreview(null);
+                openStage(stage);
+              }}
+              className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold"
+            >
+              Open Mission Stage
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
