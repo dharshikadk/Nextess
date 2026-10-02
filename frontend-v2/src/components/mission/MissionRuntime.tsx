@@ -50,6 +50,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
   const files = investigation?.projectVersion?.caseFiles || mission?.currentPublishedVersion?.caseFiles || mission?.requiredEvidence?.files || [];
   const file = files[fileIndex] || files[0];
   const simulation = currentLevel?.simulation;
+  const nextMission = mission?.nextMission || null;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
   const simulationSrc = resolveSimulationSource(simulationFile);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
@@ -468,7 +469,28 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
         <div className="font-mono text-[10px] text-emerald-400 uppercase tracking-[.2em] mt-5">Investigation completed</div>
         <h2 className={`text-3xl font-bold mt-2 ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
         <p className={`text-sm leading-6 mt-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>All mission levels were completed and server-authoritative rewards were applied.</p>
-        <button onClick={finalize} className="mt-5 px-5 py-3 rounded-xl bg-violet-600 text-white text-xs font-bold">Finalize completion</button>
+        <div className="mt-5">
+          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Your final mission rewards are ready to be claimed.</p>
+          <button onClick={finalize} className="mt-3 px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold">Gain Your Final Rewards</button>
+        </div>
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button type="button" onClick={onExit} className={`px-5 py-3 rounded-xl border text-xs font-bold ${dark ? 'bg-[#181926] border-violet-500/30 text-slate-200 hover:bg-[#202131]' : 'bg-white border-violet-200 text-slate-800 hover:bg-violet-50'}`}>Move to Mission Path</button>
+          <button
+            type="button"
+            disabled={!nextMission?.id}
+            onClick={() => {
+              if (!nextMission?.id) return;
+              localStorage.setItem('nextess_selected_mission', nextMission.id);
+              localStorage.removeItem('nextess_investigation_id');
+              localStorage.removeItem('nextess_investigation_mission_id');
+              localStorage.setItem('nextess_mission_stage', '1');
+              window.dispatchEvent(new Event('nextess-mission-updated'));
+              onNavigate('mission-chamber');
+            }}
+            className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
+          >Solve Next Mission</button>
+        </div>
+        {!nextMission?.id && <p className="mt-3 text-[11px] text-slate-500">You have reached the end of the currently published mission path.</p>}
       </section>
     </div>
   );
@@ -503,8 +525,22 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
     </aside>
   );
 
+  const floatingContinue = (
+    <div className={`fixed bottom-4 left-[calc(18rem+1.5rem)] right-6 z-30 pointer-events-none`}>
+      <div className={`mx-auto max-w-4xl rounded-2xl border p-3 shadow-2xl backdrop-blur-xl pointer-events-auto ${dark ? 'bg-[#12131b]/95 border-cyan-500/30' : 'bg-white/95 border-cyan-200'}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-mono text-[9px] uppercase tracking-wider text-cyan-400">Mission Stages</div>
+            <div className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-900'}`}>Continue your investigation</div>
+          </div>
+          <button type="button" onClick={moveNext} disabled={busy || (!revealed && !hasCorrectCurrent)} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">Continue Mission</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
+    <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-32`}>
       <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <div className="flex justify-end mt-3"><button type="button" onClick={onExit} className={`px-4 py-2 rounded-xl border text-xs font-semibold ${dark ? 'bg-[#12131b] border-rose-500/30 text-slate-300' : 'bg-white border-rose-200 text-rose-700'}`}>Exit Mission</button></div>
       <div className="grid grid-cols-12 gap-5 mt-5 items-start">
@@ -555,6 +591,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onExit, onShowToast }) 
           </div>
         </aside>
       </div>
+      {floatingContinue}
     </div>
   );
 };
