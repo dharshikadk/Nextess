@@ -14,7 +14,10 @@ async function migrateGuestSessionToUser(req:express.Request,res:express.Respons
   await prisma.$transaction(async tx=>{
     const investigations=await tx.investigation.findMany({where:{anonymousSessionId:guest.id},orderBy:{lastActivityAt:'desc'}});
     const projectVersionIds=[...new Set(investigations.map(i=>i.projectVersionId))];
-    const versions=projectVersionIds.length?await tx.projectVersion.findMany({where:{id:{in:projectVersionIds}},include:{levels:{orderBy:{levelNumber:'asc'}}}}):[];
+    const versions=projectVersionIds.length?await tx.projectVersion.findMany({
+      where:{id:{in:projectVersionIds}},
+      select:{id:true,levels:{select:{id:true,levelNumber:true},orderBy:{levelNumber:'asc'}}}
+    }):[];
     const versionById=new Map(versions.map(v=>[v.id,v]));
     const latestByProject=new Map<string,typeof investigations[number]>();
     for(const inv of investigations){
