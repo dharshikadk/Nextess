@@ -229,7 +229,6 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
- if(inv.currentQuestionId&&inv.currentQuestionId!==q.id)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before advancing.',409);
  const incoming=validateObject(req.body.answer)
   ? (Object.prototype.hasOwnProperty.call(req.body.answer,'value')?req.body.answer.value:Object.prototype.hasOwnProperty.call(req.body.answer,'text')?req.body.answer.text:req.body.answer)
   : req.body.answer;
@@ -315,7 +314,6 @@ app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}},include:{hints:{orderBy:{level:'asc'}}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
  const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));
- if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId&&!submitted)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before requesting a hint.',409);
  const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};const revealedAlready=Boolean(state.reveals?.[q.id]);const ledgerUsed=identity.userId?await prisma.rewardLedger.count({where:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}}):0;const used=Math.max(Number(state.hints?.[q.id]||0),ledgerUsed);
  const next=q.hints.find((h:any)=>h.level===used+1);if(!next)return fail(res,'NO_MORE_HINTS','All hints for this question have already been revealed.',409);
  const costCoins=identity.userId&&!submitted&&!revealedAlready?5:0;
@@ -363,7 +361,6 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
   where:{investigationId:inv.id,questionId:q.id},
   select:{id:true}
  }));
- if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId&&!submitted)return fail(res,'TASK_NOT_AVAILABLE','Reveal is only available for the current or already answered task.',409);
  if(submitted){
   return res.json({
    answer:def.answer,
