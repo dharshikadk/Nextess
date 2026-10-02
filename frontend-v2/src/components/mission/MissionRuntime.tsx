@@ -60,6 +60,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const hasSubmittedCurrent = Boolean(latestCurrentAnswer);
   const hasCorrectCurrent = latestCurrentAnswer?.result === 'CORRECT';
   const canMoveNext = hasSubmittedCurrent || Boolean(revealed);
+  const hasInputAnswer = !(answer === '' || answer == null || (typeof answer === 'string' && answer.trim() === ''));
+  const canUseHint = !hasCorrectCurrent && !revealed && (!hasInputAnswer || (hasSubmittedCurrent && !hasCorrectCurrent));
+  const canRevealAnswer = !hasCorrectCurrent && !revealed && (!hasInputAnswer || (hasSubmittedCurrent && !hasCorrectCurrent));
 
   useEffect(() => {
     let cancelled = false;
@@ -333,7 +336,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const useHint = async () => {
-    if (!investigation?.id || !currentQuestion || busy || hasCorrectCurrent || Boolean(revealed)) return;
+    if (!investigation?.id || !currentQuestion || busy || !canUseHint) return;
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -347,7 +350,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const revealAnswer = async () => {
-    if (!investigation?.id || !currentQuestion || busy || hasCorrectCurrent || Boolean(revealed)) return;
+    if (!investigation?.id || !currentQuestion || busy || !canRevealAnswer) return;
     setBusy(true);
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
@@ -638,8 +641,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <button onClick={useHint} disabled={busy || hasCorrectCurrent || Boolean(revealed)} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
-              <button onClick={revealAnswer} disabled={busy} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
+              <button onClick={useHint} disabled={busy || !canUseHint} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
+              <button onClick={revealAnswer} disabled={busy || !canRevealAnswer} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
             {canMoveNext
               ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
