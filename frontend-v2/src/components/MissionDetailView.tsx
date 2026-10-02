@@ -386,7 +386,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
               }}
               className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold"
             >
-              Open Mission Stage
+              Open {stagePreview?.title || 'Mission Stage'}
             </button>
           </div>
         </div>
