@@ -53,8 +53,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
   const simulationSrc = resolveSimulationSource(simulationFile);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
-  const hasSubmittedCurrent = currentAnswers.length > 0;
-  const hasCorrectCurrent = currentAnswers.some((item:any) => item.result === 'CORRECT');
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
   const latestCurrentAnswer = currentAnswers.length
     ? [...currentAnswers].sort((a:any,b:any) => String(a.submittedAt || '').localeCompare(String(b.submittedAt || ''))).at(-1)
