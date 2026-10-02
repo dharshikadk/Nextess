@@ -253,7 +253,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
 
   const submit = async () => {
-    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
+    if (!investigation?.id || !currentQuestion || busy) return;
+    if (hasSubmittedCurrent) {
+      setFeedback({ correct: hasCorrectCurrent, message: hasCorrectCurrent ? 'Already answered correctly.' : 'Already answered. Use Move to Next or reveal the actual answer.' });
+      return;
+    }
     if (answer === '' || answer == null) {
       setFeedback({ correct: false, message: 'Select an option or enter an answer before submitting.' });
       return;
@@ -266,19 +270,37 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         { value: typeof answer === 'string' ? answer.trim() : answer },
         globalThis.crypto.randomUUID()
       );
+      const correct = result.result === 'CORRECT';
       setFeedback({
-        correct: result.result === 'CORRECT',
-        message: result.result === 'CORRECT'
+        correct,
+        message: correct
           ? `Correct.${result.reward?.xp || result.reward?.coins ? ` +${result.reward.xp || 0} KP, +${result.reward.coins || 0} coins.` : ''}`
           : (result.penalty?.xp || result.penalty?.coins
-            ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. Try again.`
-            : 'Not correct. Try again.'),
+            ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. You may move on or reveal the answer.`
+            : 'Not correct. You may move on or reveal the answer.'),
       });
+
+      if (result.levelCompleted) {
+        setLevelReward({
+          open: true,
+          level: currentLevel?.levelNumber ?? level + 1,
+          xp: result.reward?.xp || 0,
+          coins: result.reward?.coins || 0,
+          balances: result.balances || null,
+        });
+      }
+
+      if (correct) {
+        try {
+          const answerResult = await api.revealAnswer(investigation.id, currentQuestion.id);
+          setRevealed(answerResult);
+        } catch {}
+      } else {
+        setRevealed(null);
+      }
+
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
       await refreshInvestigation();
-      setRevealLock(false);
-      setRevealedQuestionId(null);
-      setRevealed(null);
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
     } finally {
