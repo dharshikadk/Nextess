@@ -74,6 +74,14 @@ Do not put arbitrary Python/C++/JavaScript source into the database and execute 
 
 ## Setup
 
+### Docker local development
+
+The root `docker-compose.yml` is the canonical local PostgreSQL configuration: database `nextess`, user `nextess`, password `nextess_dev_password`, host port `5432`.
+
+Start it with `docker compose up -d postgres` from the repository root. For Prisma commands run from `database/`, use `DATABASE_URL="postgresql://nextess:nextess_dev_password@localhost:5432/nextess?schema=public"`.
+
+**Existing Docker volume warning:** PostgreSQL stores the initial user/password in its data volume. Updating `.env` or `docker-compose.yml` does not change credentials in an already-initialized volume. Therefore Prisma can report `P1000` even when `DATABASE_URL` is correct. Preserve an existing local volume by changing the `nextess` role password from inside the running container as the PostgreSQL superuser; do not blindly delete the volume. If the database contains only disposable test data, a fresh local database can be created with `docker compose down -v` followed by `docker compose up -d postgres`.
+
 1. Create PostgreSQL.
 2. Copy `.env.example` to `.env`.
 3. Install dependencies from this directory.
