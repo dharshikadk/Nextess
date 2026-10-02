@@ -162,9 +162,10 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                     </span>
                   </div>
 
-                  <div className={`flex flex-col px-4 py-3 rounded-2xl shadow-xl max-w-xs border transition-all ${selected ? (isDark ? 'bg-[#181926] border-violet-400' : 'bg-white border-violet-400 ring-2 ring-violet-200') : (isDark ? 'bg-[#12131b]/95 border-violet-500/20' : 'bg-white/95 border-slate-200')}`}>
+                  <div className={`flex flex-col px-4 py-3 rounded-2xl shadow-xl max-w-xs border transition-all ${selected ? (isDark ? 'bg-[#181926] border-violet-400' : 'bg-white border-violet-400 ring-2 ring-violet-200') : mission.progressStatus === 'COMPLETED' ? (isDark ? 'bg-emerald-950/30 border-emerald-500/50' : 'bg-emerald-50 border-emerald-300') : (isDark ? 'bg-[#12131b]/95 border-violet-500/20' : 'bg-white/95 border-slate-200')}`}>
                     <div className={`flex items-center gap-1.5 mb-1 ${!left ? 'justify-end' : ''}`}>
-                      <span className="font-mono text-[10px] text-violet-400 font-bold uppercase tracking-wider">
+                      {mission.progressStatus === 'COMPLETED' && <span className="material-symbols-outlined text-[15px] text-emerald-500" aria-label="Completed">check_circle</span>}
+                      <span className={`font-mono text-[10px] font-bold uppercase tracking-wider ${mission.progressStatus === 'COMPLETED' ? 'text-emerald-500' : 'text-violet-400'}`}>
                         Mission {number} // {mission.progressStatus || 'NOT_STARTED'}
                       </span>
                     </div>
