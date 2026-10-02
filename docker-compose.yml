@@ -38,6 +38,7 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgresql://nextess:nextess_dev_password@postgres:5432/nextess?schema=public
       PORT: 4000
+      HOST: 0.0.0.0
       FRONTEND_ORIGIN: http://localhost:3000
       SESSION_DAYS: 30
       TRUST_PROXY: "false"
