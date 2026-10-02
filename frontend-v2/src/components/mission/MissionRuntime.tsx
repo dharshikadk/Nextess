@@ -54,6 +54,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const simulationSrc = resolveSimulationSource(simulationFile);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
+  const currentLevelComplete = questions.length > 0 && questions.every((q:any) =>
+    (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
+  );
   const latestCurrentAnswer = currentAnswers.length
     ? [...currentAnswers].sort((a:any,b:any) => String(a.submittedAt || '').localeCompare(String(b.submittedAt || ''))).at(-1)
     : null;
@@ -319,11 +322,30 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     if (question + 1 < questions.length) {
       setQuestion(v => v + 1);
     } else if (level + 1 < levels.length) {
-      const refreshed = await refreshInvestigation();
-      const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
-      setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
-      setQuestion(0);
+      if (!currentLevelComplete) {
+        try {
+          setBusy(true);
+          const advanced = await api.advanceMissionLevel(investigation.id);
+          const nextLevelIndex = levels.findIndex((item:any) => item.id === advanced.currentLevelId);
+          setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
+          setQuestion(0);
+        } catch (e:any) {
+          setFeedback({ correct:false, message:e?.message || 'The next level could not be opened.' });
+          return;
+        } finally {
+          setBusy(false);
+        }
+      } else {
+        const refreshed = await refreshInvestigation();
+        const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
+        setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
+        setQuestion(0);
+      }
     } else {
+      if (!currentLevelComplete) {
+        setFeedback({ correct:false, message:'Complete all challenges in the final level correctly before finishing the mission.' });
+        return;
+      }
       await finalize();
       setStage('complete');
       return;
@@ -631,7 +653,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
               <button onClick={revealAnswer} disabled={busy || !canRevealAnswer} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
             {canMoveNext
-              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
+              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? (currentLevelComplete ? 'Finish Mission' : 'Review Final Level') : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? (currentLevelComplete ? 'Finish Mission' : 'Review Final Level') : 'Move to Next'}</button>
               : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
