@@ -8,6 +8,7 @@ interface DashboardViewProps {
   onNavigate: (page: ActivePage) => void;
   onOpenAuth: () => void;
   onClaimSurge: () => void;
+  onClaimDirective: (id: string) => Promise<void>;
   dailyQuote?: {quote:string;author:string;date:string;category:string}|null;
   directives?: Array<{id:string;title:string;description:string;rewardXp:number;rewardCoins:number;claimed:boolean}>;
   activeProgress?: Array<{projectId:string;title:string;status:string;progressPercent:number}>;
@@ -19,6 +20,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   stats,
   onNavigate,
   onOpenAuth,
+  onClaimSurge,
+  onClaimDirective,
   dailyQuote,
   directives = [],
   activeProgress = [],
@@ -26,6 +29,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const [futureSubjects, setFutureSubjects] = useState<Array<{ id: string; displayName: string }>>([]);
+  const [claimingDirectiveId, setClaimingDirectiveId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,7 +164,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <li key={d.id} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${isDark ? 'bg-[#181926] border-transparent' : 'bg-white/80 border-slate-200'}`}>
                     <span className={`material-symbols-outlined text-[20px] mt-0.5 shrink-0 ${d.claimed ? 'text-violet-400' : 'text-slate-500'}`}>{d.claimed ? 'check_circle' : 'radio_button_unchecked'}</span>
                     <div className="flex flex-col min-w-0 flex-1"><span className={`text-xs ${d.claimed ? 'text-slate-400 line-through' : isDark ? 'text-white' : 'text-slate-900'}`}>{d.title}</span><span className="font-mono text-[10px] text-slate-500 mt-0.5">{d.description}</span><span className="font-mono text-[10px] text-violet-400 mt-0.5">+{d.rewardXp} KP • +{d.rewardCoins} Coins</span></div>
-                    {d.claimed && <span className="font-mono text-[10px] text-violet-400 px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">DONE</span>}
+                    {d.claimed ? (
+                      <span className="font-mono text-[10px] text-violet-400 px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">DONE</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (claimingDirectiveId) return;
+                          setClaimingDirectiveId(d.id);
+                          try { await onClaimDirective(d.id); } finally { setClaimingDirectiveId(null); }
+                        }}
+                        disabled={claimingDirectiveId !== null}
+                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {claimingDirectiveId === d.id ? 'Claiming…' : 'Claim'}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
