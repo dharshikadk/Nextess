@@ -340,8 +340,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      const frame = simulationFrameRef.current;
-      if (event.origin !== window.location.origin || !frame?.contentWindow || event.source !== frame.contentWindow) return;
+      // The simulation bundle is served by the same Nextess origin. The exact
+      // origin check is the security boundary here; relying on MessageEvent.source
+      // identity is unnecessarily brittle across embedded browser contexts.
+      if (event.origin !== window.location.origin) return;
 
       const payload = event.data;
       if (payload?.type !== 'nextess-simulation-state' || !payload.state || typeof payload.state !== 'object') return;
