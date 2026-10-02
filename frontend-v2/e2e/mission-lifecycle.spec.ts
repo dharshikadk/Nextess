@@ -171,7 +171,11 @@ test('solar panel simulation controller state persists after refresh', async ({ 
     response.url().endsWith('/simulation-state') &&
     response.request().method() === 'POST',
   );
-  await angle.fill('42');
+  await angle.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '42';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   const solarSave = await saveResponse;
   expect(solarSave.status(), await solarSave.text()).toBe(200);
   await expect.poll(async () => angle.inputValue()).toBe('42');
@@ -181,7 +185,11 @@ test('solar panel simulation controller state persists after refresh', async ({ 
     response.url().endsWith('/simulation-state') &&
     response.request().method() === 'POST',
   );
-  await power.fill('150');
+  await power.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '150';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   const powerResponse = await powerSave;
   expect(powerResponse.status(), await powerResponse.text()).toBe(200);
 
@@ -207,7 +215,11 @@ test('bus fare simulation controller state persists after refresh', async ({ pag
     response.url().endsWith('/simulation-state') &&
     response.request().method() === 'POST',
   );
-  await fare.fill('14');
+  await fare.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '14';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   const busSave = await saveResponse;
   expect(busSave.status(), await busSave.text()).toBe(200);
 
