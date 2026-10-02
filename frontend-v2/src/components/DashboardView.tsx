@@ -20,6 +20,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   stats,
   onNavigate,
   onOpenAuth,
+  onClaimSurge,
+  onClaimDirective,
   dailyQuote,
   directives = [],
   activeProgress = [],
