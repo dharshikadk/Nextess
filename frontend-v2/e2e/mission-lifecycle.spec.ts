@@ -164,32 +164,32 @@ test('solar panel simulation controller state persists after refresh', async ({ 
   const frame = page.frameLocator('iframe[title="Nextess mission simulation"]');
   await expect(frame.locator('[aria-label="Solar panel angle simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
 
-  const angle = frame.getByLabel('Sunlight angle');
-  const power = frame.getByLabel('Maximum panel power');
+  const angle = frame.locator('input[type="range"][aria-label="Sunlight angle"]');
+  const power = frame.locator('input[type="range"][aria-label="Maximum panel power"]');
   const saveResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/investigations/') &&
     response.url().endsWith('/simulation-state') &&
-    response.request().method() === 'POST' &&
-    response.status() === 200,
+    response.request().method() === 'POST',
   );
   await angle.fill('42');
-  await saveResponse;
+  const solarSave = await saveResponse;
+  expect(solarSave.status(), await solarSave.text()).toBe(200);
   await expect.poll(async () => angle.inputValue()).toBe('42');
 
   const powerSave = page.waitForResponse((response) =>
     response.url().includes('/v1/investigations/') &&
     response.url().endsWith('/simulation-state') &&
-    response.request().method() === 'POST' &&
-    response.status() === 200,
+    response.request().method() === 'POST',
   );
   await power.fill('150');
-  await powerSave;
+  const powerResponse = await powerSave;
+  expect(powerResponse.status(), await powerResponse.text()).toBe(200);
 
   await page.reload();
   const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
   await expect(restoredFrame.locator('[aria-label="Solar panel angle simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
-  await expect.poll(async () => restoredFrame.getByLabel('Sunlight angle').inputValue()).toBe('42');
-  await expect.poll(async () => restoredFrame.getByLabel('Maximum panel power').inputValue()).toBe('150');
+  await expect.poll(async () => restoredFrame.locator('input[type="range"][aria-label="Sunlight angle"]').inputValue()).toBe('42');
+  await expect.poll(async () => restoredFrame.locator('input[type="range"][aria-label="Maximum panel power"]').inputValue()).toBe('150');
 });
 
 test('bus fare simulation controller state persists after refresh', async ({ page }) => {
@@ -201,30 +201,30 @@ test('bus fare simulation controller state persists after refresh', async ({ pag
   const frame = page.frameLocator('iframe[title="Nextess mission simulation"]');
   await expect(frame.locator('[aria-label="Bus fare demand simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
 
-  const fare = frame.getByLabel('Bus fare');
+  const fare = frame.locator('input[type="range"][aria-label="Bus fare"]');
   const saveResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/investigations/') &&
     response.url().endsWith('/simulation-state') &&
-    response.request().method() === 'POST' &&
-    response.status() === 200,
+    response.request().method() === 'POST',
   );
   await fare.fill('14');
-  await saveResponse;
+  const busSave = await saveResponse;
+  expect(busSave.status(), await busSave.text()).toBe(200);
 
   const competitor = frame.getByRole('button', { name: /OFF — ORIGINAL MARKET/i });
   const competitorSave = page.waitForResponse((response) =>
     response.url().includes('/v1/investigations/') &&
     response.url().endsWith('/simulation-state') &&
-    response.request().method() === 'POST' &&
-    response.status() === 200,
+    response.request().method() === 'POST',
   );
   await competitor.click();
-  await competitorSave;
+  const competitorResponse = await competitorSave;
+  expect(competitorResponse.status(), await competitorResponse.text()).toBe(200);
 
   await page.reload();
   const restoredFrame = page.frameLocator('iframe[title="Nextess mission simulation"]');
   await expect(restoredFrame.locator('[aria-label="Bus fare demand simulation"]')).toBeVisible({ timeout: UI_TIMEOUT });
-  await expect.poll(async () => restoredFrame.getByLabel('Bus fare').inputValue()).toBe('14');
+  await expect.poll(async () => restoredFrame.locator('input[type="range"][aria-label="Bus fare"]').inputValue()).toBe('14');
   await expect(restoredFrame.getByRole('button', { name: /ON — DEMAND SHIFT/i })).toBeVisible();
 });
 
