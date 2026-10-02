@@ -10,13 +10,14 @@ async function prepareMissionAccess(
 ) {
   const token = process.env.E2E_TEST_TOKEN;
   if (!token) throw new Error('E2E_TEST_TOKEN is required for locked mission fixtures.');
-  const response = await page.request.post('/v1/test/prepare-mission-access', {
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const response = await page.request.post(apiBase + '/v1/test/prepare-mission-access', {
     headers: { 'X-E2E-Token': token },
     data: { missionTitle },
   });
   expect(response.ok()).toBeTruthy();
   const credentials = await response.json();
-  const login = await page.request.post('/v1/auth/login', { data: {
+  const login = await page.request.post(apiBase + '/v1/auth/login', { data: {
     username: credentials.username,
     password: credentials.password,
   }});
