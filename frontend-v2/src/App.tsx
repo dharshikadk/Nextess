@@ -159,17 +159,19 @@ export default function App() {
         isDark ? 'bg-[#0d0e14] text-slate-200' : 'bg-[#f8f9fe] text-slate-800'
       }`}
     >
-      {/* Fixed Left Sidebar */}
-      <Sidebar
-        theme={theme}
-        activePage={activePage}
-        onNavigate={setActivePage}
-        onOpenAuth={() => setAuthModalOpen(true)}
-        isGuest={stats.isGuest}
-      />
+      {/* Mission runtime uses the full viewport so the simulation can expand. */}
+      {activePage !== 'mission-chamber' && (
+        <Sidebar
+          theme={theme}
+          activePage={activePage}
+          onNavigate={setActivePage}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          isGuest={stats.isGuest}
+        />
+      )}
 
       {/* Main Content Area */}
-      <div className="pl-72 flex flex-col min-h-screen">
+      <div className={`${activePage === 'mission-chamber' ? '' : 'pl-72'} flex flex-col min-h-screen`}>
         {/* Fixed Top Bar */}
         <TopBar
           theme={theme}
