@@ -50,6 +50,7 @@ export const api={
   submitAnswer:(id:string,questionId:string,answer:any,idempotencyKey?:string)=>request<any>('/v1/investigations/'+id+'/answers',{method:'POST',headers:idempotencyKey?{'Idempotency-Key':idempotencyKey}:undefined,body:JSON.stringify({questionId,answer})}),
   useHint:(id:string,questionId:string)=>request<any>('/v1/investigations/'+id+'/hints',{method:'POST',body:JSON.stringify({questionId})}),
   revealAnswer:(id:string,questionId:string)=>request<any>('/v1/investigations/'+id+'/reveal-answer',{method:'POST',body:JSON.stringify({questionId})}),
+  advanceMissionLevel:(id:string)=>request<any>('/v1/investigations/'+id+'/advance-level',{method:'POST'}),
   completeMission:(id:string)=>request<any>('/v1/investigations/'+id+'/complete',{method:'POST'}),
   simulationState:(id:string,simulationId:string,state:any)=>request<any>('/v1/investigations/'+id+'/simulation-state',{method:'POST',body:JSON.stringify({simulationId,state})})
 };

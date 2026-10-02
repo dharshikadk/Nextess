@@ -3,7 +3,10 @@ app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.s
 const cookie='nextess_session';const guestCookie='nextess_guest';const SESSION_DAYS=Math.max(1,Math.min(90,Number(process.env.SESSION_DAYS)||30));const GUEST_SESSION_DAYS=14;
 const parseCookie=(req:express.Request,name:string)=>req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1);
 async function guestSession(req:express.Request,res:express.Response,create=false){const raw=parseCookie(req,guestCookie);if(raw){const existing=await prisma.anonymousSession.findUnique({where:{sessionHash:hash(raw)}});if(existing&&existing.expiresAt>=new Date()){await prisma.anonymousSession.update({where:{id:existing.id},data:{lastActivityAt:new Date()}});return existing;}res.clearCookie(guestCookie);}if(!create)return null;const token=crypto.randomBytes(32).toString('base64url');const row=await prisma.anonymousSession.create({data:{sessionHash:hash(token),expiresAt:new Date(Date.now()+GUEST_SESSION_DAYS*864e5)}});res.cookie(guestCookie,token,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:GUEST_SESSION_DAYS*864e5});return row;}
-async function learner(req:R,res:express.Response,createGuest=false){if(req.userId)return {userId:req.userId,anonymousSessionId:null,anonymous:false};const guest=await guestSession(req,res,createGuest);return guest?{userId:null,anonymousSessionId:guest.id,anonymous:true}:null;}const MISSION_WRONG_ANSWER_PENALTY={xp:1,coins:1};type R=express.Request&{userId?:string};const fail=(res:express.Response,code:string,message:string,status=400)=>res.status(status).json({error:{code,message,requestId:res.getHeader('X-Request-Id'),details:[]}});
+async function learner(req:R,res:express.Response,createGuest=false){if(req.userId)return {userId:req.userId,anonymousSessionId:null,anonymous:false};const guest=await guestSession(req,res,createGuest);return guest?{userId:null,anonymousSessionId:guest.id,anonymous:true}:null;}const MISSION_WRONG_ANSWER_PENALTY={xp:1,coins:1};
+const MISSION_LEVEL_REWARD={xp:10,coins:4};
+const MISSION_FINAL_LEVEL_REWARD={xp:20,coins:8};
+type R=express.Request&{userId?:string};const fail=(res:express.Response,code:string,message:string,status=400)=>res.status(status).json({error:{code,message,requestId:res.getHeader('X-Request-Id'),details:[]}});
 const requestIdempotencyKey=(req:express.Request)=>{const raw=req.header('Idempotency-Key')?.trim();return raw&&raw.length<=180?raw:null};
 const serializableTransaction=async<T>(work:(tx:any)=>Promise<T>,retries=3):Promise<T>=>{for(let attempt=0;;attempt++){try{return await prisma.$transaction(work,{isolationLevel:'Serializable'});}catch(e:any){if(e?.code==='P2034'&&attempt<retries)continue;throw e;}}};const view=(u:any)=>u&&({id:u.id,name:u.name,username:u.username,gradeClass:u.gradeClass,profileType:u.profileType,profession:u.profession,educationStage:u.educationStage,schoolClass:u.schoolClass,fieldOfStudy:u.fieldOfStudy,profileStatus:u.profileStatus||null,profileImageData:u.profileImageData||null,level:u.level,xp:u.xp,coins:u.coins});async function auth(req:R,res:express.Response,next:express.NextFunction){const h=req.headers.authorization;const b=h?.startsWith('Bearer ')?h.slice(7):undefined;const c=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith(cookie+'='))?.slice(cookie.length+1);const token=b||c;if(!token)return fail(res,'AUTH_REQUIRED','Authentication required.',401);const s=await prisma.authSession.findUnique({where:{tokenHash:hash(token)}});if(!s||s.expiresAt<new Date())return fail(res,'AUTH_REQUIRED','Session expired.',401);req.userId=s.userId;await prisma.authSession.update({where:{id:s.id},data:{lastActivityAt:new Date()}});next()}async function optionalAuth(req:R,res:express.Response,next:express.NextFunction){const h=req.headers.authorization;const b=h?.startsWith('Bearer ')?h.slice(7):undefined;const c=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith(cookie+'='))?.slice(cookie.length+1);const token=b||c;if(token){const sessionRow=await prisma.authSession.findUnique({where:{tokenHash:hash(token)}});if(sessionRow&&sessionRow.expiresAt>=new Date()){req.userId=sessionRow.userId;await prisma.authSession.update({where:{id:sessionRow.id},data:{lastActivityAt:new Date()}})}}next()}async function session(u:any,res:express.Response){const token=crypto.randomBytes(32).toString('base64url');await prisma.authSession.create({data:{userId:u.id,tokenHash:hash(token),expiresAt:new Date(Date.now()+SESSION_DAYS*864e5)}});res.cookie(cookie,token,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:SESSION_DAYS*864e5});res.json({user:view(u)})}
 async function migrateGuestSessionToUser(req:express.Request,res:express.Response,userId:string){
@@ -266,9 +269,10 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
      levelCompleted=ids.length>0&&ids.every((id:string)=>latest.get(id)?.result==='CORRECT');
      const nextQuestion=level.questions.find((x:any)=>!latest.has(x.id)||latest.get(x.id)?.result!=='CORRECT');
      if(levelCompleted){
-      const finalLevel=level.levelNumber===current.projectVersion.levels.length;
+      const finalLevel=current.projectVersion.levels[current.projectVersion.levels.length-1]?.id===level.id;
       if(identity.userId){
-       reward=await rewardMissionLevel(tx,identity.userId!,current.id,level.id,Number(level.rewardXp)||0,Number(level.rewardCoins)||0,finalLevel);
+       const levelReward=finalLevel?MISSION_FINAL_LEVEL_REWARD:MISSION_LEVEL_REWARD;
+       reward=await rewardMissionLevel(tx,identity.userId!,current.id,level.id,levelReward.xp,levelReward.coins,finalLevel);
        await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
       }
       if(finalLevel){
@@ -466,14 +470,47 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
  }
 });
 
+app.post('/v1/investigations/:id/advance-level',optionalAuth,async(req:R,res)=>{
+ const identity=await learner(req,res,false);
+ if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
+ const inv:any=await prisma.investigation.findFirst({
+  where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},
+  include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}
+ });
+ if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
+ const currentIndex=inv.projectVersion.levels.findIndex((level:any)=>level.id===inv.currentLevelId);
+ if(currentIndex<0)return fail(res,'INVALID_STATE','The current mission level could not be resolved.',409);
+ const currentLevel=inv.projectVersion.levels[currentIndex];
+ const hasSubmitted=Boolean(inv.currentQuestionId&&await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:inv.currentQuestionId},select:{id:true}}));
+ const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
+ const hasReveal=Boolean(inv.currentQuestionId&&state.reveals?.[inv.currentQuestionId]);
+ if(!hasSubmitted&&!hasReveal)return fail(res,'TASK_NOT_AVAILABLE','Answer or reveal the current challenge before moving to the next level.',409);
+ if(currentIndex>=inv.projectVersion.levels.length-1)return fail(res,'MISSION_NOT_COMPLETE','Complete the final level correctly before finishing the mission.',409);
+ const nextLevel=inv.projectVersion.levels[currentIndex+1];
+ const nextQuestion=nextLevel.questions[0];
+ if(!nextQuestion)return fail(res,'MISSION_INVALID','The next mission level has no startable task.',409);
+ const progressPercent=Math.round((currentIndex+1)/inv.projectVersion.levels.length*100);
+ await serializableTransaction(async tx=>{
+  await tx.investigation.update({where:{id:inv.id},data:{currentLevelId:nextLevel.id,currentQuestionId:nextQuestion.id,lastActivityAt:new Date()}});
+  if(identity.userId){
+   await tx.userProjectProgress.upsert({
+    where:{userId_projectId:{userId:identity.userId!,projectId:inv.projectId}},
+    update:{status:'IN_PROGRESS',currentLevelId:nextLevel.id,currentQuestionId:nextQuestion.id,progressPercent,lastActivityAt:new Date()},
+    create:{userId:identity.userId!,projectId:inv.projectId,status:'IN_PROGRESS',currentLevelId:nextLevel.id,currentQuestionId:nextQuestion.id,progressPercent,lastActivityAt:new Date()}
+   });
+  }
+ });
+ res.json({advanced:true,currentLevelId:nextLevel.id,currentQuestionId:nextQuestion.id,levelNumber:nextLevel.levelNumber,progressPercent,skippedLevelId:currentLevel.id,anonymous:identity.anonymous});
+});
 app.post('/v1/investigations/:id/complete',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{projectVersion:{include:{levels:{include:{questions:true}}}},project:true}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='COMPLETED')return fail(res,'INCOMPLETE','Complete every level correctly before finishing the investigation.',409);
  if(identity.anonymous)return res.json({completed:true,report:null,anonymous:true});
- const totalXp=inv.projectVersion.levels.reduce((sum:number,l:any)=>sum+Math.max(0,Number(l.rewardXp)||0),0);
- const totalCoins=inv.projectVersion.levels.reduce((sum:number,l:any)=>sum+Math.max(0,Number(l.rewardCoins)||0),0);
+ const totalXp=inv.projectVersion.levels.reduce((sum:number,_l:any,index:number)=>sum+(index===inv.projectVersion.levels.length-1?MISSION_FINAL_LEVEL_REWARD.xp:MISSION_LEVEL_REWARD.xp),0);
+ const totalCoins=inv.projectVersion.levels.reduce((sum:number,_l:any,index:number)=>sum+(index===inv.projectVersion.levels.length-1?MISSION_FINAL_LEVEL_REWARD.coins:MISSION_LEVEL_REWARD.coins),0);
  const report=await prisma.projectCompletionReport.upsert({where:{investigationId:inv.id},update:{},create:{userId:identity.userId!,projectId:inv.projectId,investigationId:inv.id,overallScore:100,xpEarned:totalXp,coinsEarned:totalCoins}});
  res.json({completed:true,report});
 });
