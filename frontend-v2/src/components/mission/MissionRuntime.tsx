@@ -693,7 +693,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             {levelReward.balances && (
               <p className="mt-4 text-xs text-slate-400">Balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>
             )}
-            <button type="button" onClick={() => setLevelReward(v => ({...v, open:false}))} className="w-full mt-6 px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">Continue Mission</button>
+            <button type="button" onClick={() => { setLevelReward(v => ({...v, open:false})); void moveNext(); }} className="w-full mt-6 px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">Continue Mission</button>
           </div>
         </div>
       )}
