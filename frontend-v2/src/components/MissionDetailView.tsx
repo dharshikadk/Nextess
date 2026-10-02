@@ -11,11 +11,12 @@ interface MissionDetailViewProps {
 
 type Mission = any;
 
-export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onNavigate, onShowToast }) => {
+export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, stats, onNavigate, onShowToast }) => {
   const isDark = theme === 'dark';
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<'capsule'|'metadata'|'files'|null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
     let cancelled=false;
@@ -77,6 +78,23 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
     localStorage.setItem('nextess_selected_mission', mission.id);
     localStorage.setItem('nextess_mission_stage', String(stage));
     onNavigate('mission-chamber');
+  };
+
+  const reviewMission = async () => {
+    if (stats.isGuest || reviewing || progressStatus !== 'COMPLETED') return;
+    setReviewing(true);
+    try {
+      const started = await api.startMission(mission.id);
+      localStorage.setItem('nextess_selected_mission', mission.id);
+      localStorage.setItem('nextess_investigation_id', started.investigationId);
+      localStorage.setItem('nextess_investigation_mission_id', mission.id);
+      localStorage.setItem('nextess_mission_stage', '3');
+      onNavigate('mission-chamber');
+    } catch (e: any) {
+      onShowToast(e?.message || 'The mission could not be opened for review.');
+    } finally {
+      setReviewing(false);
+    }
   };
 
   const progressStatus=mission.progress?.status||'NOT_STARTED';
@@ -198,12 +216,31 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, onN
             </div>
           )}
 
-          <button
-            onClick={() => openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1)}
-            aria-label="Start Solving Mission — Open Mission Stages" className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
-          >
-            {progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Solving Mission'}
-          </button>
+          {progressStatus === 'COMPLETED' ? (
+            <>
+              <div className={`rounded-xl border p-3 ${isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'}`}>
+                <div className="font-mono text-[9px] uppercase text-emerald-500">Review cost</div>
+                <div className={`mt-1 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>10 KP + 10 coins</div>
+                <p className="mt-1 text-[10px] text-slate-500">Reviewing this completed mission starts a fresh review investigation.</p>
+              </div>
+              <button
+                onClick={reviewMission}
+                disabled={stats.isGuest || reviewing}
+                aria-label="Review Mission — 10 KP and 10 coins"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-[0_4px_0_#047857] disabled:opacity-50"
+              >
+                {reviewing ? 'Opening Review…' : 'Review Mission'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1)}
+              aria-label={progressStatus==='IN_PROGRESS' ? 'Continue Mission — Open Mission Stages' : 'Start Solving Mission — Open Mission Stages'}
+              className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
+            >
+              {progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Solving Mission'}
+            </button>
+          )}
         </div>
       </div>
     </div>
