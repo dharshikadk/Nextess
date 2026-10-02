@@ -8,7 +8,7 @@ interface DashboardViewProps {
   onNavigate: (page: ActivePage) => void;
   onOpenAuth: () => void;
   onClaimSurge: () => void;
-  onClaimDirective: (id: string) => void;
+  onClaimDirective: (id: string) => Promise<void>;
   dailyQuote?: {quote:string;author:string;date:string;category:string}|null;
   directives?: Array<{id:string;title:string;description:string;rewardXp:number;rewardCoins:number;claimed:boolean}>;
   activeProgress?: Array<{projectId:string;title:string;status:string;progressPercent:number}>;
