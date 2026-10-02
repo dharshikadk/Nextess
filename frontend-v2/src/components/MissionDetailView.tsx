@@ -49,6 +49,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
           requiredEvidence:metadata.requiredEvidence||null,
           requiredSimulation:metadata.requiredSimulation||null,
           progress:result.progress||null,
+          unlocked:result.unlocked!==false,
           levels:(selected.currentPublishedVersion?.levels||[]).map((level:any)=>({
             ...level,
             number:level.levelNumber,
@@ -284,11 +285,16 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
             </>
           ) : (
             <button
-              onClick={() => openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1)}
-              aria-label={progressStatus==='IN_PROGRESS' ? 'Continue Mission — Open Mission Stages' : 'Start Solving Mission — Open Mission Stages'}
-              className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6]"
+              type="button"
+              disabled={!mission.unlocked}
+              onClick={() => {
+                if (!mission.unlocked) return;
+                openStage(progressStatus==='IN_PROGRESS' && mission.progress?.currentLevelId ? (mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2 : 1);
+              }}
+              aria-label={!mission.unlocked ? 'Mission Locked' : (progressStatus==='IN_PROGRESS' ? 'Continue Mission — Open Mission Stages' : 'Start Solving Mission — Open Mission Stages')}
+              className="w-full py-3 rounded-xl bg-violet-600/80 text-white font-bold text-xs shadow-[0_4px_0_#5b21b6] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Solving Mission'}
+              {!mission.unlocked ? 'Mission Locked' : (progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Solving Mission')}
             </button>
           )}
         </div>

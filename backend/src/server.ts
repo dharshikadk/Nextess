@@ -117,8 +117,19 @@ async function migrateGuestSessionToUser(req:express.Request,res:express.Respons
  if(!p||p.currentPublishedVersion?.status!=='PUBLISHED')return fail(res,'NOT_FOUND','Published project not found.',404);
  const progress=req.userId?await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:req.userId,projectId:p.id}}}):null;
  const levelProgress=req.userId?await prisma.userLevelProgress.findMany({where:{userId:req.userId,level:{projectVersionId:p.currentPublishedVersion?.id}},orderBy:{levelId:'asc'}}):[];
+ const previousMission=await prisma.project.findFirst({where:{subjectId:p.subjectId,status:'PUBLISHED',createdAt:{lt:p.createdAt},currentPublishedVersion:{status:'PUBLISHED'}},orderBy:{createdAt:'desc'},select:{id:true,title:true}});
+ let unlocked=!previousMission;
+ if(previousMission){
+   if(req.userId){
+     const previousProgress=await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:req.userId,projectId:previousMission.id}},select:{status:true}});
+     unlocked=previousProgress?.status==='COMPLETED';
+   }else{
+     const guest=await guestSession(req,res,false);
+     unlocked=Boolean(guest&&await prisma.investigation.findFirst({where:{anonymousSessionId:guest.id,projectId:previousMission.id,status:'COMPLETED'},select:{id:true}}));
+   }
+ }
  const nextMission=await prisma.project.findFirst({where:{subjectId:p.subjectId,status:'PUBLISHED',createdAt:{gt:p.createdAt},currentPublishedVersion:{status:'PUBLISHED'}},orderBy:{createdAt:'asc'},select:{id:true,title:true}});
- res.json({project:p,progress,levelProgress,nextMission});
+ res.json({project:p,progress,levelProgress,unlocked,nextMission});
 });
 app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,true);
@@ -264,11 +275,11 @@ app.post('/v1/investigations/:id/hints',optionalAuth,async(req:R,res)=>{
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  if(!validateUuid(String(req.body?.questionId)))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
- if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before requesting a hint.',409);
  const q=await prisma.question.findFirst({where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}},include:{hints:{orderBy:{level:'asc'}}}});
  if(!q)return fail(res,'NOT_FOUND','Question not found for this investigation.',404);
- const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
- const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));const revealedAlready=Boolean(state.reveals?.[q.id]);const ledgerUsed=identity.userId?await prisma.rewardLedger.count({where:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}}):0;const used=Math.max(Number(state.hints?.[q.id]||0),ledgerUsed);
+ const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));
+ if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId&&!submitted)return fail(res,'TASK_NOT_AVAILABLE','Complete the current task before requesting a hint.',409);
+ const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};const revealedAlready=Boolean(state.reveals?.[q.id]);const ledgerUsed=identity.userId?await prisma.rewardLedger.count({where:{userId:identity.userId!,investigationId:inv.id,sourceId:q.id,rewardType:RewardType.COINS,reasonCode:'MISSION_HINT'}}):0;const used=Math.max(Number(state.hints?.[q.id]||0),ledgerUsed);
  const next=q.hints.find((h:any)=>h.level===used+1);if(!next)return fail(res,'NO_MORE_HINTS','All hints for this question have already been revealed.',409);
  const costCoins=identity.userId&&!submitted&&!revealedAlready?5:0;
  try{
@@ -302,8 +313,6 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
  if(inv.status!=='IN_PROGRESS')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
  if(!validateUuid(String(req.body?.questionId)))return fail(res,'VALIDATION_ERROR','Invalid question ID.');
- if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId)return fail(res,'TASK_NOT_AVAILABLE','Reveal is only available for the current task.',409);
-
  const q=await prisma.question.findFirst({
   where:{id:req.body.questionId,level:{projectVersionId:inv.projectVersionId}}
  });
@@ -317,6 +326,7 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
   where:{investigationId:inv.id,questionId:q.id},
   select:{id:true}
  }));
+ if(inv.currentQuestionId&&inv.currentQuestionId!==req.body.questionId&&!submitted)return fail(res,'TASK_NOT_AVAILABLE','Reveal is only available for the current or already answered task.',409);
  if(submitted){
   return res.json({
    answer:def.answer,
