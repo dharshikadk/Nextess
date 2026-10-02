@@ -328,35 +328,51 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     }
   };
 
+  const investigationIdRef = React.useRef<string | null>(null);
+  const simulationIdRef = React.useRef<string | null>(null);
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const saveSequenceRef = React.useRef(0);
+
   useEffect(() => {
-    if (!investigation?.id || !simulation?.id || !simulationSrc) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let saveSequence = 0;
+    investigationIdRef.current = investigation?.id || null;
+    simulationIdRef.current = simulation?.id || null;
+  }, [investigation?.id, simulation?.id]);
+
+  useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== simulationFrameRef.current?.contentWindow) return;
+      const frame = simulationFrameRef.current;
+      if (event.origin !== window.location.origin || !frame?.contentWindow || event.source !== frame.contentWindow) return;
+
       const payload = event.data;
       if (payload?.type !== 'nextess-simulation-state' || !payload.state || typeof payload.state !== 'object') return;
-      const sequence = ++saveSequence;
-      if (timer) clearTimeout(timer);
+
+      const investigationId = investigationIdRef.current;
+      const simulationId = simulationIdRef.current;
+      if (!investigationId || !simulationId) return;
+
+      const sequence = ++saveSequenceRef.current;
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       setSimulationSaving(true);
-      timer = setTimeout(async () => {
+
+      saveTimerRef.current = setTimeout(async () => {
         try {
-          await api.simulationState(investigation.id!, simulation.id!, payload.state);
-          if (sequence === saveSequence) setSimulationSaving(false);
+          await api.simulationState(investigationId, simulationId, payload.state);
+          if (sequence === saveSequenceRef.current) setSimulationSaving(false);
         } catch (e: any) {
-          if (sequence === saveSequence) {
+          if (sequence === saveSequenceRef.current) {
             setSimulationSaving(false);
             setFeedback({ correct: false, message: e?.message || 'Simulation state could not be saved.' });
           }
         }
-      }, 100);
+      }, 50);
     };
+
     window.addEventListener('message', onMessage);
     return () => {
       window.removeEventListener('message', onMessage);
-      if (timer) clearTimeout(timer);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [investigation?.id, simulation?.id, simulationSrc]);
+  }, []);
 
   const restoreSimulation = () => {
     const state = investigation?.state?.simulations?.[simulation?.id];
