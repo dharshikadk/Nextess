@@ -11,7 +11,6 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const [username,setUsername]=useState('');
   const [password,setPassword]=useState('');
   const [profileType,setProfileType]=useState<'STUDENT'|'WORKING_PROFESSIONAL'|'OTHER'>('STUDENT');
-  const [profileStatus,setProfileStatus]=useState('Student');
   const [educationStage,setEducationStage]=useState<'SCHOOL'|'COLLEGE'>('SCHOOL');
   const [schoolClass,setSchoolClass]=useState('');
   const [fieldOfStudy,setFieldOfStudy]=useState('');
@@ -30,7 +29,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
         await api.login(username,password);
       }else{
         await api.register({
-          name:name.trim(),username,password,profileType,profileStatus,
+          name:name.trim(),username,password,profileType,
           profession:profileType==='WORKING_PROFESSIONAL'?profession.trim():null,
           educationStage:profileType==='STUDENT'?educationStage:null,
           schoolClass:profileType==='STUDENT'&&educationStage==='SCHOOL'?schoolClass.trim():null,
@@ -59,10 +58,9 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
 
         {tab==='signup'&&<>
           <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Profession type<select className={`mt-1 ${input}`} value={profileType} onChange={e=>setProfileType(e.target.value as typeof profileType)}><option value="STUDENT">Student</option><option value="WORKING_PROFESSIONAL">Working Professional</option><option value="OTHER">Other</option></select></label>
-          <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Current status<select className={`mt-1 ${input}`} value={profileStatus} onChange={e=>setProfileStatus(e.target.value)}><option>Student</option><option>Working Professional</option><option>Looking for work</option><option>Other</option></select></label>
           {profileType==='STUDENT'&&<>
             <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Education stage<select className={`mt-1 ${input}`} value={educationStage} onChange={e=>setEducationStage(e.target.value as typeof educationStage)}><option value="SCHOOL">School</option><option value="COLLEGE">College / University</option></select></label>
-            {educationStage==='SCHOOL'?<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Class<input className={`mt-1 ${input}`} value={schoolClass} onChange={e=>setSchoolClass(e.target.value)} placeholder="Class 12"/></label>:<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Field of study<input className={`mt-1 ${input}`} value={fieldOfStudy} onChange={e=>setFieldOfStudy(e.target.value)} placeholder="Engineering, Medical, Commerce..."/></label>}
+            {educationStage==='SCHOOL'?<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Class<select className={`mt-1 ${input}`} value={schoolClass} onChange={e=>setSchoolClass(e.target.value)} required><option value="">Select class</option><option value="9">Class 9</option><option value="10">Class 10</option><option value="11">Class 11</option><option value="12">Class 12</option></select></label>:<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Field of study<input className={`mt-1 ${input}`} value={fieldOfStudy} onChange={e=>setFieldOfStudy(e.target.value)} placeholder="Engineering, Medical, Commerce..."/></label>}
           </>}
           {profileType==='WORKING_PROFESSIONAL'&&<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Profession<input className={`mt-1 ${input}`} required value={profession} onChange={e=>setProfession(e.target.value)} placeholder="Your profession"/></label>}
           <div className="p-2.5 rounded-xl bg-violet-600/10 border border-violet-500/20 text-xs text-violet-300">New accounts receive 100 KP and 100 Coins once.</div>
