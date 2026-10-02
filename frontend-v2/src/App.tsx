@@ -146,6 +146,7 @@ export default function App() {
 
   const handleAuthSuccess = async () => {
     await refresh();
+    setAuthModalOpen(false);
     setAuthSyncConfirmation(true);
     setShowStartAnimation(false);
     setToastMessage(null);
