@@ -285,10 +285,14 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       }
 
       if (correct) {
-        try {
-          const answerResult = await api.revealAnswer(investigation.id, currentQuestion.id);
-          setRevealed(answerResult);
-        } catch {}
+        if (result.answer !== undefined) {
+          setRevealed({ answer: result.answer, explanation: result.explanation || '' });
+        } else {
+          try {
+            const answerResult = await api.revealAnswer(investigation.id, currentQuestion.id);
+            setRevealed(answerResult);
+          } catch {}
+        }
       } else {
         setRevealed(null);
       }
@@ -605,12 +609,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         <section className={`${shell} col-span-12 lg:col-span-6 p-6`}>
           <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 gap-3">
             <button onClick={() => {
-              const targetQuestion = question > 0 ? questions[question - 1] : null;
-              const targetId = targetQuestion?.id || (level > 0 ? levels[level - 1]?.questions?.at(-1)?.id : null);
               if (question > 0) setQuestion((v) => v - 1);
               else if (level > 0) { setLevel((v) => v - 1); setQuestion(Math.max(0, (levels[level - 1]?.questions?.length || 1) - 1)); }
               else setStage('capsule');
-                            setAnswer(''); setFeedback(null); setHints([]);
+              setAnswer(''); setFeedback(null); setHints([]);
             }} className={`px-3 py-1.5 rounded-xl border text-xs ${dark ? 'bg-[#181926] border-cyan-500/30 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>← Previous</button>
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
