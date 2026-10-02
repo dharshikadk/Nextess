@@ -117,8 +117,19 @@ async function migrateGuestSessionToUser(req:express.Request,res:express.Respons
  if(!p||p.currentPublishedVersion?.status!=='PUBLISHED')return fail(res,'NOT_FOUND','Published project not found.',404);
  const progress=req.userId?await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:req.userId,projectId:p.id}}}):null;
  const levelProgress=req.userId?await prisma.userLevelProgress.findMany({where:{userId:req.userId,level:{projectVersionId:p.currentPublishedVersion?.id}},orderBy:{levelId:'asc'}}):[];
+ const previousMission=await prisma.project.findFirst({where:{subjectId:p.subjectId,status:'PUBLISHED',createdAt:{lt:p.createdAt},currentPublishedVersion:{status:'PUBLISHED'}},orderBy:{createdAt:'desc'},select:{id:true,title:true}});
+ let unlocked=!previousMission;
+ if(previousMission){
+   if(req.userId){
+     const previousProgress=await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:req.userId,projectId:previousMission.id}},select:{status:true}});
+     unlocked=previousProgress?.status==='COMPLETED';
+   }else{
+     const guest=await guestSession(req,res,false);
+     unlocked=Boolean(guest&&await prisma.investigation.findFirst({where:{anonymousSessionId:guest.id,projectId:previousMission.id,status:'COMPLETED'},select:{id:true}}));
+   }
+ }
  const nextMission=await prisma.project.findFirst({where:{subjectId:p.subjectId,status:'PUBLISHED',createdAt:{gt:p.createdAt},currentPublishedVersion:{status:'PUBLISHED'}},orderBy:{createdAt:'asc'},select:{id:true,title:true}});
- res.json({project:p,progress,levelProgress,nextMission});
+ res.json({project:p,progress,levelProgress,unlocked,nextMission});
 });
 app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,true);
