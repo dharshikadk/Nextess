@@ -41,6 +41,7 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [authSyncConfirmation, setAuthSyncConfirmation] = useState(false);
   const [sessionBannerDismissed, setSessionBannerDismissed] = useState(false);
 
   const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
@@ -143,7 +144,13 @@ export default function App() {
 
   const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
-  const handleAuthSuccess = async () => { await refresh(); setShowStartAnimation(true); setToastMessage('Account synchronized with Nextess.'); };
+  const handleAuthSuccess = async () => {
+    await refresh();
+    setAuthModalOpen(false);
+    setAuthSyncConfirmation(true);
+    setShowStartAnimation(false);
+    setToastMessage(null);
+  };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
   const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');localStorage.removeItem('nextess_active_page');localStorage.removeItem('nextess_investigation_id');localStorage.removeItem('nextess_investigation_mission_id');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
@@ -356,6 +363,16 @@ export default function App() {
         stats={stats}
         onSave={handleSaveProfile}
       />
+
+      {authSyncConfirmation && (
+        <div role="status" aria-live="polite" className="fixed top-20 right-6 z-[90] max-w-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#181926] text-white border border-emerald-500/40 shadow-[0_4px_24px_rgba(16,185,129,0.25)] backdrop-blur-md">
+            <span className="material-symbols-outlined text-emerald-400 text-[20px] shrink-0">verified</span>
+            <span className="text-xs leading-snug flex-1 font-medium">Account synchronized with Nextess.</span>
+            <button type="button" aria-label="Dismiss account synchronization message" onClick={() => setAuthSyncConfirmation(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+          </div>
+        </div>
+      )}
 
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
