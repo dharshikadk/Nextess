@@ -24,8 +24,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const [feedback, setFeedback] = useState<any>(null);
   const [hints, setHints] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<any>(null);
-  const [revealLock, setRevealLock] = useState(false);
-  const [revealedQuestionId, setRevealedQuestionId] = useState<string | null>(null);
   const [fileIndex, setFileIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -240,9 +238,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         setFeedback(null);
         setHints([]);
         setRevealed(null);
-        setRevealedQuestionId(null);
-        setRevealLock(false);
-        setStage('level');
+                        setStage('level');
       }
     }
   };
@@ -596,7 +592,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             <div className="font-mono text-[9px] uppercase tracking-wider text-cyan-400">Mission Stages</div>
             <div className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-900'}`}>Continue your investigation</div>
           </div>
-          <button type="button" onClick={moveNext} disabled={busy || (!revealed && !hasCorrectCurrent) || (revealLock && isFinalChallenge)} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">{revealLock && isFinalChallenge ? "Answer to Finish" : "Continue Mission"}</button>
+          <button type="button" onClick={moveNext} disabled={busy || !canMoveNext} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">Continue Mission</button>
         </div>
       </div>
     </div>
@@ -616,27 +612,38 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
               if (question > 0) setQuestion((v) => v - 1);
               else if (level > 0) { setLevel((v) => v - 1); setQuestion(Math.max(0, (levels[level - 1]?.questions?.length || 1) - 1)); }
               else setStage('capsule');
-              setRevealLock(Boolean(revealedQuestionId && targetId && revealedQuestionId !== targetId));
-              setAnswer(''); setFeedback(null); setHints([]);
+                            setAnswer(''); setFeedback(null); setHints([]);
             }} className={`px-3 py-1.5 rounded-xl border text-xs ${dark ? 'bg-[#181926] border-cyan-500/30 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>← Previous</button>
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
           </div>
           <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
             <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
-            <div className="mt-4">{currentQuestion ? <TaskRenderer task={currentQuestion} value={answer} onChange={setAnswer} disabled={busy || revealLock} theme={theme} /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
+            <div className="mt-4">{currentQuestion ? <TaskRenderer
+                task={currentQuestion}
+                value={answer}
+                onChange={(value) => {
+                  if (hasSubmittedCurrent) {
+                    setFeedback({ correct: hasCorrectCurrent, message: 'Already answered. Your previous response is locked.' });
+                    return;
+                  }
+                  setAnswer(value);
+                }}
+                disabled={busy}
+                theme={theme}
+              /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
           </div>
           {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
           {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
           {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <button onClick={useHint} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
+              <button onClick={useHint} disabled={busy || hasCorrectCurrent || Boolean(revealed)} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
               <button onClick={revealAnswer} disabled={busy} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
-            {revealed || hasCorrectCurrent
-              ? <button data-testid="mission-next" aria-label={revealLock && isFinalChallenge ? 'Answer to Finish' : (isFinalChallenge ? 'Finish Mission' : 'Move to Next')} onClick={moveNext} disabled={busy || (revealLock && isFinalChallenge)} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{revealLock && isFinalChallenge ? 'Answer to Finish' : (isFinalChallenge ? 'Finish Mission' : 'Move to Next')}</button>
-              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion || revealLock} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
+            {canMoveNext
+              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
+              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
         <aside className="col-span-12 lg:col-span-3">
@@ -654,6 +661,32 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
           </div>
         </aside>
       </div>
+      {levelReward.open && (
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Level reward">
+          <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${dark ? 'bg-[#12131b] border-amber-500/40 text-white' : 'bg-white border-amber-200 text-slate-900'}`}>
+            <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[34px]">workspace_premium</span>
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[.2em] text-amber-400 mt-4">Level {levelReward.level} completed</div>
+            <h2 className="text-2xl font-bold mt-2">Rewards earned</h2>
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}>
+                <div className="font-mono text-[10px] uppercase text-violet-400">KP</div>
+                <div className="text-2xl font-bold mt-1">{levelReward.xp}</div>
+              </div>
+              <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}>
+                <div className="font-mono text-[10px] uppercase text-amber-400">Coins</div>
+                <div className="text-2xl font-bold mt-1">{levelReward.coins}</div>
+              </div>
+            </div>
+            {levelReward.balances && (
+              <p className="mt-4 text-xs text-slate-400">Balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>
+            )}
+            <button type="button" onClick={() => setLevelReward(v => ({...v, open:false}))} className="w-full mt-6 px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">Continue Mission</button>
+          </div>
+        </div>
+      )}
+
       {floatingContinue}
     </div>
   );
