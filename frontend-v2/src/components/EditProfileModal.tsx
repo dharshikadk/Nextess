@@ -14,7 +14,6 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
   const dark = theme === 'dark';
   const [name, setName] = useState('');
   const [profileType, setProfileType] = useState<'STUDENT' | 'WORKING_PROFESSIONAL' | 'OTHER'>('STUDENT');
-  const [status, setStatus] = useState('');
   const [educationStage, setEducationStage] = useState<'SCHOOL' | 'COLLEGE'>('SCHOOL');
   const [schoolClass, setSchoolClass] = useState('');
   const [fieldOfStudy, setFieldOfStudy] = useState('');
@@ -27,7 +26,6 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
     if (!isOpen) return;
     setName(stats.name || '');
     setProfileType(stats.profileType || 'STUDENT');
-    setStatus(stats.profileStatus || '');
     setEducationStage(stats.userClass ? 'SCHOOL' : 'COLLEGE');
     setSchoolClass(stats.userClass || '');
     setFieldOfStudy(stats.college || '');
@@ -61,7 +59,6 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
     const data: any = {
       name: name.trim(),
       profileType,
-      profileStatus: status.trim() || null,
       profileImageData: profileImageData || null,
       profession: profileType === 'WORKING_PROFESSIONAL' ? profession.trim() || null : null,
       educationStage: profileType === 'STUDENT' ? educationStage : null,
@@ -109,12 +106,6 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
             </select>
           </label>
 
-          <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Current status
-            <select className={`mt-1 ${input}`} value={status} onChange={e => setStatus(e.target.value)}>
-              <option value="">Select status</option><option value="Student">Student</option><option value="Working Professional">Working Professional</option><option value="Looking for work">Looking for work</option><option value="Other">Other</option>
-            </select>
-          </label>
-
           {profileType === 'STUDENT' && <>
             <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Education stage
               <select className={`mt-1 ${input}`} value={educationStage} onChange={e => setEducationStage(e.target.value as typeof educationStage)}>
@@ -122,7 +113,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
               </select>
             </label>
             {educationStage === 'SCHOOL'
-              ? <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Class<input className={`mt-1 ${input}`} value={schoolClass} onChange={e => setSchoolClass(e.target.value)} placeholder="Class 12" /></label>
+              ? <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Class<select className={`mt-1 ${input}`} value={schoolClass} onChange={e => setSchoolClass(e.target.value)} required><option value="">Select class</option><option value="9">Class 9</option><option value="10">Class 10</option><option value="11">Class 11</option><option value="12">Class 12</option></select></label>
               : <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Field of study<input className={`mt-1 ${input}`} value={fieldOfStudy} onChange={e => setFieldOfStudy(e.target.value)} placeholder="Engineering, Medical, Commerce..." /></label>}
           </>}
 
