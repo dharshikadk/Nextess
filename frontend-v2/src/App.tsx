@@ -144,12 +144,12 @@ export default function App() {
 
   const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
-  const handleAuthSuccess = async () => {
-    await refresh();
+  const handleAuthSuccess = () => {
     setAuthModalOpen(false);
-    setAuthSyncConfirmation(true);
     setShowStartAnimation(false);
+    setAuthSyncConfirmation(true);
     setToastMessage(null);
+    void refresh();
   };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
