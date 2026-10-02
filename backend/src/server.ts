@@ -239,7 +239,6 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
    const current:any=await tx.investigation.findUnique({where:{id:inv.id},include:{projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'}}}}}}}});
    if(!current)throw new Error('INVESTIGATION_NOT_FOUND');
    if(current.status!=='IN_PROGRESS')throw new Error('INVESTIGATION_CLOSED');
-   if(current.currentQuestionId&&current.currentQuestionId!==q.id)throw new Error('TASK_NOT_AVAILABLE');
    const attempts=await tx.investigationAnswer.count({where:{investigationId:current.id,questionId:q.id}})+1;
    const created=await tx.investigationAnswer.create({data:{investigationId:current.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer,normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
    let penalty={xp:0,coins:0};
