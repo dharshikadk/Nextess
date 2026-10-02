@@ -261,7 +261,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                   disabled={selectedMission.unlocked === false}
                   className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6] active:translate-y-0.5 transition-all"
                 >
-                  {selectedMission.unlocked === false ? 'Previous mission required' : selectedMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Solving Mission'}
+                  {selectedMission.unlocked === false ? 'Previous mission required' : selectedMission.progressStatus === 'COMPLETED' ? 'Review Mission' : selectedMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Solving Mission'}
                 </button>
               </div>
 
@@ -291,7 +291,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
             </div>
             <div className="flex items-center justify-between gap-3 mt-5">
               <span className="text-xs text-slate-500">{previewMission.unlocked === false ? 'Locked until the previous mission is completed.' : previewMission.progressStatus === 'COMPLETED' ? 'Mission completed.' : previewMission.progressStatus === 'IN_PROGRESS' ? 'Mission in progress.' : 'Mission ready.'}</span>
-              <button type="button" disabled={previewMission.unlocked === false} onClick={() => { setPreviewMission(null); openMission(previewMission); }} className="px-4 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40">{previewMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Mission'}</button>
+              <button type="button" disabled={previewMission.unlocked === false} onClick={() => { setPreviewMission(null); openMission(previewMission); }} className="px-4 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40">{previewMission.progressStatus === 'COMPLETED' ? 'Review Mission' : previewMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Mission'}</button>
             </div>
           </div>
         </div>
