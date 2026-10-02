@@ -150,7 +150,7 @@
       window.parent.postMessage({
         type:'nextess-simulation-state',
         state:{angle:+angleR.value,pmax:+pmaxR.value}
-      },window.location.origin);
+      },'*');
     }
   }
   angleR.addEventListener('input',()=>{update();emitState()});
