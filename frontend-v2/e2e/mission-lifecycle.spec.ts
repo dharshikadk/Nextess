@@ -4,10 +4,31 @@ test.describe.configure({ timeout: 90_000 });
 
 const UI_TIMEOUT = 30_000;
 
+async function prepareMissionAccess(
+  page: import('@playwright/test').Page,
+  missionTitle: string,
+) {
+  const token = process.env.E2E_TEST_TOKEN;
+  if (!token) throw new Error('E2E_TEST_TOKEN is required for locked mission fixtures.');
+  const response = await page.request.post('/v1/test/prepare-mission-access', {
+    headers: { 'X-E2E-Token': token },
+    data: { missionTitle },
+  });
+  expect(response.ok()).toBeTruthy();
+  const credentials = await response.json();
+  const login = await page.request.post('/v1/auth/login', { data: {
+    username: credentials.username,
+    password: credentials.password,
+  }});
+  expect(login.ok()).toBeTruthy();
+}
+
 async function reachMissionTask(
   page: import('@playwright/test').Page,
   missionTitle = 'The Bicycle That Would Not Stop',
+  options: { prepareAccess?: boolean } = {},
 ) {
+  if (options.prepareAccess) await prepareMissionAccess(page, missionTitle);
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
 
@@ -135,7 +156,7 @@ test('mission catalogue, first task, feedback, and refresh resume are reachable 
 
 test('solar panel simulation controller state persists after refresh', async ({ page }) => {
   await page.goto('/');
-  await reachMissionTask(page, 'The Solar Panel That Lost Power');
+  await reachMissionTask(page, 'The Solar Panel That Lost Power', { prepareAccess: true });
 
   const iframe = page.locator('iframe[title="Nextess mission simulation"]');
   await expect(iframe).toBeVisible({ timeout: UI_TIMEOUT });
@@ -172,7 +193,7 @@ test('solar panel simulation controller state persists after refresh', async ({ 
 
 test('bus fare simulation controller state persists after refresh', async ({ page }) => {
   await page.goto('/');
-  await reachMissionTask(page, 'The Bus Fare Decision');
+  await reachMissionTask(page, 'The Bus Fare Decision', { prepareAccess: true });
 
   const iframe = page.locator('iframe[title="Nextess mission simulation"]');
   await expect(iframe).toBeVisible({ timeout: UI_TIMEOUT });
