@@ -138,14 +138,15 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
       onShowToast('Invalid mission stage.');
       return;
     }
+    const isFinalLevel = mission.levels[mission.levels.length - 1]?.id === level.id;
     setStagePreview({
       stage,
       label:'Level '+level.number,
       title:level.title || 'Investigation Level',
       role:mission.role || 'Mission role',
       concept:level.concept || level.topic || mission.learningCapsule?.sections?.[Math.max(0,level.number-1)]?.title || mission.problemType || 'Mission investigation concept',
-      kp:Number.isFinite(Number(level.rewardXp)) ? Number(level.rewardXp) : null,
-      coins:Number.isFinite(Number(level.rewardCoins)) ? Number(level.rewardCoins) : null,
+      kp:isFinalLevel ? 20 : 10,
+      coins:isFinalLevel ? 8 : 4,
     });
   };
 
@@ -362,20 +363,18 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-violet-50 border-violet-200'}`}>
-                <span className="font-mono text-[9px] uppercase text-slate-400">KP earned</span>
-                <span className="block text-lg font-bold text-violet-400 mt-1">
-                  {stagePreview.kp === null ? 'Included' : '+' + stagePreview.kp}
-                </span>
+            {stagePreview.stage >= 3 && (
+              <div className="grid grid-cols-2 gap-2 mt-3" aria-label="Level rewards">
+                <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-violet-50 border-violet-200'}`}>
+                  <span className="font-mono text-[9px] uppercase text-slate-400">KP provided</span>
+                  <span className="block text-lg font-bold text-violet-400 mt-1">+{stagePreview.kp}</span>
+                </div>
+                <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                  <span className="font-mono text-[9px] uppercase text-slate-400">Coins provided</span>
+                  <span className="block text-lg font-bold text-amber-400 mt-1">+{stagePreview.coins}</span>
+                </div>
               </div>
-              <div className={`rounded-xl border p-3 ${isDark ? 'bg-[#181926] border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
-                <span className="font-mono text-[9px] uppercase text-slate-400">Coins earned</span>
-                <span className="block text-lg font-bold text-amber-400 mt-1">
-                  {stagePreview.coins === null ? 'Included' : '+' + stagePreview.coins}
-                </span>
-              </div>
-            </div>
+            )}
 
             <button
               type="button"
