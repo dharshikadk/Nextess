@@ -160,7 +160,7 @@
       window.parent.postMessage({
         type:'nextess-simulation-state',
         state:{fare:+fareR.value,competitor}
-      },window.location.origin);
+      },'*');
     }
   }
   fareR.addEventListener('input',()=>{update();emitState()});
