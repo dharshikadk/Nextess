@@ -288,7 +288,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const useHint = async () => {
-    if (!investigation?.id || !currentQuestion || busy || revealLock) return;
+    if (!investigation?.id || !currentQuestion || busy) return;
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -533,7 +533,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             <div className="font-mono text-[9px] uppercase tracking-wider text-cyan-400">Mission Stages</div>
             <div className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-900'}`}>Continue your investigation</div>
           </div>
-          <button type="button" onClick={moveNext} disabled={busy || (!revealed && !hasCorrectCurrent)} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">Continue Mission</button>
+          <button type="button" onClick={moveNext} disabled={busy || (!revealed && !hasCorrectCurrent) || (revealLock && isFinalChallenge)} className="shrink-0 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">{revealLock && isFinalChallenge ? "Answer to Finish" : "Continue Mission"}</button>
         </div>
       </div>
     </div>
@@ -569,10 +569,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
               <button onClick={useHint} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
-              <button onClick={revealAnswer} disabled={busy || revealLock} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
+              <button onClick={revealAnswer} disabled={busy} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
             </div>
             {revealed || hasCorrectCurrent
-              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? 'Finish Mission' : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? 'Finish Mission' : 'Move to Next'}</button>
+              ? <button data-testid="mission-next" aria-label={revealLock && isFinalChallenge ? 'Answer to Finish' : (isFinalChallenge ? 'Finish Mission' : 'Move to Next')} onClick={moveNext} disabled={busy || (revealLock && isFinalChallenge)} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{revealLock && isFinalChallenge ? 'Answer to Finish' : (isFinalChallenge ? 'Finish Mission' : 'Move to Next')}</button>
               : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion || revealLock} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
           </div>
         </section>
