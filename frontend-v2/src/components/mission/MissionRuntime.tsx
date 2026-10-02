@@ -614,7 +614,6 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-32`}>
       <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
-      <div className="flex justify-end mt-3"><button type="button" onClick={onExit} className={`px-4 py-2 rounded-xl border text-xs font-semibold ${dark ? 'bg-[#12131b] border-rose-500/30 text-slate-300' : 'bg-white border-rose-200 text-rose-700'}`}>Exit Mission</button></div>
       <div className="grid grid-cols-12 xl:grid-cols-[5fr_9fr_6fr] gap-5 mt-5 items-start">
         <div className="col-span-12 xl:col-span-1">{missionPanel}</div>
         <section className={`${shell} col-span-12 xl:col-span-1 p-6`}>
