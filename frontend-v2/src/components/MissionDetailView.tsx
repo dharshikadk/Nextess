@@ -227,7 +227,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
             ].map((stage) => {
               const unlocked = isStageUnlocked(stage.stage);
               return (
-              <button key={stage.stage} type="button" disabled={!unlocked} onClick={() => showStagePreview(stage.stage)} aria-label={`${stage.title}${unlocked ? '' : ' — Locked'}`} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${unlocked ? (isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm') : (isDark ? 'bg-[#0f1017] border-slate-700/40 opacity-60 cursor-not-allowed' : 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed')}`}>
+              <button key={stage.stage} type="button" disabled={!unlocked} onClick={() => showStagePreview(stage.stage)} aria-label={`${stage.label}: ${stage.title}${unlocked ? '' : ' — Locked'}`} className={`relative z-10 flex items-start gap-4 p-4 rounded-2xl border text-left transition-all w-full ${unlocked ? (isDark ? 'bg-[#12131b]/95 border-violet-500/20 hover:bg-[#181926]' : 'bg-white border-slate-200 hover:border-violet-300 shadow-sm') : (isDark ? 'bg-[#0f1017] border-slate-700/40 opacity-60 cursor-not-allowed' : 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed')}`}>
                 <div className="w-11 h-11 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0 ring-4 ring-[#0d0e14]/50"><span className="font-mono text-xs font-bold">{String(stage.stage).padStart(2,'0')}</span></div>
                 <div className="flex flex-col flex-1 gap-1 min-w-0">
                   <div className="flex items-center justify-between gap-2"><div><span className="font-mono text-[11px] font-bold text-violet-400 uppercase">{stage.label}</span><span className={`ml-2 font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{stage.title}</span></div><span className="px-2 py-0.5 rounded bg-slate-700/30 text-slate-400 font-mono text-[10px] font-semibold border border-slate-500/10">{unlocked ? 'OPEN' : 'LOCKED'}</span></div>
@@ -236,7 +236,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
               </button>
               );
             })}
-            {mission.levels.map((level: any, levelIndex:number) => {
+            {mission.levels.map((level: any) => {
               const stage = level.number + 2;
               const unlocked = isStageUnlocked(stage);
               return (
