@@ -81,6 +81,15 @@ export default function App() {
   useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
   useEffect(() => {
+    let cancelled = false;
+    api.quote().then((result) => {
+      if (!cancelled) setQuote(result?.quote || null);
+    }).catch(() => {
+      if (!cancelled) setQuote(null);
+    });
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
     let mounted = true;
     const readyFallback = new Promise<void>((resolve) => setTimeout(resolve, 10000));
     Promise.race([refresh(), readyFallback]).finally(() => {
@@ -121,6 +130,16 @@ export default function App() {
 
   const handleAwardKP=(_amount:number)=>refresh();
   const handleClaimSurge=()=>{setToastMessage('Rewards are issued by the server after eligible activity.');refresh()};
+  const handleClaimDirective=async(id:string)=>{
+    if(stats.isGuest){setAuthModalOpen(true);return;}
+    try{
+      const result=await api.claimDirective(id);
+      setToastMessage(`Directive complete: +${result.rewardXp||0} KP, +${result.rewardCoins||0} coins.`);
+      await refresh();
+    }catch(e:any){
+      setToastMessage(e?.message||'This directive could not be claimed.');
+    }
+  };
 
   const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
@@ -171,6 +190,7 @@ export default function App() {
                 onNavigate={setActivePage}
                 onOpenAuth={() => setAuthModalOpen(true)}
                 onClaimSurge={handleClaimSurge}
+                onClaimDirective={handleClaimDirective}
                 dailyQuote={quote}
                 directives={directives}
                 activeProgress={activeProgress}
