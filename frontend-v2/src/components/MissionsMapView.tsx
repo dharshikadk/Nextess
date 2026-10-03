@@ -70,6 +70,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
     if (!missions.some((item) => item.id === mission.id)) { onShowToast('Invalid mission selection.'); return; }
     if (mission.unlocked === false) { onShowToast('Complete the previous mission before starting this one.'); return; }
     localStorage.setItem('nextess_selected_mission', mission.id);
+    localStorage.setItem('nextess_selected_mission_title', mission.title);
     localStorage.removeItem('nextess_mission_stage');
     onNavigate('mission-detail');
   };
