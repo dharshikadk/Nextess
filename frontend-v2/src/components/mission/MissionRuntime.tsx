@@ -55,8 +55,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const simulationSrc = resolveSimulationSource(simulationFile);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
+  const revealedQuestionIds=new Set<string>(Object.keys((investigation?.state as any)?.reveals || {}));
   const currentLevelComplete = questions.length > 0 && questions.every((q:any) =>
-    (investigation?.answers || []).some((a:any) => a.questionId === q.id)
+    (investigation?.answers || []).some((a:any) => a.questionId === q.id) || revealedQuestionIds.has(q.id)
   );
   const currentLevelPerfect = questions.length > 0 && questions.every((q:any) =>
     (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
@@ -115,11 +116,15 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       localStorage.setItem('nextess_investigation_mission_id', missionId);
       const result = await api.investigation(started.investigationId);
       const inv = result.investigation;
+      localStorage.setItem('nextess_selected_mission_title', mission?.title || 'Current mission');
+      localStorage.setItem('nextess_guest_mission_progress','1');
+      window.dispatchEvent(new Event('nextess-mission-updated'));
       setInvestigation(inv);
       const invLevels = inv?.projectVersion?.levels || [];
       const index = invLevels.findIndex((item: any) => item.id === inv.currentLevelId);
       const nextLevel = index >= 0 ? index : 0;
       setLevel(nextLevel);
+      localStorage.setItem('nextess_guest_mission_progress',String(Math.round((nextLevel/Math.max(1,invLevels.length))*100)));
       const firstOpen = (invLevels[nextLevel]?.questions || []).findIndex((item: any) =>
         !(inv.answers || []).some((a: any) => a.questionId === item.id && a.result === 'CORRECT')
       );
@@ -304,6 +309,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       }
 
       const guestBalances = result.anonymous ? syncGuestBalance(result.result === 'CORRECT' ? 2 : 0, result.result === 'CORRECT' ? 1 : 0) : null;
+      localStorage.setItem('nextess_guest_mission_progress',String(Math.round(Math.min(99,progress))));
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
       await refreshInvestigation();
     } catch (e: any) {
