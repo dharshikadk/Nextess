@@ -115,6 +115,9 @@ model User {
   fieldOfStudy String? @db.VarChar(100)
   profileStatus String? @db.VarChar(60)
   profileImageData String?
+  firstLoginCompletedAt DateTime?
+  streakGoalDays Int?
+  streakGoalRewardedAt DateTime?
 
   settings       UserSetting?
   sessions       AuthSession[]
