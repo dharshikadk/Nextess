@@ -18,14 +18,13 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const [profileStatus,setProfileStatus]=useState('');
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
-  const [success,setSuccess]=useState('');
 
   if(!isOpen)return null;
 
   const input=`w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 ${dark?'bg-[#181926] border-violet-500/25 text-white':'bg-white border-slate-300 text-slate-900'}`;
 
   const submit=async(e:React.FormEvent)=>{
-    e.preventDefault();setLoading(true);setError('');setSuccess('');
+    e.preventDefault();setLoading(true);setError('');
     try{
       let authResult:any;
       if(tab==='signin'){
@@ -41,8 +40,6 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
         });
       }
       await onSuccess(authResult);
-      setSuccess('Account synchronized with Nextess.');
-      window.setTimeout(onClose, 250);
     }catch(err:any){setError(err?.message||'Authentication failed.');}
     finally{setLoading(false);}
   };
@@ -73,7 +70,6 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
           <div className="p-2.5 rounded-xl bg-violet-600/10 border border-violet-500/20 text-xs text-violet-300">New accounts receive 100 KP and 100 Coins once.</div>
         </>}
         {error&&<div role="alert" className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>}
-        {success&&<div role="status" aria-live="polite" className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-500 font-semibold">{success}</div>}
         <button type="submit" disabled={loading} aria-label={tab==='signup'?'Create account':'Log in'} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs disabled:opacity-50">{loading?'Working…':tab==='signin'?'Log In':'Create account'}</button>
       </form>
     </div>
