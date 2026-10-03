@@ -30,6 +30,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
   const [levelReward, setLevelReward] = useState({open:false, level:0, xp:0, coins:0, balances:null as any});
+  const [finalRewards, setFinalRewards] = useState({xp:0,coins:0});
 
   useEffect(() => {
     const stageNumber = stage === 'brief' ? 1 : stage === 'capsule' ? 2 : stage === 'level' ? Math.max(3, level + 3) : 999;
@@ -55,6 +56,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
   const currentLevelComplete = questions.length > 0 && questions.every((q:any) =>
+    (investigation?.answers || []).some((a:any) => a.questionId === q.id)
+  );
+  const currentLevelPerfect = questions.length > 0 && questions.every((q:any) =>
     (investigation?.answers || []).some((a:any) => a.questionId === q.id && a.result === 'CORRECT')
   );
   const latestCurrentAnswer = currentAnswers.length
@@ -86,16 +90,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     setFeedback({
       correct: latestCurrentAnswer.result === 'CORRECT',
       message: latestCurrentAnswer.result === 'CORRECT'
-        ? 'Already answered correctly. This challenge is locked.'
-        : 'Already answered incorrectly. You can move on or reveal the answer.'
+        ? 'Already answered correctly. This challenge is complete; move to the next one.'
+        : 'This challenge was already submitted. You can move on or reveal the answer without another charge.'
     });
     setHints([]);
     setRevealed(null);
-    if (investigation?.id) {
-      api.revealAnswer(investigation.id, currentQuestion.id)
-        .then((result:any) => { if (!cancelled) setRevealed(result); })
-        .catch(() => {});
-    }
     return () => { cancelled = true; };
   }, [currentQuestion?.id]);
 
@@ -280,7 +279,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             : 'Not correct. You may move on or reveal the answer.'),
       });
 
-      if (result.levelCompleted) {
+      if (result.levelCompleted && result.levelPerfect && level + 1 < levels.length) {
         setLevelReward({
           open: true,
           level: currentLevel?.levelNumber ?? level + 1,
@@ -346,7 +345,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         setFeedback({ correct:false, message:'Complete all challenges in the final level correctly before finishing the mission.' });
         return;
       }
-      await finalize();
+      const completion = await finalize();
+      if (!completion) return;
       setStage('complete');
       return;
     }
@@ -386,13 +386,16 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   };
 
   const finalize = async () => {
-    if (!investigation?.id) return;
+    if (!investigation?.id) return null;
     try {
-      await api.completeMission(investigation.id);
-      window.dispatchEvent(new Event('nextess-mission-updated'));
+      const result = await api.completeMission(investigation.id);
+      setFinalRewards(result?.totalRewards || {xp:0,coins:0});
+      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
       onShowToast('Mission completion recorded.');
+      return result;
     } catch (e: any) {
       onShowToast(e?.message || 'Mission completion could not be finalized.');
+      return null;
     }
   };
 
@@ -556,7 +559,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         <h2 className={`text-3xl font-bold mt-2 ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h2>
         <p className={`text-sm leading-6 mt-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>All mission levels were completed and server-authoritative rewards were applied.</p>
         <div className="mt-5">
-          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Your final mission rewards have already been issued by the server as each eligible level was completed.</p>
+          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Your final rewards below include only challenge rewards actually earned. Revealed or incorrect challenges do not grant the 2 KP + 1 coin challenge reward.</p>
           <div role="status" aria-label="Final rewards granted" className={`mt-3 px-5 py-3 rounded-xl border text-xs font-bold ${dark ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>Final rewards granted</div>
         </div>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -622,7 +625,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
               if (question > 0) setQuestion((v) => v - 1);
               else if (level > 0) { setLevel((v) => v - 1); setQuestion(Math.max(0, (levels[level - 1]?.questions?.length || 1) - 1)); }
               else setStage('capsule');
-              setAnswer(''); setFeedback(null); setHints([]);
+              setAnswer(''); setFeedback(null); setHints([]); setRevealed(null);
             }} className={`px-3 py-1.5 rounded-xl border text-xs ${dark ? 'bg-[#181926] border-cyan-500/30 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}>← Previous</button>
             <span className="font-mono text-[11px] text-cyan-400 font-bold">TASK {question + 1} OF {questions.length}</span>
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
@@ -705,10 +708,6 @@ const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any
   <div className="relative overflow-hidden rounded-2xl p-5 border border-violet-500/40 bg-[#12131b] shadow-2xl">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div className="min-w-0">
-        <button type="button" onClick={onExit} aria-label="Go back to mission stages" className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-[#181926] text-xs font-semibold text-slate-200 hover:bg-[#202131] transition-colors">
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-          Go Back
-        </button>
         <div className="flex flex-wrap gap-2 mb-2">
           <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/40 text-violet-400 font-mono text-[10px] uppercase">Discipline: {mission.subject?.displayName || ''}</span>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 font-mono text-[10px] uppercase">Difficulty: {mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'}</span>
