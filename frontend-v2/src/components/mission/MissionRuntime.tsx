@@ -98,6 +98,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     return () => { cancelled = true; };
   }, [currentQuestion?.id]);
 
+  const syncGuestBalance = (deltaXp:number, deltaCoins:number) => { const kp=Math.max(0,Number(localStorage.getItem('nextess_guest_kp')||100)+deltaXp); const coins=Math.max(0,Number(localStorage.getItem('nextess_guest_coins')||100)+deltaCoins); localStorage.setItem('nextess_guest_kp',String(kp)); localStorage.setItem('nextess_guest_coins',String(coins)); window.dispatchEvent(new CustomEvent('nextess-mission-updated',{detail:{guestBalances:{kp,coins}}})); return {kp,coins}; };
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
     const result = await api.investigation(investigation.id);
@@ -302,7 +303,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         setRevealed(null);
       }
 
-      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
+      const guestBalances = result.anonymous ? syncGuestBalance(Number(result.netChange?.xp || 0), Number(result.netChange?.coins || 0)) : null;
+      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
       await refreshInvestigation();
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Submission failed. Retry.' });
@@ -363,7 +365,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
       setHints((items) => [...items, result.hint]);
-      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
+      const guestBalances = result.anonymous ? syncGuestBalance(0, -Number(result.cost?.coins || 0)) : null;
+      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal a hint.' });
     } finally {
@@ -377,7 +380,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
-      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: result }));
+      const guestBalances = result.anonymous ? syncGuestBalance(-Number(result.cost?.xp || 0), -Number(result.cost?.coins || 0)) : null;
+      window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
     } finally {
