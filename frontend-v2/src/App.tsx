@@ -153,11 +153,11 @@ export default function App() {
   const handleSaveProfile=(data:any)=>{setStats(prev=>({...prev,name:data.name??prev.name,profession:data.profession??'',profileType:data.profileType??prev.profileType,userClass:data.schoolClass??'',college:data.fieldOfStudy??'',profileStatus:data.profileStatus??'',profileImageData:data.profileImageData??''}));setToastMessage('Profile updated successfully.');refresh()};
 
   const handleAuthSuccess = (result?:any) => {
-    setAuthModalOpen(false);
     setShowStartAnimation(false);
     setAuthSyncConfirmation(true);
     setToastMessage(null);
     void refresh();
+    window.setTimeout(() => setAuthModalOpen(false), 250);
     if(result?.firstLogin)window.setTimeout(()=>setStreakGoalOpen(true),1200);
   };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
