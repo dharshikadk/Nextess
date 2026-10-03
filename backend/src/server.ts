@@ -265,14 +265,14 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
     }
    }
    let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},levelPenalty={xp:0,coins:0},levelPerfect=false;
-   if(evaluation.correct){
+   {
     const level=current.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
     if(level){
      const ids=level.questions.map((x:any)=>x.id);
      const rows=await tx.investigationAnswer.findMany({where:{investigationId:current.id,questionId:{in:ids}},orderBy:{submittedAt:'desc'}});
      const latest=new Map<string,any>();for(const row of rows)if(!latest.has(row.questionId))latest.set(row.questionId,row);
-     levelCompleted=ids.length>0&&ids.every((id:string)=>Boolean(latest.get(id)));levelPerfect=levelCompleted&&ids.every((id:string)=>latest.get(id)?.result==='CORRECT');
-     const nextQuestion=level.questions.find((x:any)=>!latest.has(x.id)||latest.get(x.id)?.result!=='CORRECT');
+     const reveals:any=current.state&&typeof current.state==='object'&&current.state.reveals&&typeof current.state.reveals==='object'?current.state.reveals:{};levelCompleted=ids.length>0&&ids.every((id:string)=>Boolean(latest.get(id)||reveals[id]));levelPerfect=levelCompleted&&ids.every((id:string)=>latest.get(id)?.result==='CORRECT');
+     const nextQuestion=level.questions.find((x:any)=>!latest.has(x.id)&&!reveals[x.id]);
      if(levelCompleted){
       const finalLevel=current.projectVersion.levels[current.projectVersion.levels.length-1]?.id===level.id;
       if(identity.userId){
@@ -298,8 +298,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
       levelPenalty={xp:Math.abs(rowsPenalty.filter((x:any)=>x.rewardType===RewardType.XP).reduce((a:number,x:any)=>a+Number(x.amount),0)),coins:Math.abs(rowsPenalty.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((a:number,x:any)=>a+Number(x.amount),0))};
      }
     }
-   }
-   const balances=identity.userId?await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
+   }rId?await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
    return {answer:created,levelCompleted,levelPerfect,missionCompleted,reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},balances:balances??{xp:0,coins:0}};
   });
   return res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:outcome.answer.id,feedbackData:evaluation.feedback,answer:((q.evaluationDefinition||{}) as any).answer,explanation:q.explanation,replayed:false,levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,reward:outcome.reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:outcome.reward.xp,coins:outcome.reward.coins},balances:outcome.balances,anonymous:identity.anonymous});
