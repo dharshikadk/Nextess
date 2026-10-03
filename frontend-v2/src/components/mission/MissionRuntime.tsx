@@ -303,7 +303,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         setRevealed(null);
       }
 
-      const guestBalances = result.anonymous ? syncGuestBalance(Number(result.netChange?.xp || 0), Number(result.netChange?.coins || 0)) : null;
+      const guestBalances = result.anonymous ? syncGuestBalance(result.result === 'CORRECT' ? 2 : 0, result.result === 'CORRECT' ? 1 : 0) : null;
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
       await refreshInvestigation();
     } catch (e: any) {
@@ -361,11 +361,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   const useHint = async () => {
     if (!investigation?.id || !currentQuestion || busy || !canUseHint) return;
+    const guest = localStorage.getItem('nextess_guest_kp') !== null || localStorage.getItem('nextess_guest_coins') !== null;
+    if (guest && Number(localStorage.getItem('nextess_guest_coins') || 100) < 5) { setFeedback({ correct:false, message:'You need 5 coins to use a hint.' }); return; }
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
       setHints((items) => [...items, result.hint]);
-      const guestBalances = result.anonymous ? syncGuestBalance(0, -Number(result.cost?.coins || 0)) : null;
+      const guestBalances = result.anonymous ? syncGuestBalance(0, -5) : null;
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal a hint.' });
@@ -376,11 +378,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   const revealAnswer = async () => {
     if (!investigation?.id || !currentQuestion || busy || !canRevealAnswer) return;
+    const guest = localStorage.getItem('nextess_guest_kp') !== null || localStorage.getItem('nextess_guest_coins') !== null;
+    if (guest && (Number(localStorage.getItem('nextess_guest_kp') || 100) < 5 || Number(localStorage.getItem('nextess_guest_coins') || 100) < 2) && !hasSubmittedCurrent) { setFeedback({ correct:false, message:'You need 5 KP and 2 coins to reveal this answer.' }); return; }
     setBusy(true);
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
-      const guestBalances = result.anonymous ? syncGuestBalance(-Number(result.cost?.xp || 0), -Number(result.cost?.coins || 0)) : null;
+      const guestBalances = result.anonymous ? syncGuestBalance(hasSubmittedCurrent ? 0 : -5, hasSubmittedCurrent ? 0 : -2) : null;
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
