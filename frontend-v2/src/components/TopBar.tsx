@@ -22,14 +22,15 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header
-      className={`fixed top-0 left-72 right-0 h-16 z-40 flex items-center justify-between px-6 border-b transition-colors duration-300 backdrop-blur-xl ${
+      className={`fixed top-0 left-0 right-0 h-16 z-40 flex items-center justify-between px-6 border-b transition-colors duration-300 backdrop-blur-xl ${
         isDark
           ? 'bg-[#0d0e14]/85 border-[rgba(167,139,250,0.18)] shadow-[0_1px_12px_rgba(0,0,0,0.5)] text-slate-200'
           : 'bg-white/90 border-slate-200 shadow-sm text-slate-800'
       }`}
     >
       {/* Left: Quick Breadcrumb / Context */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        {activePage === 'mission-chamber' && <button type="button" onClick={() => onNavigate('mission-detail')} aria-label="Go back to mission stages" className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shrink-0 ${isDark?'bg-[#181926] border-cyan-500/30 text-slate-200 hover:bg-[#202131]':'bg-white border-cyan-200 text-slate-700 hover:bg-cyan-50'}`}><span className="material-symbols-outlined text-[16px]">arrow_back</span>Back to stages</button>}
         <div className="flex items-center gap-2">
           <span
             className={`w-2.5 h-2.5 rounded-full ${
@@ -46,7 +47,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             {activePage === 'missions' && 'Missions Path'}
             {activePage === 'missions-map' && 'Physics Node Chain'}
             {activePage === 'mission-detail' && 'Mission 01 Ladder'}
-            {activePage === 'mission-chamber' && 'Simulation Lab'}
+            {activePage === 'mission-chamber' && 'Mission Investigation'}
             {activePage === 'leaderboard' && '3-Day League'}
             {activePage === 'profile' && 'Cadet Profile'}
             {activePage === 'settings' && 'System Configuration'}
