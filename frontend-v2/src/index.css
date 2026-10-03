@@ -115,3 +115,24 @@ html, body, #root {
 .mission-runtime-light [class*="bg-[#181926]"]{background:#f8fafc!important}
 .mission-runtime-light [class*="bg-[#07080c]"]{background:#ffffff!important}
 .mission-runtime-light [class*="text-slate-500"]{color:#64748b!important}
+
+
+/* Nextess mission light theme: keep investigation surfaces readable and layered. */
+.mission-runtime-light {
+  background: radial-gradient(circle at 10% 0%, rgba(139,92,246,.08), transparent 34%), linear-gradient(180deg,#f8fafc 0%,#eef2ff 100%);
+}
+.mission-runtime-light .text-white { color:#172033 !important; }
+.mission-runtime-light .text-slate-200 { color:#334155 !important; }
+.mission-runtime-light .text-slate-300 { color:#475569 !important; }
+.mission-runtime-light .text-slate-400 { color:#64748b !important; }
+.mission-runtime-light .bg-\[\#12131b\] { background:rgba(255,255,255,.92) !important; }
+.mission-runtime-light .bg-\[\#181926\] { background:rgba(248,250,252,.96) !important; }
+.mission-runtime-light .bg-\[\#07080c\] { background:#f8fafc !important; }
+.mission-runtime-light .border-violet-500\/40 { border-color:rgba(124,58,237,.28) !important; }
+.mission-runtime-light .border-cyan-500\/20 { border-color:rgba(8,145,178,.22) !important; }
+.mission-runtime-light iframe { background:#fff; box-shadow:0 12px 35px rgba(15,23,42,.08); }
+.mission-runtime-light button:hover { filter:brightness(.98); }
+.mission-runtime-light .mission-light-card {
+  background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(245,247,255,.94));
+  box-shadow:0 16px 45px rgba(76,29,149,.08);
+}

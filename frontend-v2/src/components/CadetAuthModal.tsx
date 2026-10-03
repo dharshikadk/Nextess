@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ThemeMode } from '../types';
 import { api } from '../api';
 
-interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:()=>void|Promise<void>; }
+interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:(result?:any)=>void|Promise<void>; }
 
 export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSuccess }) => {
   const dark=theme==='dark';
@@ -15,6 +15,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const [schoolClass,setSchoolClass]=useState('');
   const [fieldOfStudy,setFieldOfStudy]=useState('');
   const [profession,setProfession]=useState('');
+  const [profileStatus,setProfileStatus]=useState('');
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
 
@@ -25,18 +26,20 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const submit=async(e:React.FormEvent)=>{
     e.preventDefault();setLoading(true);setError('');
     try{
+      let authResult:any;
       if(tab==='signin'){
-        await api.login(username,password);
+        authResult=await api.login(username,password);
       }else{
-        await api.register({
+        authResult=await api.register({
           name:name.trim(),username,password,profileType,
           profession:profileType==='WORKING_PROFESSIONAL'?profession.trim():null,
+          profileStatus:profileStatus.trim()||null,
           educationStage:profileType==='STUDENT'?educationStage:null,
           schoolClass:profileType==='STUDENT'&&educationStage==='SCHOOL'?schoolClass.trim():null,
           fieldOfStudy:profileType==='STUDENT'&&educationStage==='COLLEGE'?fieldOfStudy.trim():null,
         });
       }
-      await onSuccess();onClose();
+      await onSuccess(authResult);
     }catch(err:any){setError(err?.message||'Authentication failed.');}
     finally{setLoading(false);}
   };
@@ -62,6 +65,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
             <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Education stage<select className={`mt-1 ${input}`} value={educationStage} onChange={e=>setEducationStage(e.target.value as typeof educationStage)}><option value="SCHOOL">School</option><option value="COLLEGE">College / University</option></select></label>
             {educationStage==='SCHOOL'?<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Class<select className={`mt-1 ${input}`} value={schoolClass} onChange={e=>setSchoolClass(e.target.value)}><option value="">Select class</option><option value="9">Class 9</option><option value="10">Class 10</option><option value="11">Class 11</option><option value="12">Class 12</option></select></label>:<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Field of study<input className={`mt-1 ${input}`} value={fieldOfStudy} onChange={e=>setFieldOfStudy(e.target.value)} placeholder="Engineering, Medical, Commerce..."/></label>}
           </>}
+          <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Status<input className={`mt-1 ${input}`} value={profileStatus} onChange={e=>setProfileStatus(e.target.value)} placeholder="Student, learning, exploring..." maxLength={60}/></label>
           {profileType==='WORKING_PROFESSIONAL'&&<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Profession<input className={`mt-1 ${input}`} required value={profession} onChange={e=>setProfession(e.target.value)} placeholder="Your profession"/></label>}
           <div className="p-2.5 rounded-xl bg-violet-600/10 border border-violet-500/20 text-xs text-violet-300">New accounts receive 100 KP and 100 Coins once.</div>
         </>}

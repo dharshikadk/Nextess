@@ -30,6 +30,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isDark = theme === 'dark';
   const [futureSubjects, setFutureSubjects] = useState<Array<{ id: string; displayName: string }>>([]);
   const [claimingDirectiveId, setClaimingDirectiveId] = useState<string | null>(null);
+  const [guestProgress,setGuestProgress]=useState<Array<{projectId:string;title:string;status:string;progressPercent:number}>>([]);
 
   const fallbackQuotes = [
     { quote: 'The important thing is not to stop questioning.', author: 'Albert Einstein', date: '', category: 'science' },
@@ -38,6 +39,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     { quote: 'The important thing is to know what is important.', author: 'Albert Einstein', date: '', category: 'science' },
   ];
   const displayQuote = dailyQuote || fallbackQuotes[Math.floor(Date.now() / 86400000) % fallbackQuotes.length];
+
+  useEffect(() => { const syncGuest=()=>{const id=localStorage.getItem('nextess_selected_mission');const title=localStorage.getItem('nextess_selected_mission_title');if(id&&title)setGuestProgress([{projectId:id,title,status:'IN_PROGRESS',progressPercent:Number(localStorage.getItem('nextess_guest_mission_progress')||0)}]);else setGuestProgress([]);};syncGuest();window.addEventListener('nextess-mission-updated',syncGuest);return()=>window.removeEventListener('nextess-mission-updated',syncGuest);}, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +61,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       cancelled = true;
     };
   }, []);
+
+  const effectiveActiveProgress=stats.isGuest?guestProgress:activeProgress;
 
   return (
     <div className="flex flex-col w-full pb-16">
@@ -141,12 +146,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="absolute right-0 top-0 w-48 h-48 bg-violet-500/10 rounded-bl-full pointer-events-none" />
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded bg-violet-500/20 text-violet-400"><span className="material-symbols-outlined text-[16px]">play_circle</span></span><span className="font-mono text-[11px] uppercase tracking-wider text-violet-400 font-bold">Active Lab Chamber</span></div>
-            {activeProgress.length ? (
+            {effectiveActiveProgress.length ? (
               <>
-                <div><h2 className={`font-headline-md text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{activeProgress[0].title}</h2><p className="text-xs mt-1 text-slate-400">{activeProgress[0].status.replace(/_/g,' ')}</p></div>
+                <div><h2 className={`font-headline-md text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{effectiveActiveProgress[0].title}</h2><p className="text-xs mt-1 text-slate-400">{effectiveActiveProgress[0].status.replace(/_/g,' ')}</p></div>
                 <div className={`rounded-xl p-3 border ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-white/90 border-slate-200'}`}>
-                  <div className="flex items-center justify-between"><span className="font-mono text-xs font-semibold">Saved investigation progress</span><span className="font-mono text-xs text-violet-400 font-bold">{activeProgress[0].progressPercent}%</span></div>
-                  <div className="w-full h-2 rounded-full bg-slate-700/30 overflow-hidden mt-2"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{width:`${Math.max(0,Math.min(100,activeProgress[0].progressPercent))}%`}} /></div>
+                  <div className="flex items-center justify-between"><span className="font-mono text-xs font-semibold">Saved investigation progress</span><span className="font-mono text-xs text-violet-400 font-bold">{effectiveActiveProgress[0].progressPercent}%</span></div>
+                  <div className="w-full h-2 rounded-full bg-slate-700/30 overflow-hidden mt-2"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{width:`${Math.max(0,Math.min(100,effectiveActiveProgress[0].progressPercent))}%`}} /></div>
                 </div>
                 <button onClick={() => onNavigate('mission-chamber')} className="self-start px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6]">Resume Saved Mission</button>
               </>
