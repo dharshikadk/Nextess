@@ -695,7 +695,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
               <span className="material-symbols-outlined text-[34px]">workspace_premium</span>
             </div>
             <div className="font-mono text-[10px] uppercase tracking-[.2em] text-amber-400 mt-4">Level {levelReward.level} completed</div>
-            <h2 className="text-2xl font-bold mt-2">Rewards earned</h2>
+            <div className="flex items-start justify-between gap-3"><h2 className="text-2xl font-bold mt-2">Rewards earned</h2><button type="button" onClick={()=>setLevelReward(v=>({...v,open:false}))} aria-label="Close level reward" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100/10">✕</button></div>
             <div className="grid grid-cols-2 gap-3 mt-6">
               <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}>
                 <div className="font-mono text-[10px] uppercase text-violet-400">KP</div>
@@ -709,7 +709,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             {levelReward.balances && (
               <p className="mt-4 text-xs text-slate-400">Balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>
             )}
-            <button type="button" onClick={() => { setLevelReward(v => ({...v, open:false})); void moveNext(); }} className="w-full mt-6 px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">Continue Mission</button>
+            <div className="flex items-center justify-between gap-3 mt-6"><span className="text-[10px] text-slate-500">Challenge reward: 2 KP + 1 coin per correct challenge.</span><button type="button" onClick={() => { setLevelReward(v => ({...v, open:false})); void moveNext(); }} className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">{levelReward.level ? 'Claim badge & continue' : 'Continue Mission'}</button></div>
           </div>
         </div>
       )}
