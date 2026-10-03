@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ThemeMode } from '../types';
 import { api } from '../api';
 
-interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:()=>void|Promise<void>; }
+interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:(result?:any)=>void|Promise<void>; }
 
 export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSuccess }) => {
   const dark=theme==='dark';
@@ -25,10 +25,11 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const submit=async(e:React.FormEvent)=>{
     e.preventDefault();setLoading(true);setError('');
     try{
+      let authResult:any;
       if(tab==='signin'){
-        await api.login(username,password);
+        authResult=await api.login(username,password);
       }else{
-        await api.register({
+        authResult=await api.register({
           name:name.trim(),username,password,profileType,
           profession:profileType==='WORKING_PROFESSIONAL'?profession.trim():null,
           educationStage:profileType==='STUDENT'?educationStage:null,
@@ -36,7 +37,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
           fieldOfStudy:profileType==='STUDENT'&&educationStage==='COLLEGE'?fieldOfStudy.trim():null,
         });
       }
-      await onSuccess();onClose();
+      await onSuccess(authResult);onClose();
     }catch(err:any){setError(err?.message||'Authentication failed.');}
     finally{setLoading(false);}
   };
