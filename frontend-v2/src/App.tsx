@@ -52,11 +52,12 @@ export default function App() {
   const [leaderboard,setLeaderboard]=useState<any>({opened:false,entries:[]});
   const [appReady, setAppReady] = useState(false);
   const [showStartAnimation, setShowStartAnimation] = useState(false);
+  const guestBalances = () => ({ kp: Number(localStorage.getItem('nextess_guest_kp') || 100), coins: Number(localStorage.getItem('nextess_guest_coins') || 100) });
 
   const refresh=async()=>{
     let me:any=null;
     try{me=await api.me()}catch{
-      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setStats(prev=>({...prev,...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
       setActiveProgress([]);setDirectives([]);setBadges([]);
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
       return;
@@ -78,7 +79,7 @@ export default function App() {
       setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});
     }catch{}
   };
-  useEffect(() => { const handler = () => { refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
+  useEffect(() => { const handler = (event: Event) => { const detail=(event as CustomEvent<any>).detail; const balances=detail?.guestBalances; if (balances && Number.isFinite(balances.kp) && Number.isFinite(balances.coins)) { setStats(prev=>prev.isGuest?{...prev,kp:balances.kp,coins:balances.coins}:prev); return; } refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
   useEffect(() => {
@@ -153,7 +154,7 @@ export default function App() {
   };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
 
-  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');localStorage.removeItem('nextess_active_page');localStorage.removeItem('nextess_investigation_id');localStorage.removeItem('nextess_investigation_mission_id');setStats(prev=>({...prev,isGuest:true,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
+  const handleToggleGuest=()=>{if(stats.isGuest)setAuthModalOpen(true);else api.logout().then(()=>{localStorage.removeItem('nextess_selected_mission');localStorage.removeItem('nextess_mission_stage');localStorage.removeItem('nextess_active_page');localStorage.removeItem('nextess_investigation_id');localStorage.removeItem('nextess_investigation_mission_id');const balances=guestBalances();setStats(prev=>({...prev,isGuest:true,kp:balances.kp,coins:balances.coins,streakDays:0,level:1,name:'Guest Cadet',handle:'',badgesCount:0}));setActiveProgress([]);setDirectives([]);setBadges([])})};
 
   const isDark = theme === 'dark';
 
