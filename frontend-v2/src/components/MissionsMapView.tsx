@@ -60,7 +60,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
   const selectedMission=useMemo(()=>missions.find(m=>m.id===selectedKey)||missions[0],[missions,selectedKey]);
   const rewards=useMemo(()=>{
     const levels=selectedMission?.currentPublishedVersion?.levels||[];
-    return {xp:levels.reduce((n,l)=>n+(Number(l.rewardXp)||0),0),coins:levels.reduce((n,l)=>n+(Number(l.rewardCoins)||0),0)};
+    return {xp:levels.reduce((n,l)=>n+(l.questions?.length||0)*2,0),coins:levels.reduce((n,l)=>n+(l.questions?.length||0),0)};
   },[selectedMission]);
   const concepts=useMemo(()=>((selectedMission?.currentPublishedVersion?.contentMetadata?.learningCapsule?.sections||[]) as any[]).map(s=>s.title).filter(Boolean),[selectedMission]);
   const selectSubject=(subject:Subject)=>{setSelectedSubjectKey(subject.key);localStorage.setItem('nextess_selected_subject',subject.key);setSelectedKey('');setLoading(true)};
@@ -234,11 +234,11 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div className={`rounded-xl p-3 border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-violet-50 border-violet-200'}`}>
-                  <span className="font-mono text-[9px] text-slate-400 uppercase">KP earned</span>
+                  <span className="font-mono text-[9px] text-slate-400 uppercase">KP potential</span>
                   <span className="block text-lg font-bold text-violet-400 mt-1">+{rewards.xp}</span>
                 </div>
                 <div className={`rounded-xl p-3 border ${isDark ? 'bg-[#181926] border-amber-500/15' : 'bg-amber-50 border-amber-200'}`}>
-                  <span className="font-mono text-[9px] text-slate-400 uppercase">Coins earned</span>
+                  <span className="font-mono text-[9px] text-slate-400 uppercase">Coins potential</span>
                   <span className="block text-lg font-bold text-amber-400 mt-1">+{rewards.coins}</span>
                 </div>
               </div>
@@ -255,7 +255,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-violet-500/15">
-                <span className="font-mono text-[10px] text-slate-500">Click a mission node to inspect it.</span>
+                <span className="font-mono text-[10px] text-slate-500">Click a mission node once to inspect its mission summary.</span>
                 <button
                   onClick={() => openMission(selectedMission)}
                   disabled={selectedMission.unlocked === false}
