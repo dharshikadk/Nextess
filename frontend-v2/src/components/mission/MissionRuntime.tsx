@@ -91,7 +91,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     setFeedback({
       correct: latestCurrentAnswer.result === 'CORRECT',
       message: latestCurrentAnswer.result === 'CORRECT'
-        ? 'Already answered correctly. This challenge is complete; move to the next one.'
+        ? 'You already solved this challenge. Your progress is saved — continue when you’re ready. This challenge is complete; move to the next one.'
         : 'This challenge was already submitted. You can move on or reveal the answer without another charge.'
     });
     setHints([]);
@@ -260,11 +260,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const submit = async () => {
     if (!investigation?.id || !currentQuestion || busy) return;
     if (hasSubmittedCurrent) {
-      setFeedback({ correct: hasCorrectCurrent, message: hasCorrectCurrent ? 'Already answered correctly.' : 'Already answered. Use Move to Next or reveal the actual answer.' });
+      setFeedback({ correct: hasCorrectCurrent, message: hasCorrectCurrent ? 'You already solved this challenge. Your progress is saved — continue when you’re ready.' : 'You’ve already submitted this challenge. You can continue, or reveal the answer without another charge.' });
       return;
     }
     if (answer === '' || answer == null) {
-      setFeedback({ correct: false, message: 'Select an option or enter an answer before submitting.' });
+      setFeedback({ correct: false, message: 'Choose an answer first, then check it when you’re ready.' });
       return;
     }
     setBusy(true);
@@ -279,10 +279,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       setFeedback({
         correct,
         message: correct
-          ? `Correct.${result.reward?.xp || result.reward?.coins ? ` +${result.reward.xp || 0} KP, +${result.reward.coins || 0} coins.` : ''}`
+          ? `Great job! You got it right.${result.reward?.xp || result.reward?.coins ? ` +${result.reward.xp || 0} KP · +${result.reward.coins || 0} coins.` : ''} Check the answer below, then continue when you’re ready.`
           : (result.penalty?.xp || result.penalty?.coins
-            ? `-${result.penalty.xp || 0} KP, -${result.penalty.coins || 0} coins. You may move on or reveal the answer.`
-            : 'Not correct. You may move on or reveal the answer.'),
+            ? `Not quite — that’s okay. You lost ${result.penalty.xp || 0} KP · ${result.penalty.coins || 0} coins. Review the feedback, use a hint if helpful, or reveal the answer.`
+            : 'Not quite — that’s okay. Review your answer, use a hint if helpful, or reveal the answer before moving on.'),
       });
 
       if (result.levelCompleted && result.levelPerfect && level + 1 < levels.length) {
@@ -322,7 +322,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const moveNext = async () => {
     if (!currentQuestion || busy) return;
     if (!canMoveNext) {
-      setFeedback({ correct: false, message: 'Answer this challenge or reveal its answer before moving on.' });
+      setFeedback({ correct: false, message: 'Almost there! Answer this challenge or reveal the answer before moving on.' });
       return;
     }
 
@@ -337,7 +337,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
           setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
           setQuestion(0);
         } catch (e:any) {
-          setFeedback({ correct:false, message:e?.message || 'The next level could not be opened.' });
+          setFeedback({ correct:false, message:e?.message || 'We couldn’t open the next level yet. Please try again.' });
           return;
         } finally {
           setBusy(false);
@@ -350,7 +350,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       }
     } else {
       if (!currentLevelComplete) {
-        setFeedback({ correct:false, message:'Complete all challenges in the final level correctly before finishing the mission.' });
+        setFeedback({ correct:false, message:'One last step: complete every challenge in this level before finishing the mission.' });
         return;
       }
       const completion = await finalize();
@@ -368,7 +368,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const useHint = async () => {
     if (!investigation?.id || !currentQuestion || busy || !canUseHint) return;
     const guest = localStorage.getItem('nextess_guest_kp') !== null || localStorage.getItem('nextess_guest_coins') !== null;
-    if (guest && Number(localStorage.getItem('nextess_guest_coins') || 100) < 5) { setFeedback({ correct:false, message:'You need 5 coins to use a hint.' }); return; }
+    if (guest && Number(localStorage.getItem('nextess_guest_coins') || 100) < 5) { setFeedback({ correct:false, message:'You need 5 coins to open a hint. Keep your coins handy!' }); return; }
     setBusy(true);
     try {
       const result = await api.useHint(investigation.id, currentQuestion.id);
@@ -376,7 +376,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       const guestBalances = result.anonymous ? syncGuestBalance(0, -5) : null;
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
     } catch (e: any) {
-      setFeedback({ correct: false, message: e?.message || 'Unable to reveal a hint.' });
+      setFeedback({ correct: false, message: e?.message || 'We couldn’t open a hint right now. Please try again.' });
     } finally {
       setBusy(false);
     }
@@ -393,7 +393,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       const guestBalances = result.anonymous ? syncGuestBalance(hasSubmittedCurrent ? 0 : -5, hasSubmittedCurrent ? 0 : -2) : null;
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
     } catch (e: any) {
-      setFeedback({ correct: false, message: e?.message || 'Unable to reveal the answer.' });
+      setFeedback({ correct: false, message: e?.message || 'We couldn’t reveal the answer right now. Please try again.' });
     } finally {
       setBusy(false);
     }
@@ -476,7 +476,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     return () => window.clearTimeout(timer);
   }, [investigation?.state?.simulations, simulation?.id]);
 
-  const shell = `rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
+  const shell = `mission-light-card rounded-2xl border shadow-2xl ${dark ? 'bg-[#12131b] border-violet-500/40' : 'bg-white border-violet-200'}`;
 
   if (loading) return <div data-testid="mission-runtime-loading" className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-slate-400">Loading mission...</div>;
   if (error || !mission) return (
@@ -645,7 +645,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
             <span className="font-mono text-[10px] text-slate-400">LEVEL {level + 1}</span>
           </div>
           <div data-testid="mission-task" aria-busy={busy ? 'true' : 'false'}>
-            <h2 className="text-base md:text-lg font-bold leading-7 text-white mt-5">{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
+            <h2 className={`text-base md:text-lg font-bold leading-7 mt-5 ${dark ? 'text-white' : 'text-slate-900'}`}>{currentQuestion?.prompt || 'Loading investigation task…'}</h2>
             <div className="mt-4">{currentQuestion ? <TaskRenderer
                 task={currentQuestion}
                 value={answer}
@@ -660,17 +660,17 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
                 theme={theme}
               /> : <div role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400">Preparing the first investigation task…</div>}</div>
           </div>
-          {hints.length > 0 && <div className="mt-4 p-4 rounded-xl border bg-violet-950/30 border-violet-500/40 text-violet-200 text-xs leading-6">{hints.map((hint, i) => <div key={i}><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
-          {revealed && <div className="mt-4 p-4 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 text-xs leading-6"><strong>Answer:</strong> {String(revealed.answer ?? '')}<br /><span className="text-slate-300">{revealed.explanation || ''}</span></div>}
-          {feedback && <div role="status" className={`mt-4 p-4 rounded-xl border text-xs leading-6 ${feedback.correct ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/30 border-rose-500/40 text-rose-200'}`}>{feedback.message}</div>}
+          {hints.length > 0 && <div className={`mission-light-card mt-4 p-4 rounded-xl border text-xs leading-6 ${dark ? 'bg-violet-950/30 border-violet-500/40 text-violet-200' : 'bg-violet-50 border-violet-200 text-violet-900'}`}><div className="flex items-center gap-2 font-semibold"><span className="material-symbols-outlined text-[17px]">lightbulb</span>Helpful hint</div>{hints.map((hint, i) => <div key={i} className="mt-2"><strong>Hint {i + 1}:</strong> {hint}</div>)}</div>}
+          {revealed && <div className={`mission-light-card mt-4 p-4 rounded-xl border text-xs leading-6 ${dark ? 'bg-amber-950/30 border-amber-500/40 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-900'}`}><div className="flex items-center gap-2 font-semibold"><span className="material-symbols-outlined text-[17px]">visibility</span>Here’s the answer</div><div className="mt-2 font-semibold">{String(revealed.answer ?? '')}</div><span className={dark ? 'text-slate-300' : 'text-slate-600'}>{revealed.explanation || ''}</span></div>}
+          {feedback && <div role="status" className={'mission-feedback mt-4 p-4 rounded-xl border text-xs leading-6 flex items-start gap-2 ' + (feedback.correct ? (dark ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200' : 'bg-emerald-50 border-emerald-200 text-emerald-800') : (dark ? 'bg-rose-950/30 border-rose-500/40 text-rose-200' : 'bg-rose-50 border-rose-200 text-rose-800'))}><span className="material-symbols-outlined text-[18px] shrink-0">{feedback.correct ? 'check_circle' : 'info'}</span><span>{feedback.message}</span></div>}
           <div className="mt-5 flex flex-wrap gap-2 justify-between">
             <div className="flex gap-2">
-              <button onClick={useHint} disabled={busy || !canUseHint} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800'} disabled:opacity-50`}>Use 5 coins to show hints</button>
-              <button onClick={revealAnswer} disabled={busy || !canRevealAnswer} className={`px-3 py-2 rounded-xl border text-xs ${dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800'} disabled:opacity-50`}>{hasSubmittedCurrent ? 'Reveal answer · no charge' : 'Reveal answer · 5 KP · 2 coins'}</button>
+              <button type="button" onClick={useHint} disabled={busy || !canUseHint} aria-label="Open a hint for 5 coins" title="Open a helpful hint · 5 coins" className={'mission-action-button inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ' + (dark ? 'border-violet-500/30 bg-[#181926] text-slate-300' : 'border-violet-200 bg-violet-50 text-violet-800') + ' disabled:opacity-50'}><span className="material-symbols-outlined text-[17px]">lightbulb</span><span>Get a hint · 5 coins</span></button>
+              <button type="button" onClick={revealAnswer} disabled={busy || !canRevealAnswer} aria-label="Reveal the answer" title="Reveal the answer · 5 KP + 2 coins" className={'mission-action-button inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ' + (dark ? 'border-amber-500/30 bg-[#181926] text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-800') + ' disabled:opacity-50'}><span className="material-symbols-outlined text-[17px]">visibility</span><span>{hasSubmittedCurrent ? 'Show answer · no extra cost' : 'Show answer · 5 KP + 2 coins'}</span></button>
             </div>
             {canMoveNext
-              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? (currentLevelComplete ? 'Finish Mission' : 'Review Final Level') : 'Move to Next'} onClick={moveNext} disabled={busy} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{isFinalChallenge ? (currentLevelComplete ? 'Finish Mission' : 'Review Final Level') : 'Move to Next'}</button>
-              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Submitting…' : 'Submit'}</button>}
+              ? <button data-testid="mission-next" aria-label={isFinalChallenge ? (currentLevelComplete ? 'Finish Mission' : 'Review Final Level') : 'Move to Next'} onClick={moveNext} disabled={busy} className="mission-primary-action inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50"><span className="material-symbols-outlined text-[17px]">{isFinalChallenge && currentLevelComplete ? 'flag' : 'arrow_forward'}</span><span>{isFinalChallenge ? (currentLevelComplete ? 'Finish Mission' : 'Review Final Level') : 'Move to Next'}</span></button>
+              : <button data-testid="mission-submit" aria-label="Submit mission answer" onClick={submit} disabled={busy || !currentQuestion} className="mission-primary-action inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50"><span className="material-symbols-outlined text-[17px]">check_circle</span><span>{busy ? 'Checking…' : 'Check Answer'}</span></button>}
           </div>
         </section>
         <aside className="col-span-12 xl:col-span-1 min-w-0">
