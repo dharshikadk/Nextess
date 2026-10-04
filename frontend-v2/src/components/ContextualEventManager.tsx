@@ -1,51 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-export type ContextualEventType =
-  | 'LEADERBOARD_NUDGE'
-  | 'LEVEL_UP'
-  | 'MISSION_COMPLETED'
-  | 'STREAK_AT_RISK'
-  | 'STREAK_FREEZE_AVAILABLE'
-  | 'ACHIEVEMENT_UNLOCKED'
-  | 'REWARD_AVAILABLE'
-  | 'PROFILE_COMPLETION';
+import { CONTEXTUAL_EVENT_PRIORITY, getContextualSessionKey, type ContextualEvent, type ContextualEventType } from '../contextualEvents.js';
 
-export interface ContextualEvent {
-  type: ContextualEventType;
-  priority: number;
-  dedupeKey: string;
-  payload?: Record<string, unknown>;
-}
-
-export const CONTEXTUAL_EVENT_PRIORITY: Record<ContextualEventType, number> = {
-  MISSION_COMPLETED: 100,
-  LEVEL_UP: 80,
-  REWARD_AVAILABLE: 70,
-  STREAK_AT_RISK: 60,
-  STREAK_FREEZE_AVAILABLE: 50,
-  LEADERBOARD_NUDGE: 40,
-  ACHIEVEMENT_UNLOCKED: 70,
-  PROFILE_COMPLETION: 20,
-};
+export { CONTEXTUAL_EVENT_PRIORITY } from '../contextualEvents.js';
 
 export function enqueueContextualEvent(event: Omit<ContextualEvent, 'priority'> & { priority?: number }) {
   window.dispatchEvent(new CustomEvent<ContextualEvent>('nextess-contextual-event', {
-    detail: {
-      ...event,
-      priority: event.priority ?? CONTEXTUAL_EVENT_PRIORITY[event.type],
-    },
+    detail: { ...event, priority: event.priority ?? CONTEXTUAL_EVENT_PRIORITY[event.type] },
   }));
 }
 
-const shownKey = (type: ContextualEventType, userId: string) =>
-  `nextess:contextual-nudge:${type.toLowerCase()}:${userId}:shown`;
-
 function wasShown(type: ContextualEventType, userId: string) {
-  try { return sessionStorage.getItem(shownKey(type, userId)) === '1'; } catch { return false; }
+  try { return sessionStorage.getItem(getContextualSessionKey(type, userId)) === '1'; } catch { return false; }
 }
 
 function markShown(type: ContextualEventType, userId: string) {
-  try { sessionStorage.setItem(shownKey(type, userId), '1'); } catch { /* sessionStorage can be unavailable */ }
+  try { sessionStorage.setItem(getContextualSessionKey(type, userId), '1'); } catch { /* sessionStorage can be unavailable */ }
 }
 
 interface Props {
