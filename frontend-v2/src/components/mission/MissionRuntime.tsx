@@ -99,7 +99,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     return () => { cancelled = true; };
   }, [currentQuestion?.id]);
 
-  const syncGuestBalance = (deltaXp:number, deltaCoins:number) => { const kp=Math.max(0,Number(localStorage.getItem('nextess_guest_kp')||100)+deltaXp); const coins=Math.max(0,Number(localStorage.getItem('nextess_guest_coins')||100)+deltaCoins); localStorage.setItem('nextess_guest_kp',String(kp)); localStorage.setItem('nextess_guest_coins',String(coins)); window.dispatchEvent(new CustomEvent('nextess-mission-updated',{detail:{guestBalances:{kp,coins}}})); return {kp,coins}; };
+  useEffect(() => {\n    const revealedFromServer = Boolean((investigation?.state as any)?.reveals?.[currentQuestion?.id || '']);\n    if (!investigation?.id || !currentQuestion?.id || !revealedFromServer) return;\n    let cancelled = false;\n    api.revealAnswer(investigation.id, currentQuestion.id).then((result) => {\n      if (!cancelled) setRevealed(result);\n    }).catch(() => {});\n    return () => { cancelled = true; };\n  }, [investigation?.id, investigation?.state, currentQuestion?.id]);\n\n  const syncGuestBalance = (deltaXp:number, deltaCoins:number) => { const kp=Math.max(0,Number(localStorage.getItem('nextess_guest_kp')||100)+deltaXp); const coins=Math.max(0,Number(localStorage.getItem('nextess_guest_coins')||100)+deltaCoins); localStorage.setItem('nextess_guest_kp',String(kp)); localStorage.setItem('nextess_guest_coins',String(coins)); window.dispatchEvent(new CustomEvent('nextess-mission-updated',{detail:{guestBalances:{kp,coins}}})); return {kp,coins}; };
   const refreshInvestigation = async () => {
     if (!investigation?.id) return null;
     const result = await api.investigation(investigation.id);
