@@ -10,9 +10,10 @@ interface MissionChamberViewProps {
   onShowToast: (msg: string) => void;
 }
 
-export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, onNavigate, onShowToast }) => (
+export const MissionChamberView: React.FC<MissionChamberViewProps> = ({ theme, stats, onNavigate, onShowToast }) => (
   <MissionRuntime
     theme={theme}
+    isGuest={stats.isGuest}
     onNavigate={onNavigate}
     onExit={() => {
       onShowToast('Mission chamber closed.');
