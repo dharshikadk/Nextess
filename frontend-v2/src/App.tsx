@@ -85,7 +85,7 @@ export default function App() {
       setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});
     }catch{}
   };
-  useEffect(() => { const handler = (event: Event) => { const detail=(event as CustomEvent<any>).detail; const balances=detail?.guestBalances; if (balances && Number.isFinite(balances.kp) && Number.isFinite(balances.coins)) { setStats(prev=>prev.isGuest?{...prev,kp:balances.kp,coins:balances.coins}:prev); } else { refresh(); } setContextualRefreshTick((value)=>value+1); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
+  useEffect(() => { const handler = (event: Event) => { const detail=(event as CustomEvent<any>).detail; const balances=detail?.guestBalances; if (balances && Number.isFinite(balances.kp) && Number.isFinite(balances.coins)) { setStats(prev=>prev.isGuest?{...prev,kp:balances.kp,coins:balances.coins}:prev); setContextualRefreshTick((value)=>value+1); return; } void refresh().finally(() => setContextualRefreshTick((value)=>value+1)); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
   useEffect(() => {
