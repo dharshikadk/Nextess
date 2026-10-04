@@ -8,7 +8,21 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
   const isDark = theme === 'dark';
   const [board, setBoard] = useState<any>({ opened: false, entries: [] });
   const [freezing, setFreezing] = useState(false);
-  useEffect(() => { api.leaderboard().then(setBoard).catch(() => setBoard({ opened: false, entries: [] })); }, []);
+  const [missedDays, setMissedDays] = useState(0);
+  const [freezeLoaded, setFreezeLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled=false;
+    Promise.all([
+      api.leaderboard().catch(() => ({ opened:false, entries:[] })),
+      stats.isGuest ? Promise.resolve(null) : api.streak().catch(() => null),
+    ]).then(([leaderboardResult, streakResult]) => {
+      if(cancelled)return;
+      setBoard(leaderboardResult);
+      setMissedDays(Number(streakResult?.missedDays||0));
+      setFreezeLoaded(true);
+    });
+    return () => { cancelled=true; };
+  }, [stats.isGuest]);
 
   const freeze = async (days:number) => {
     if (stats.isGuest || freezing) return;
@@ -35,12 +49,13 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
         <div className="xl:col-span-4 flex flex-col gap-5">
           <div className={isDark ? 'rounded-2xl p-6 border shadow-xl bg-[#12131b] border-orange-500/20' : 'rounded-2xl p-6 border shadow-xl bg-orange-50/60 border-orange-200'}>
             <div className="flex items-center gap-4"><div className="w-16 h-16 rounded-2xl bg-orange-500/15 flex items-center justify-center text-orange-500"><span className="material-symbols-outlined text-[40px]">local_fire_department</span></div><div><span className="font-mono text-[10px] text-slate-400 uppercase">Current Streak</span><div className="text-2xl font-bold text-orange-500">{stats.streakDays} days</div><span className="text-xs text-slate-400">Server-calculated activity streak</span></div></div>
-            {!stats.isGuest && <div className={`mt-5 pt-4 border-t ${isDark ? 'border-orange-500/15' : 'border-orange-200'}`}>
+            {!stats.isGuest && freezeLoaded && (missedDays === 1 || missedDays === 2) && <div className={`mt-5 pt-4 border-t ${isDark ? 'border-orange-500/15' : 'border-orange-200'}`}>
               <div className="font-mono text-[10px] text-slate-400 uppercase">Streak Freeze</div>
-              <p className="text-xs text-slate-500 mt-1">Recover missed consecutive days with coins.</p>
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <button type="button" disabled={freezing} onClick={() => freeze(1)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">1 day · 60 coins</button>
-                <button type="button" disabled={freezing} onClick={() => freeze(2)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">2 days · 120 coins</button>
+              <p className="text-xs text-slate-500 mt-1">You missed {missedDays} day{missedDays===1?'':'s'}. Recover it with the server-validated freeze cost.</p>
+              <div className={`rounded-xl border p-3 mt-3 ${isDark ? 'bg-[#181926] border-orange-500/20' : 'bg-white border-orange-200'}`}>
+                <div className="flex items-center justify-between text-xs"><span>Current balance</span><strong>{stats.coins.toLocaleString()} coins</strong></div>
+                <button type="button" disabled={freezing || stats.coins < missedDays*60} onClick={() => freeze(missedDays)} className="w-full mt-2 rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">{missedDays===1?'Freeze 1 missed day · 60 coins':'Freeze 2 missed days · 120 coins'}</button>
+                {stats.coins < missedDays*60 && <p className="mt-2 text-[10px] text-rose-500">Not enough coins for this freeze.</p>}
               </div>
             </div>}
           </div>
