@@ -20,8 +20,11 @@ export function resolveSimulationSource(fileName?: string, assets: SimulationAss
   const basename = candidate.split('/').pop() || '';
   if (!SAFE_SIMULATION_FILE.test(basename)) return null;
 
-  const assetName = readyAsset?.storageKey
-    ? basename
-    : LEGACY_SIMULATION_ASSETS[candidate] || candidate;
+  // Some existing database rows still use the original logical simulation
+  // filename while the checked-in public asset uses the legacy physical
+  // filename. Keep that compatibility mapping even when the logical name
+  // comes from the database, while allowing future DB assets to use their
+  // physical storageKey directly.
+  const assetName = LEGACY_SIMULATION_ASSETS[basename] || basename;
   return '/simulations/' + encodeURIComponent(assetName);
 }
