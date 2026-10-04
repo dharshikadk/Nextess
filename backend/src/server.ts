@@ -188,6 +188,9 @@ app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
  if(existing)return res.json({investigationId:existing.id,replayed:false,resumed:true,anonymous:identity.anonymous});
  const progress=identity.userId?await prisma.userProjectProgress.findUnique({where:{userId_projectId:{userId:identity.userId,projectId:p.id}}}):null;
  const replayed=Boolean(identity.userId&&progress?.status==='COMPLETED');
+ const reviewIdempotencyKey=replayed?requestIdempotencyKey(req):null;
+ if(replayed&&!reviewIdempotencyKey)return fail(res,'IDEMPOTENCY_KEY_REQUIRED','An Idempotency-Key header is required when reviewing a completed mission.',400);
+ const reviewLedgerKey=reviewIdempotencyKey?hash('mission-review:'+p.id+':'+reviewIdempotencyKey):null;
  const firstLevel=await prisma.level.findFirst({where:{projectVersionId:p.currentPublishedVersion.id},orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'},take:1}}});
  if(!firstLevel?.questions[0])return fail(res,'MISSION_INVALID','Published mission has no startable task.',409);
  try{
@@ -195,10 +198,12 @@ app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
    if(replayed){
     const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
     if(!u||u.xp<10||u.coins<10)throw new Error('INSUFFICIENT_FUNDS');
-    const stamp=crypto.randomUUID();
-    await tx.user.update({where:{id:identity.userId!},data:{xp:{decrement:10},coins:{decrement:10},lastActivityAt:new Date()}});
-    await tx.rewardLedger.create({data:{userId:identity.userId!,sourceId:p.id,rewardType:RewardType.XP,amount:-10,reasonCode:'MISSION_REVIEW',idempotencyKey:'mission-review:'+p.id+':'+stamp+':xp'}});
-    await tx.rewardLedger.create({data:{userId:identity.userId!,sourceId:p.id,rewardType:RewardType.COINS,amount:-10,reasonCode:'MISSION_REVIEW',idempotencyKey:'mission-review:'+p.id+':'+stamp+':coins'}});
+    const alreadyCharged=reviewLedgerKey?await tx.rewardLedger.findUnique({where:{idempotencyKey:reviewLedgerKey+':xp'}}):null;
+    if(!alreadyCharged){
+      await tx.user.update({where:{id:identity.userId!},data:{xp:{decrement:10},coins:{decrement:10},lastActivityAt:new Date()}});
+      await tx.rewardLedger.create({data:{userId:identity.userId!,sourceId:p.id,rewardType:RewardType.XP,amount:-10,reasonCode:'MISSION_REVIEW',idempotencyKey:reviewLedgerKey+':xp'}});
+      await tx.rewardLedger.create({data:{userId:identity.userId!,sourceId:p.id,rewardType:RewardType.COINS,amount:-10,reasonCode:'MISSION_REVIEW',idempotencyKey:reviewLedgerKey+':coins'}});
+    }
    }
    const created=await tx.investigation.create({data:{projectId:p.id,projectVersionId:p.currentPublishedVersion!.id,userId:identity.userId??undefined,anonymousSessionId:identity.anonymousSessionId??undefined,currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,status:'IN_PROGRESS'}});
    if(identity.userId)await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId,projectId:p.id}},update:{status:'IN_PROGRESS',currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,progressPercent:0,completedAt:null,lastActivityAt:new Date()},create:{userId:identity.userId,projectId:p.id,status:'IN_PROGRESS',currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,progressPercent:0,lastActivityAt:new Date()}});
