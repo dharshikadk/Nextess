@@ -180,7 +180,14 @@ jobs:
           E2E_BASE_URL: http://127.0.0.1:3000
           E2E_API_BASE_URL: http://127.0.0.1:4000
           E2E_TEST_TOKEN: nextess-ci-e2e-token
-        run: npm run e2e
+        run: |
+          set -o pipefail
+          npm run e2e
+      - name: Print API logs after browser E2E failure
+        if: failure()
+        run: |
+          echo "===== /tmp/nextess-api.log ====="
+          cat /tmp/nextess-api.log || true
 
   database:
     runs-on: ubuntu-latest

@@ -18,6 +18,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
   const [schoolClass, setSchoolClass] = useState('');
   const [fieldOfStudy, setFieldOfStudy] = useState('');
   const [profession, setProfession] = useState('');
+  const [profileStatus, setProfileStatus] = useState('');
   const [profileImageData, setProfileImageData] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -30,6 +31,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
     setSchoolClass(stats.userClass || '');
     setFieldOfStudy(stats.college || '');
     setProfession(stats.profession || '');
+    setProfileStatus(stats.profileStatus || '');
     setProfileImageData(stats.profileImageData || '');
     setError('');
   }, [isOpen, stats]);
@@ -60,6 +62,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
       name: name.trim(),
       profileType,
       profileImageData: profileImageData || null,
+      profileStatus: profileStatus.trim() || null,
       profession: profileType === 'WORKING_PROFESSIONAL' ? profession.trim() || null : null,
       educationStage: profileType === 'STUDENT' ? educationStage : null,
       schoolClass: profileType === 'STUDENT' && educationStage === 'SCHOOL' ? schoolClass.trim() || null : null,
@@ -93,10 +96,12 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
               {profileImageData ? <img src={profileImageData} alt="Profile preview" className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-[34px] text-violet-400">account_circle</span>}
             </div>
             <div className="min-w-0">
-              <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Profile picture<input type="file" accept="image/png,image/jpeg,image/webp" className="block mt-1 text-xs max-w-full" onChange={e => handleImage(e.target.files?.[0])} /></label>
+              <label className="font-mono text-[10px] text-violet-400 uppercase font-bold">Add profile picture<input type="file" accept="image/png,image/jpeg,image/webp" className="block mt-1 text-xs max-w-full" onChange={e => handleImage(e.target.files?.[0])} /></label>
               {profileImageData && <button type="button" onClick={() => setProfileImageData('')} className="mt-2 text-[10px] text-rose-400 hover:underline">Remove picture</button>}
             </div>
           </div>
+
+          <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Status<input className={`mt-1 ${input}`} value={profileStatus} onChange={e => setProfileStatus(e.target.value)} placeholder="Student, learning, exploring..." maxLength={60} /></label>
 
           <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Name<input className={`mt-1 ${input}`} required value={name} onChange={e => setName(e.target.value)} /></label>
 

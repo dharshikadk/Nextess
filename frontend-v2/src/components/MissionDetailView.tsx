@@ -145,8 +145,8 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
       title:level.title || 'Investigation Level',
       role:mission.role || 'Mission role',
       concept:level.concept || level.topic || mission.learningCapsule?.sections?.[Math.max(0,level.number-1)]?.title || mission.problemType || 'Mission investigation concept',
-      kp:isFinalLevel ? 20 : 10,
-      coins:isFinalLevel ? 8 : 4,
+      kp:(level.questions?.length||0)*2,
+      coins:(level.questions?.length||0),
     });
   };
 
@@ -325,6 +325,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
           )}
         </div>
       </div>
+      {progressStatus !== 'COMPLETED' && <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[55] w-[min(900px,calc(100vw-2rem))] rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl ${isDark?'bg-[#12131b]/95 border-violet-500/30 text-white':'bg-white/95 border-violet-200 text-slate-900'}`}><div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="font-mono text-[9px] uppercase text-violet-400">Mission continuation</div><div className="text-xs font-semibold truncate">{progressStatus==='IN_PROGRESS'?'Resume from your current stage':'Ready to begin this mission'}</div></div><button type="button" disabled={!mission.unlocked} onClick={()=>openStage(progressStatus==='IN_PROGRESS'&&mission.progress?.currentLevelId?(mission.levels.find((l:any)=>l.id===mission.progress.currentLevelId)?.number||1)+2:1)} className="shrink-0 px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-50">{progressStatus==='IN_PROGRESS'?'Continue Mission':'Start Mission'}</button></div></div>}
       {stagePreview && (
         <div
           className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"

@@ -252,15 +252,21 @@ test('guest progress can be converted into an authenticated account', async ({ p
   await expect(authDialog).toBeVisible({ timeout: 5000 });
   await authDialog.getByRole('tab', { name: 'Sign Up', exact: true }).click();
 
-  const suffix = Date.now().toString().slice(-8);
+  const suffix = `${Date.now()}_${test.info().project.name}_${test.info().parallelIndex}_${Math.random().toString(36).slice(2, 10)}`;
   await authDialog.getByLabel('Name', { exact: true }).fill('E2E Cadet');
   await authDialog.getByLabel('Username', { exact: true }).fill('e2e_cadet_' + suffix);
   await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
+  await authDialog.getByLabel('Status', { exact: true }).fill('Learning');
+  const registerResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/auth/register') && response.request().method() === 'POST',
+  );
   const authMeResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/auth/me') && response.request().method() === 'GET' && response.status() === 200,
   );
   await authDialog.getByRole('button', { name: 'Create account', exact: true }).click();
 
+  const register = await registerResponse;
+  expect(register.ok(), await register.text()).toBeTruthy();
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: UI_TIMEOUT });
   await authMeResponse;
   await page.reload();
@@ -302,15 +308,21 @@ test('logout invalidates the server-side cookie session', async ({ page }) => {
   const authDialog = page.getByRole('dialog', { name: 'Cadet Access Station' });
   await authDialog.getByRole('tab', { name: 'Sign Up', exact: true }).click();
 
-  const suffix = Date.now().toString().slice(-8);
+  const suffix = Date.now().toString() + '_' + test.info().project.name + '_' + test.info().parallelIndex;
   await authDialog.getByLabel('Name', { exact: true }).fill('Logout E2E Cadet');
   await authDialog.getByLabel('Username', { exact: true }).fill('logout_e2e_' + suffix);
   await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
+  await authDialog.getByLabel('Status', { exact: true }).fill('Learning');
+  const registerResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/auth/register') && response.request().method() === 'POST',
+  );
   const authMeResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/auth/me') && response.request().method() === 'GET' && response.status() === 200,
   );
   await authDialog.getByRole('button', { name: 'Create account', exact: true }).click();
 
+  const register = await registerResponse;
+  expect(register.ok(), await register.text()).toBeTruthy();
   await expect(page.getByText('Account synchronized with Nextess.')).toBeVisible({ timeout: UI_TIMEOUT });
   await authMeResponse;
   const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
