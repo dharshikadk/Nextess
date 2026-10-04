@@ -154,7 +154,8 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
     if (stats.isGuest || reviewing || progressStatus !== 'COMPLETED') return;
     setReviewing(true);
     try {
-      const started = await api.startMission(mission.id);
+      const reviewKey = crypto.randomUUID();
+     const started = await api.startMission(mission.id, reviewKey);
       localStorage.setItem('nextess_selected_mission', mission.id);
       localStorage.setItem('nextess_investigation_id', started.investigationId);
       localStorage.setItem('nextess_investigation_mission_id', mission.id);
