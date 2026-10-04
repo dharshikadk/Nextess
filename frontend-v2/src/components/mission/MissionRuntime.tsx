@@ -741,6 +741,7 @@ const Header = ({ mission, progress, label, onExit, stages, onStageSelect, dark 
       <div className={`flex items-center gap-4 px-5 py-3 rounded-2xl border ${dark ? 'bg-[#181926]/90 border-cyan-500/30' : 'bg-slate-50 border-cyan-200'}`}>
         <div><span className="font-mono text-[10px] text-slate-400 uppercase">Path Progress</span><div className="flex items-baseline gap-1.5"><span className="text-xl text-violet-400 font-bold">{progress}%</span><span className="text-xs text-slate-400 font-mono">{label}</span></div><div className="w-40 h-2 rounded-full bg-slate-700/30 overflow-hidden mt-1"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{ width: `${progress}%` }} /></div></div>
 
+        <button type="button" onClick={onExit} className={`shrink-0 px-3 py-2 rounded-xl border text-xs font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 ${dark ? 'bg-[#12131b] border-violet-500/30 text-slate-200' : 'bg-white border-violet-200 text-violet-800'}`} aria-label="Exit Mission">Exit Mission</button>
       </div>
     </div>
     {stages?.length > 0 && <MissionStageNavigator stages={stages} onSelect={onStageSelect} />}
