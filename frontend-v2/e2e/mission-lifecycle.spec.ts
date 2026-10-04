@@ -240,6 +240,27 @@ test('bus fare simulation controller state persists after refresh', async ({ pag
   await expect(restoredFrame.getByRole('button', { name: /ON — DEMAND SHIFT/i })).toBeVisible();
 });
 
+test('revealed challenge state persists and exposes Next instead of Submit', async ({ page }) => {
+  await page.goto('/');
+  await reachFirstMissionTask(page);
+
+  const reveal = page.getByRole('button', { name: /Reveal the answer|Show answer/i });
+  await expect(reveal).toBeVisible({ timeout: UI_TIMEOUT });
+  await reveal.click();
+
+  const answerPanel = page.getByText('Here’s the answer', { exact: true });
+  await expect(answerPanel).toBeVisible({ timeout: UI_TIMEOUT });
+  const next = page.getByTestId('mission-next');
+  await expect(next).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-submit')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByTestId('mission-runtime')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByText('Here’s the answer', { exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-next')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-submit')).toHaveCount(0);
+});
+
 test('guest progress can be converted into an authenticated account', async ({ page }) => {
   await page.goto('/');
   await reachFirstMissionTask(page);
