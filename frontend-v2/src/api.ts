@@ -46,7 +46,7 @@ export const api={
   directives:()=>request<any>('/v1/directives'), claimDirective:(id:string)=>request<any>('/v1/directives/'+id+'/claim',{method:'POST'}), quote:()=>request<any>('/v1/quotes/daily'),
   feedback:(category:string,message:string)=>request<any>('/v1/feedback',{method:'POST',body:JSON.stringify({category,message})}),
   subjects:()=>request<any>('/v1/subjects'), projects:(subjectId:string)=>request<any>('/v1/subjects/'+subjectId+'/projects'), project:(id:string)=>request<any>('/v1/projects/'+id),
-  startMission:(id:string)=>request<any>('/v1/projects/'+id+'/start',{method:'POST'}), investigation:(id:string)=>request<any>('/v1/investigations/'+id),
+  startMission:(id:string,idempotencyKey?:string)=>request<any>('/v1/projects/'+id+'/start',{method:'POST',headers:idempotencyKey?{'Idempotency-Key':idempotencyKey}:undefined}), investigation:(id:string)=>request<any>('/v1/investigations/'+id),
   submitAnswer:(id:string,questionId:string,answer:any,idempotencyKey?:string)=>request<any>('/v1/investigations/'+id+'/answers',{method:'POST',headers:idempotencyKey?{'Idempotency-Key':idempotencyKey}:undefined,body:JSON.stringify({questionId,answer})}),
   useHint:(id:string,questionId:string)=>request<any>('/v1/investigations/'+id+'/hints',{method:'POST',body:JSON.stringify({questionId})}),
   revealAnswer:(id:string,questionId:string)=>request<any>('/v1/investigations/'+id+'/reveal-answer',{method:'POST',body:JSON.stringify({questionId})}),
