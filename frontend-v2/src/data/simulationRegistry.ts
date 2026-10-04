@@ -7,7 +7,12 @@ const SIMULATION_ASSETS: Record<string, string> = {
   "bus_fare_demand_dashboard.html": "mission-eco-02-bus-fare-demand.html",
 };
 
-export function resolveSimulationSource(fileName?: string): string | null {
+export function resolveSimulationSource(fileName?: string, storageKey?: string): string | null {
+  const storage = String(storageKey || '').trim().replace(/^\/+/, '');
+  if (storage) {
+    const safePath = storage.replace(/^simulations\//i, '');
+    if (SAFE_SIMULATION_FILE.test(safePath)) return `/simulations/${encodeURIComponent(safePath)}`;
+  }
   const normalized = String(fileName || '').trim().replace(/^\/+/, '');
   if (!normalized || !SAFE_SIMULATION_FILE.test(normalized)) return null;
   const assetName = SIMULATION_ASSETS[normalized] || normalized;
