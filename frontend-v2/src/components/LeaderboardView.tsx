@@ -7,8 +7,8 @@ interface LeaderboardViewProps { theme: ThemeMode; stats: UserStats; onNavigate:
 export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, onNavigate, onShowToast }) => {
   const isDark = theme === 'dark';
   const [board, setBoard] = useState<any>({ opened: false, entries: [] });
-  const [freezing, setFreezing] = useState(false);
-  useEffect(() => { api.leaderboard().then(setBoard).catch(() => setBoard({ opened: false, entries: [] })); }, []);
+  const [freezing, setFreezing] = useState(false);\n  const [missedDays, setMissedDays] = useState(0);
+  useEffect(() => { api.leaderboard().then(setBoard).catch(() => setBoard({ opened: false, entries: [] })); }, []);\n  useEffect(() => { if (!stats.isGuest) api.streak().then((result) => setMissedDays(Number(result?.missedDays || 0))).catch(() => setMissedDays(0)); }, [stats.isGuest]);
 
   const freeze = async (days:number) => {
     if (stats.isGuest || freezing) return;
@@ -24,7 +24,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
     }
   };
 
-  const entries = board.entries || [];
+  const entries = board.entries || [];\n  const canFreezeOne = missedDays === 1 && stats.coins >= 60;\n  const canFreezeTwo = missedDays === 2 && stats.coins >= 120;
   return (
     <div className="flex flex-col w-full pb-20">
       <div className="flex flex-wrap items-end justify-between gap-4 py-3">
@@ -37,10 +37,10 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
             <div className="flex items-center gap-4"><div className="w-16 h-16 rounded-2xl bg-orange-500/15 flex items-center justify-center text-orange-500"><span className="material-symbols-outlined text-[40px]">local_fire_department</span></div><div><span className="font-mono text-[10px] text-slate-400 uppercase">Current Streak</span><div className="text-2xl font-bold text-orange-500">{stats.streakDays} days</div><span className="text-xs text-slate-400">Server-calculated activity streak</span></div></div>
             {!stats.isGuest && <div className={`mt-5 pt-4 border-t ${isDark ? 'border-orange-500/15' : 'border-orange-200'}`}>
               <div className="font-mono text-[10px] text-slate-400 uppercase">Streak Freeze</div>
-              <p className="text-xs text-slate-500 mt-1">Recover missed consecutive days with coins.</p>
+              <p className="text-xs text-slate-500 mt-1">Missed days: {missedDays}. Current balance: {stats.coins} coins. Freeze is available only for an eligible 1- or 2-day gap.</p>
               <div className="grid grid-cols-2 gap-2 mt-3">
-                <button type="button" disabled={freezing} onClick={() => freeze(1)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">1 day · 60 coins</button>
-                <button type="button" disabled={freezing} onClick={() => freeze(2)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">2 days · 120 coins</button>
+                <button type="button" disabled={freezing || !canFreezeOne} aria-label="Use 1-day streak freeze for 60 coins" onClick={() => freeze(1)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">1 day · 60 coins</button>
+                <button type="button" disabled={freezing || !canFreezeTwo} aria-label="Use 2-day streak freeze for 120 coins" onClick={() => freeze(2)} className="rounded-xl border border-orange-300/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 disabled:opacity-50">2 days · 120 coins</button>
               </div>
             </div>}
           </div>
