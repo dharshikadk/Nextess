@@ -377,3 +377,41 @@ test('mission simulation asset loads and controller state restores after refresh
   await expect(restoredMass).toBeVisible({ timeout: UI_TIMEOUT });
   await expect.poll(async () => restoredMass.inputValue()).toBe('72');
 });
+
+test('leaderboard nudge is authoritative-shaped and shown only once per browser session', async ({ page }) => {
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  await page.route(apiBase + '/v1/user/leaderboard-nudge', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          shouldShow: true,
+          reason: 'CLOSE_TO_TOP',
+          currentUser: { rank: 2, xp: 4380, coins: 215 },
+          topUser: { rank: 1, xp: 4500, coins: 250 },
+          difference: { xp: 120, coins: 35 },
+          threshold: { xp: 500 },
+          message: {
+            title: "You're close to the top!",
+            body: 'You need only 120 XP and 35 coins to reach the current top leaderboard position.',
+          },
+        },
+      }),
+    });
+  });
+
+  await prepareMissionAccess(page);
+  await page.goto('/');
+  const nudge = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+  await expect(nudge).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(nudge).toContainText('120 XP');
+  await expect(nudge).toContainText('35 coins');
+
+  await nudge.getByRole('button', { name: 'Close leaderboard notification' }).click();
+  await expect(nudge).toBeHidden({ timeout: 5000 });
+
+  await page.reload();
+  await expect(page.getByRole('dialog', { name: "You're close to the top!", exact: true })).toBeHidden({ timeout: 5000 });
+});
