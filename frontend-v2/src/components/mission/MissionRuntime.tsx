@@ -4,9 +4,9 @@ import { TaskRenderer, MissionTask } from './TaskRendererRegistry';
 import { MissionStageNavigator, MissionStage } from './MissionStageNavigator';
 import { resolveSimulationSource } from '../../data/simulationRegistry';
 
-type Props = { theme: 'dark' | 'light'; onNavigate: (page: 'missions-map' | 'mission-detail' | 'mission-chamber') => void; onExit: () => void; onShowToast: (message: string) => void };
+type Props = { theme: 'dark' | 'light'; isGuest: boolean; onNavigate: (page: 'missions-map' | 'mission-detail' | 'mission-chamber') => void; onExit: () => void; onShowToast: (message: string) => void };
 
-export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onShowToast }) => {
+export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, onExit, onShowToast }) => {
   const dark = theme === 'dark';
   const missionId = localStorage.getItem('nextess_selected_mission') || '';
   const [mission, setMission] = useState<any>(null);
@@ -355,7 +355,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   const useHint = async () => {
     if (!investigation?.id || !currentQuestion || busy || !canUseHint) return;
-    const guest = localStorage.getItem('nextess_guest_kp') !== null || localStorage.getItem('nextess_guest_coins') !== null;
+    const guest = isGuest;
     if (guest && Number(localStorage.getItem('nextess_guest_coins') || 100) < 5) { setFeedback({ correct:false, message:'You need 5 coins to open a hint. Keep your coins handy!' }); return; }
     setBusy(true);
     try {
@@ -372,7 +372,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
 
   const revealAnswer = async () => {
     if (!investigation?.id || !currentQuestion || busy || !canRevealAnswer) return;
-    const guest = localStorage.getItem('nextess_guest_kp') !== null || localStorage.getItem('nextess_guest_coins') !== null;
+    const guest = isGuest;
     if (guest && (Number(localStorage.getItem('nextess_guest_kp') || 100) < 5 || Number(localStorage.getItem('nextess_guest_coins') || 100) < 2) && !hasSubmittedCurrent) { setFeedback({ correct:false, message:'You need 5 KP and 2 coins to reveal this answer.' }); return; }
     setBusy(true);
     try {
