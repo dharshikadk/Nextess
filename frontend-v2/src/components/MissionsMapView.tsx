@@ -164,6 +164,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
                   </div>
 
                   <div className={`flex flex-col px-4 py-3 rounded-2xl shadow-xl max-w-xs border transition-all ${selected ? (isDark ? 'bg-[#181926] border-violet-400' : 'bg-white border-violet-400 ring-2 ring-violet-200') : mission.progressStatus === 'COMPLETED' ? (isDark ? 'bg-emerald-950/30 border-emerald-500/50' : 'bg-emerald-50 border-emerald-300') : (isDark ? 'bg-[#12131b]/95 border-violet-500/20' : 'bg-white/95 border-slate-200')}`}>
+                    <div className={`text-[9px] mt-2 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Click once to view mission details</div>
                     <div className={`flex items-center gap-1.5 mb-1 ${!left ? 'justify-end' : ''}`}>
                       {mission.progressStatus === 'COMPLETED' && <span className="material-symbols-outlined text-[15px] text-emerald-500" aria-label="Completed">check_circle</span>}
                       <span className={`font-mono text-[10px] font-bold uppercase tracking-wider ${mission.progressStatus === 'COMPLETED' ? 'text-emerald-500' : 'text-violet-400'}`}>
@@ -203,6 +204,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
               </div>
 
               <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{selectedMission.mission}</p>
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${isDark ? 'bg-violet-500/10 border-violet-500/20 text-violet-200' : 'bg-violet-50 border-violet-200 text-violet-800'}`}><span className="material-symbols-outlined text-[17px]">touch_app</span><span className="text-[11px] font-medium">Click a mission circle once to see its details and start or continue it.</span></div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className={`rounded-xl p-3 border ${isDark ? 'bg-[#181926] border-violet-500/15' : 'bg-slate-50 border-slate-200'}`}>
@@ -292,7 +294,7 @@ export const MissionsMapView: React.FC<MissionsMapViewProps> = ({
             </div>
             <div className="flex items-center justify-between gap-3 mt-5">
               <span className="text-xs text-slate-500">{previewMission.unlocked === false ? 'Locked until the previous mission is completed.' : previewMission.progressStatus === 'COMPLETED' ? 'Mission completed.' : previewMission.progressStatus === 'IN_PROGRESS' ? 'Mission in progress.' : 'Mission ready.'}</span>
-              <button type="button" disabled={previewMission.unlocked === false} onClick={() => { setPreviewMission(null); openMission(previewMission); }} className="px-4 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40">{previewMission.progressStatus === 'COMPLETED' ? 'Review Mission' : previewMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Mission'}</button>
+              <button type="button" disabled={previewMission.unlocked === false} onClick={() => { setPreviewMission(null); openMission(previewMission); }} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold disabled:opacity-40"><span className="material-symbols-outlined text-[17px]">{previewMission.progressStatus === 'COMPLETED' ? 'visibility' : previewMission.progressStatus === 'IN_PROGRESS' ? 'play_arrow' : 'rocket_launch'}</span><span>{previewMission.progressStatus === 'COMPLETED' ? 'Review Mission' : previewMission.progressStatus === 'IN_PROGRESS' ? 'Continue Mission' : 'Start Mission'}</span></button>
             </div>
           </div>
         </div>
