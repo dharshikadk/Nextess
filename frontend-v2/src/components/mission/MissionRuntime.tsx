@@ -51,7 +51,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const file = files[fileIndex] || files[0];
   const simulation = currentLevel?.simulation;
   const nextMission = mission?.nextMission || null;
-  const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
+  const simulationAsset = simulation?.assets?.find((asset:any) => asset.status === 'READY') || simulation?.assets?.[0];
+  const simulationFile = simulationAsset?.storageKey || simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
   const simulationSrc = resolveSimulationSource(simulationFile);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
