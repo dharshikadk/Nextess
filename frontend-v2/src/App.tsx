@@ -41,7 +41,6 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [authSyncConfirmation, setAuthSyncConfirmation] = useState(false);
   const [sessionBannerDismissed, setSessionBannerDismissed] = useState(false);
 
   const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
@@ -154,10 +153,8 @@ export default function App() {
 
   const handleAuthSuccess = (result?:any) => {
     setShowStartAnimation(false);
-    setAuthSyncConfirmation(true);
     setToastMessage(null);
     void refresh();
-    window.setTimeout(() => setAuthModalOpen(false), 250);
     if(result?.firstLogin)window.setTimeout(()=>setStreakGoalOpen(true),1200);
   };
   const handleStartAnimationComplete = () => { setShowStartAnimation(false); };
@@ -372,16 +369,6 @@ export default function App() {
         stats={stats}
         onSave={handleSaveProfile}
       />
-
-      {authSyncConfirmation && (
-        <div role="status" aria-live="polite" className="fixed top-20 right-6 z-[90] max-w-sm">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#181926] text-white border border-emerald-500/40 shadow-[0_4px_24px_rgba(16,185,129,0.25)] backdrop-blur-md">
-            <span className="material-symbols-outlined text-emerald-400 text-[20px] shrink-0">verified</span>
-            <span className="text-xs leading-snug flex-1 font-medium">Account synchronized with Nextess.</span>
-            <button type="button" aria-label="Dismiss account synchronization message" onClick={() => setAuthSyncConfirmation(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
-          </div>
-        </div>
-      )}
 
       {streakGoalOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Choose your streak goal"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-violet-500/30 text-white':'bg-white border-violet-200 text-slate-900')}><div className="flex items-start justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-violet-400">New learning commitment</div><h2 className="text-2xl font-bold mt-1">Choose your streak target</h2></div><button type="button" onClick={()=>setStreakGoalOpen(false)} className="p-1.5 rounded-lg text-slate-400" aria-label="Close streak goal">✕</button></div><p className="text-sm text-slate-500 mt-4">Pick a target that feels realistic. Your choice gives you a small starting reward and becomes your personal streak milestone.</p><div className="grid grid-cols-2 gap-3 mt-5">{[7,14].map(days=><button key={days} type="button" disabled={streakGoalBusy} onClick={async()=>{setStreakGoalBusy(true);try{const result=await api.setStreakGoal(days);setToastMessage(`${days}-day streak target set · +${result.reward?.xp||0} KP · +${result.reward?.coins||0} coins.`);await refresh();setStreakGoalOpen(false);}catch(e:any){setToastMessage(e?.message||'Could not save your streak goal.');}finally{setStreakGoalBusy(false);}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-violet-500/20':'bg-violet-50 border-violet-200')}><div className="text-2xl font-bold">{days} days</div><div className="text-xs text-slate-500 mt-1">{days===7?'Steady start':'Longer commitment'}</div></button>)}</div></div></div>}
       {streakLossOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Streak recovery"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-orange-500/30 text-white':'bg-white border-orange-200 text-slate-900')}><div className="flex justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-orange-400">Streak recovery</div><h2 className="text-2xl font-bold mt-1">Your streak took a break</h2></div><button onClick={()=>setStreakLossOpen(false)} className="p-1.5 text-slate-400" aria-label="Close streak recovery">✕</button></div><p className="text-sm text-slate-500 mt-4">You missed {missedStreakDays} day{missedStreakDays===1?'':'s'}. Use a streak freeze to recover missed days.</p><div className="grid grid-cols-2 gap-3 mt-5"><button onClick={async()=>{try{const r=await api.freezeStreak(1);setToastMessage(`1-day streak freeze used for ${r.costCoins} coins.`);await refresh();setStreakLossOpen(false);}catch(e:any){setToastMessage(e?.message||'The 1-day freeze is not available.');}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>1 day</b><span className="block text-xs text-slate-500 mt-1">60 coins</span></button><button onClick={async()=>{try{const r=await api.freezeStreak(2);setToastMessage(`2-day streak freeze used for ${r.costCoins} coins.`);await refresh();setStreakLossOpen(false);}catch(e:any){setToastMessage(e?.message||'The 2-day freeze is not available.');}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>2 days</b><span className="block text-xs text-slate-500 mt-1">120 coins</span></button></div></div></div>}
