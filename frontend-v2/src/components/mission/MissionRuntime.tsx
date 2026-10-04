@@ -67,7 +67,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
     : null;
   const hasSubmittedCurrent = Boolean(latestCurrentAnswer);
   const hasCorrectCurrent = latestCurrentAnswer?.result === 'CORRECT';
-  const canMoveNext = hasSubmittedCurrent || Boolean(revealed);
+  const canMoveNext = hasSubmittedCurrent || Boolean(revealed) || Boolean((investigation?.state as any)?.reveals?.[currentQuestion?.id || '']);
   const hasInputAnswer = !(answer === '' || answer == null || (typeof answer === 'string' && answer.trim() === ''));
   const canUseHint = !hasCorrectCurrent && !revealed && (!hasInputAnswer || (hasSubmittedCurrent && !hasCorrectCurrent));
   const canRevealAnswer = !hasCorrectCurrent && !revealed && (!hasInputAnswer || (hasSubmittedCurrent && !hasCorrectCurrent));
