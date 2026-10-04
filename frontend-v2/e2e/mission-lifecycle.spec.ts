@@ -252,7 +252,7 @@ test('guest progress can be converted into an authenticated account', async ({ p
   await expect(authDialog).toBeVisible({ timeout: 5000 });
   await authDialog.getByRole('tab', { name: 'Sign Up', exact: true }).click();
 
-  const suffix = Date.now().toString().slice(-8);
+  const suffix = `${Date.now()}_${test.info().project.name}_${test.info().parallelIndex}_${Math.random().toString(36).slice(2, 10)}`;
   await authDialog.getByLabel('Name', { exact: true }).fill('E2E Cadet');
   await authDialog.getByLabel('Username', { exact: true }).fill('e2e_cadet_' + suffix);
   await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
