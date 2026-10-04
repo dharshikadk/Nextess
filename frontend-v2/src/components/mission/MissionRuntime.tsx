@@ -52,7 +52,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const simulation = currentLevel?.simulation;
   const nextMission = mission?.nextMission || null;
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
-  const simulationSrc = resolveSimulationSource(simulationFile);
+  const simulationSrc = resolveSimulationSource(simulationFile, simulation?.assets || []);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
   const revealedQuestionIds=new Set<string>(Object.keys((investigation?.state as any)?.reveals || {}));
@@ -295,18 +295,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         });
       }
 
-      if (correct) {
-        if (result.answer !== undefined) {
-          setRevealed({ answer: result.answer, explanation: result.explanation || '' });
-        } else {
-          try {
-            const answerResult = await api.revealAnswer(investigation.id, currentQuestion.id);
-            setRevealed(answerResult);
-          } catch {}
-        }
-      } else {
-        setRevealed(null);
-      }
+      // A successful submission is feedback only. The answer remains hidden
+      // until the learner explicitly uses Reveal Answer.
+      setRevealed(null);
 
       const guestBalances = result.anonymous ? syncGuestBalance(result.result === 'CORRECT' ? 2 : 0, result.result === 'CORRECT' ? 1 : 0) : null;
       localStorage.setItem('nextess_guest_mission_progress',String(Math.round(Math.min(99,progress))));
@@ -330,23 +321,20 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
       setQuestion(v => v + 1);
     } else if (level + 1 < levels.length) {
       if (!currentLevelComplete) {
-        try {
-          setBusy(true);
-          const advanced = await api.advanceMissionLevel(investigation.id);
-          const nextLevelIndex = levels.findIndex((item:any) => item.id === advanced.currentLevelId);
-          setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
-          setQuestion(0);
-        } catch (e:any) {
-          setFeedback({ correct:false, message:e?.message || 'We couldn’t open the next level yet. Please try again.' });
-          return;
-        } finally {
-          setBusy(false);
-        }
-      } else {
-        const refreshed = await refreshInvestigation();
-        const nextLevelIndex = (refreshed?.projectVersion?.levels || []).findIndex((item:any) => item.id === refreshed?.currentLevelId);
+        setFeedback({ correct:false, message:'Complete every challenge in this level before moving to the next level.' });
+        return;
+      }
+      try {
+        setBusy(true);
+        const advanced = await api.advanceMissionLevel(investigation.id);
+        const nextLevelIndex = levels.findIndex((item:any) => item.id === advanced.currentLevelId);
         setLevel(nextLevelIndex >= 0 ? nextLevelIndex : level + 1);
         setQuestion(0);
+      } catch (e:any) {
+        setFeedback({ correct:false, message:e?.message || 'We couldn’t open the next level yet. Please try again.' });
+        return;
+      } finally {
+        setBusy(false);
       }
     } else {
       if (!currentLevelComplete) {
