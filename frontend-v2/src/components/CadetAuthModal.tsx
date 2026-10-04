@@ -18,13 +18,16 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const [profileStatus,setProfileStatus]=useState('');
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
+  const [success,setSuccess]=useState(false);
 
   if(!isOpen)return null;
+
+  const closeAfterSuccess=()=>window.setTimeout(onClose,1200);
 
   const input=`w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 ${dark?'bg-[#181926] border-violet-500/25 text-white':'bg-white border-slate-300 text-slate-900'}`;
 
   const submit=async(e:React.FormEvent)=>{
-    e.preventDefault();setLoading(true);setError('');
+    e.preventDefault();setLoading(true);setError('');setSuccess(false);
     try{
       let authResult:any;
       if(tab==='signin'){
@@ -39,7 +42,9 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
           fieldOfStudy:profileType==='STUDENT'&&educationStage==='COLLEGE'?fieldOfStudy.trim():null,
         });
       }
+      setSuccess(true);
       await onSuccess(authResult);
+      closeAfterSuccess();
     }catch(err:any){setError(err?.message||'Authentication failed.');}
     finally{setLoading(false);}
   };
@@ -54,6 +59,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
         <button type="button" role="tab" aria-selected={tab==='signin'} onClick={()=>setTab('signin')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${tab==='signin'?'bg-violet-600 text-white':'text-slate-400'}`}>Log In</button>
         <button type="button" role="tab" aria-selected={tab==='signup'} onClick={()=>setTab('signup')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${tab==='signup'?'bg-violet-600 text-white':'text-slate-400'}`}>Sign Up</button>
       </div>
+      {success&&<div role="status" aria-live="polite" className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-300 font-medium">Account synchronized with Nextess.</div>}
       <form onSubmit={submit} className="flex flex-col gap-3">
         {tab==='signup'&&<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Name<input aria-label="Name" className={`mt-1 ${input}`} required value={name} onChange={e=>setName(e.target.value)}/></label>}
         <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Username<input aria-label="Username" className={`mt-1 ${input}`} required value={username} onChange={e=>setUsername(e.target.value)}/></label>
