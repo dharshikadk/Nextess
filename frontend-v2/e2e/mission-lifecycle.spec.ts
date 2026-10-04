@@ -256,6 +256,7 @@ test('guest progress can be converted into an authenticated account', async ({ p
   await authDialog.getByLabel('Name', { exact: true }).fill('E2E Cadet');
   await authDialog.getByLabel('Username', { exact: true }).fill('e2e_cadet_' + suffix);
   await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
+  await authDialog.getByLabel('Status', { exact: true }).fill('Learning');
   const registerResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/auth/register') && response.request().method() === 'POST',
   );
@@ -311,6 +312,7 @@ test('logout invalidates the server-side cookie session', async ({ page }) => {
   await authDialog.getByLabel('Name', { exact: true }).fill('Logout E2E Cadet');
   await authDialog.getByLabel('Username', { exact: true }).fill('logout_e2e_' + suffix);
   await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
+  await authDialog.getByLabel('Status', { exact: true }).fill('Learning');
   const registerResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/auth/register') && response.request().method() === 'POST',
   );
