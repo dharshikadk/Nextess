@@ -31,6 +31,11 @@ export const ContextualEventManager: React.FC<Props> = ({ theme, userId, canDisp
   const isDark = theme === 'dark';
 
   useEffect(() => {
+    setQueue([]);
+    setCurrent(null);
+  }, [userId]);
+
+  useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<ContextualEvent>).detail;
       if (!detail?.type || !detail.dedupeKey) return;
