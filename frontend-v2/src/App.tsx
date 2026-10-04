@@ -44,7 +44,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sessionBannerDismissed, setSessionBannerDismissed] = useState(false);
 
-  const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
+  const [stats,setStats]=useState<UserStats>({id:'',kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
   const [quote,setQuote]=useState<any>(null);
   const [directives,setDirectives]=useState<any[]>([]);
   const [badges,setBadges]=useState<any[]>([]);
@@ -62,18 +62,18 @@ export default function App() {
   const refresh=async()=>{
     let me:any=null;
     try{me=await api.me()}catch{
-      setStats(prev=>({...prev,...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setStats(prev=>({...prev,id:'',...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
       setActiveProgress([]);setDirectives([]);setBadges([]);
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
       return;
     }
     if(!me?.user){
-      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setStats(prev=>({...prev,id:'',kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
       setActiveProgress([]);setDirectives([]);setBadges([]);
       return;
     }
     const u=me.user;
-    setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false}));
+    setStats(prev=>({...prev,id:u?.id||'',kp:u?.xp??0,coins:u?.coins??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false}));
     try{
       const d=await api.dashboard();
       setStats(prev=>({...prev,kp:d.user?.xp??prev.kp,coins:d.user?.coins??prev.coins,streakDays:d?.streakDays??prev.streakDays,level:d.user?.level??prev.level,name:d?.name??prev.name,handle:d.user?.username?'@'+d.user.username:prev.handle,userClass:d.user?.schoolClass||d.user?.gradeClass||prev.userClass,college:d.user?.fieldOfStudy||prev.college,profession:d.user?.profession||prev.profession,profileType:d.user?.profileType||prev.profileType,profileStatus:d.user?.profileStatus||prev.profileStatus,profileImageData:d.user?.profileImageData||prev.profileImageData,badgesCount:d?.badgesCount??prev.badgesCount,isGuest:false}));
@@ -390,7 +390,7 @@ export default function App() {
 
       <ContextualEventManager
         theme={theme}
-        userId={stats.isGuest ? null : (stats.handle || stats.name)}
+        userId={stats.isGuest ? null : stats.id}
         canDisplay={!stats.isGuest && activePage === 'dashboard' && !authModalOpen && !editProfileOpen && !streakGoalOpen && !streakLossOpen}
         onViewLeaderboard={() => setActivePage('leaderboard')}
       />
