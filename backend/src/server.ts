@@ -529,10 +529,20 @@ app.post('/v1/investigations/:id/advance-level',optionalAuth,async(req:R,res)=>{
  const currentIndex=inv.projectVersion.levels.findIndex((level:any)=>level.id===inv.currentLevelId);
  if(currentIndex<0)return fail(res,'INVALID_STATE','The current mission level could not be resolved.',409);
  const currentLevel=inv.projectVersion.levels[currentIndex];
- const hasSubmitted=Boolean(inv.currentQuestionId&&await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:inv.currentQuestionId},select:{id:true}}));
  const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
- const hasReveal=Boolean(inv.currentQuestionId&&state.reveals?.[inv.currentQuestionId]);
- if(!hasSubmitted&&!hasReveal)return fail(res,'TASK_NOT_AVAILABLE','Answer or reveal the current challenge before moving to the next level.',409);
+ const questionIds=currentLevel.questions.map((question:any)=>question.id);
+ const resolvedAnswers=questionIds.length
+   ? await prisma.investigationAnswer.findMany({
+       where:{investigationId:inv.id,questionId:{in:questionIds}},
+       select:{questionId:true}
+     })
+   : [];
+ const revealedIds=new Set<string>(
+   state.reveals&&typeof state.reveals==='object' ? Object.keys(state.reveals) : []
+ );
+ const resolvedIds=new Set<string>(resolvedAnswers.map((answer:any)=>answer.questionId));
+ const levelComplete=questionIds.length>0&&questionIds.every((questionId:string)=>resolvedIds.has(questionId)||revealedIds.has(questionId));
+ if(!levelComplete)return fail(res,'TASK_NOT_AVAILABLE','Complete every challenge in the current level before moving to the next level.',409);
  if(currentIndex>=inv.projectVersion.levels.length-1)return fail(res,'MISSION_NOT_COMPLETE','Resolve every challenge in the final level before finishing the mission.',409);
  const nextLevel=inv.projectVersion.levels[currentIndex+1];
  const nextQuestion=nextLevel.questions[0];
