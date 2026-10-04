@@ -304,7 +304,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
    const balances=identity.userId?await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
    return {answer:created,levelCompleted,levelPerfect,missionCompleted,reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},balances:balances??{xp:0,coins:0}};
   });
-  return res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:outcome.answer.id,feedbackData:evaluation.feedback,answer:((q.evaluationDefinition||{}) as any).answer,explanation:q.explanation,replayed:false,levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,reward:outcome.reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:outcome.reward.xp,coins:outcome.reward.coins},balances:outcome.balances,anonymous:identity.anonymous});
+  return res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:outcome.answer.id,feedbackData:evaluation.feedback,answer:evaluation.correct?((q.evaluationDefinition||{}) as any).answer:undefined,explanation:evaluation.correct?q.explanation:undefined,replayed:false,levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,reward:outcome.reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:outcome.reward.xp,coins:outcome.reward.coins},balances:outcome.balances,anonymous:identity.anonymous});
  }catch(e:any){
   if(e?.message==='INVESTIGATION_NOT_FOUND')return fail(res,'NOT_FOUND','Investigation not found.',404);
   if(e?.message==='INVESTIGATION_CLOSED')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
