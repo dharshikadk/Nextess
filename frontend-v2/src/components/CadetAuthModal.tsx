@@ -42,8 +42,8 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
           fieldOfStudy:profileType==='STUDENT'&&educationStage==='COLLEGE'?fieldOfStudy.trim():null,
         });
       }
-      await onSuccess(authResult);
       setSuccess(true);
+      await onSuccess(authResult);
       closeAfterSuccess();
     }catch(err:any){setError(err?.message||'Authentication failed.');}
     finally{setLoading(false);}
