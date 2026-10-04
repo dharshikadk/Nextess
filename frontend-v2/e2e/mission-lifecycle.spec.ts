@@ -148,8 +148,20 @@ test('mission catalogue, first task, feedback, and refresh resume are reachable 
     await expect(numericAnswer).toBeVisible({ timeout: 5000 });
     await numericAnswer.fill('1');
   }
+  const taskPrompt = await page.getByTestId('mission-task').locator('h2').textContent();
+  const submitResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/investigations/') &&
+    response.url().endsWith('/answers') &&
+    response.request().method() === 'POST',
+  );
   await page.getByTestId('mission-submit').click();
+  const answerSubmission = await submitResponse;
+  const answerBody = await answerSubmission.json();
+  expect(answerSubmission.ok(), JSON.stringify(answerBody)).toBeTruthy();
+  expect(answerBody.answer).toBeUndefined();
   await expect(page.getByRole('status')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task').locator('h2')).toHaveText(taskPrompt || '');
+  await expect(page.getByRole('button', { name: /Move to Next|Finish Mission/i })).toBeVisible({ timeout: UI_TIMEOUT });
   await page.reload();
   await expect(page.getByText(/LEVEL|Mission Brief|Learning Capsule/i).first()).toBeVisible({ timeout: UI_TIMEOUT });
 });
