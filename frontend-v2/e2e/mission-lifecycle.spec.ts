@@ -402,7 +402,7 @@ test('leaderboard nudge is authoritative-shaped and shown only once per browser 
     });
   });
 
-  await prepareMissionAccess(page);
+  await prepareMissionAccess(page, 'The Bicycle That Would Not Stop');
   await page.goto('/');
   const nudge = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
   await expect(nudge).toBeVisible({ timeout: UI_TIMEOUT });
