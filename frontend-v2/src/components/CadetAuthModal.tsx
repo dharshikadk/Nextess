@@ -16,6 +16,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
   const [fieldOfStudy,setFieldOfStudy]=useState('');
   const [profession,setProfession]=useState('');
   const [profileStatus,setProfileStatus]=useState('');
+  const [profileImageData,setProfileImageData]=useState('');
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [success,setSuccess]=useState(false);
@@ -72,6 +73,16 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
             {educationStage==='SCHOOL'?<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Class<select className={`mt-1 ${input}`} value={schoolClass} onChange={e=>setSchoolClass(e.target.value)}><option value="">Select class</option><option value="9">Class 9</option><option value="10">Class 10</option><option value="11">Class 11</option><option value="12">Class 12</option></select></label>:<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Field of study<input className={`mt-1 ${input}`} value={fieldOfStudy} onChange={e=>setFieldOfStudy(e.target.value)} placeholder="Engineering, Medical, Commerce..."/></label>}
           </>}
           <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Status<input className={`mt-1 ${input}`} value={profileStatus} onChange={e=>setProfileStatus(e.target.value)} placeholder="Student, learning, exploring..." maxLength={60}/></label>
+           <label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Profile image
+             <input aria-label="Profile image" type="file" accept="image/png,image/jpeg,image/webp" className={`mt-1 ${input}`} onChange={e=>{
+               const file=e.target.files?.[0]; if(!file)return;
+               if(file.size>300*1024){setError('Profile image must be smaller than 300 KB.');e.currentTarget.value='';return;}
+               const reader=new FileReader();
+               reader.onload=()=>setProfileImageData(String(reader.result||''));
+               reader.onerror=()=>setError('Profile image could not be read.');
+               reader.readAsDataURL(file);
+             }}/>
+           </label>
           {profileType==='WORKING_PROFESSIONAL'&&<label className="font-mono text-[10px] text-slate-400 uppercase font-semibold">Profession<input className={`mt-1 ${input}`} required value={profession} onChange={e=>setProfession(e.target.value)} placeholder="Your profession"/></label>}
           <div className="p-2.5 rounded-xl bg-violet-600/10 border border-violet-500/20 text-xs text-violet-300">New accounts receive 100 KP and 100 Coins once.</div>
         </>}
