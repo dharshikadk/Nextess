@@ -229,6 +229,7 @@ app.get('/v1/investigations/:id',optionalAuth,async(req:R,res)=>{
          (question as any).revealedExplanation=question.explanation||'';
        }
        delete (question as any).evaluationDefinition;
+       delete (question as any).explanation;
      }
    }
  }
