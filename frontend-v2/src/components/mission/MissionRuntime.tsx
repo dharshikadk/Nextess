@@ -51,8 +51,11 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   const file = files[fileIndex] || files[0];
   const simulation = currentLevel?.simulation;
   const nextMission = mission?.nextMission || null;
+  const simulationAssetKey = simulation?.assets?.find((asset:any) => asset.assetType === 'HTML' || asset.mimeType === 'text/html')?.storageKey
+    || simulation?.assets?.[0]?.storageKey
+    || '';
   const simulationFile = simulation?.configuration?.fileName || mission?.requiredSimulation?.fileName;
-  const simulationSrc = resolveSimulationSource(simulationFile);
+  const simulationSrc = resolveSimulationSource(simulationFile, simulationAssetKey);
   const currentAnswers = (investigation?.answers || []).filter((item:any) => item.questionId === currentQuestion?.id);
   const isFinalChallenge = level === levels.length - 1 && question === questions.length - 1;
   const revealedQuestionIds=new Set<string>(Object.keys((investigation?.state as any)?.reveals || {}));
@@ -75,12 +78,18 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
   useEffect(() => {
     let cancelled = false;
     if (!currentQuestion) return;
+    const state:any = investigation?.state && typeof investigation.state === 'object' ? investigation.state : {};
+    const persistedReveal = Boolean(state.reveals?.[currentQuestion.id]);
+    const persistedHintCount = Number(state.hints?.[currentQuestion.id] || 0);
+    const persistedHints = persistedHintCount > 0
+      ? (currentQuestion.hints || []).filter((hint:any) => Number(hint.level) <= persistedHintCount).map((hint:any) => hint.text)
+      : [];
     if (!latestCurrentAnswer) {
       setAnswer('');
-      setRevealed(null);
       setFeedback(null);
-      setHints([]);
-      return;
+      setHints(persistedHints);
+      setRevealed(persistedReveal ? { answer: (currentQuestion as any).revealedAnswer, explanation: (currentQuestion as any).revealedExplanation || '' } : null);
+      return () => { cancelled = true; };
     }
     const payload = latestCurrentAnswer.answerPayload;
     const previousValue = payload && typeof payload === 'object'
@@ -94,10 +103,10 @@ export const MissionRuntime: React.FC<Props> = ({ theme, onNavigate, onExit, onS
         ? 'You already solved this challenge. Your progress is saved — continue when you’re ready. This challenge is complete; move to the next one.'
         : 'This challenge was already submitted. You can move on or reveal the answer without another charge.'
     });
-    setHints([]);
-    setRevealed(null);
+    setHints(persistedHints);
+    setRevealed(persistedReveal ? { answer: (currentQuestion as any).revealedAnswer, explanation: (currentQuestion as any).revealedExplanation || '' } : null);
     return () => { cancelled = true; };
-  }, [currentQuestion?.id]);
+  }, [currentQuestion?.id, investigation?.state, latestCurrentAnswer?.id]);
 
   const syncGuestBalance = (deltaXp:number, deltaCoins:number) => { const kp=Math.max(0,Number(localStorage.getItem('nextess_guest_kp')||100)+deltaXp); const coins=Math.max(0,Number(localStorage.getItem('nextess_guest_coins')||100)+deltaCoins); localStorage.setItem('nextess_guest_kp',String(kp)); localStorage.setItem('nextess_guest_coins',String(coins)); window.dispatchEvent(new CustomEvent('nextess-mission-updated',{detail:{guestBalances:{kp,coins}}})); return {kp,coins}; };
   const refreshInvestigation = async () => {
