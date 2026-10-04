@@ -192,7 +192,9 @@ app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
  if(!firstLevel?.questions[0])return fail(res,'MISSION_INVALID','Published mission has no startable task.',409);
  try{
   const inv=await serializableTransaction(async tx=>{
-   if(replayed){
+   const txProgress=identity.userId?await tx.userProjectProgress.findUnique({where:{userId_projectId:{userId:identity.userId!,projectId:p.id}},select:{status:true}}):null;
+   const needsReviewCharge=Boolean(identity.userId&&txProgress?.status==='COMPLETED');
+   if(needsReviewCharge){
     const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
     if(!u||u.xp<10||u.coins<10)throw new Error('INSUFFICIENT_FUNDS');
     const stamp=crypto.randomUUID();
@@ -204,7 +206,7 @@ app.post('/v1/projects/:projectId/start',optionalAuth,async(req:R,res)=>{
    if(identity.userId)await tx.userProjectProgress.upsert({where:{userId_projectId:{userId:identity.userId,projectId:p.id}},update:{status:'IN_PROGRESS',currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,progressPercent:0,completedAt:null,lastActivityAt:new Date()},create:{userId:identity.userId,projectId:p.id,status:'IN_PROGRESS',currentLevelId:firstLevel.id,currentQuestionId:firstLevel.questions[0].id,progressPercent:0,lastActivityAt:new Date()}});
    return created;
   });
-  res.status(201).json({investigationId:inv.id,replayed,anonymous:identity.anonymous});
+  res.status(201).json({investigationId:inv.id,replayed:replayed||Boolean(identity.userId&&progress?.status==='COMPLETED'),anonymous:identity.anonymous});
  }catch(e:any){
   if(e?.message==='INSUFFICIENT_FUNDS')return fail(res,'INSUFFICIENT_FUNDS','Reviewing a completed mission costs 10 KP and 10 coins.',409);
   return fail(res,'INTERNAL_ERROR','Unable to start mission.',500);
