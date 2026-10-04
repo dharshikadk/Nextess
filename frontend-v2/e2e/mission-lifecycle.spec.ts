@@ -302,7 +302,7 @@ test('logout invalidates the server-side cookie session', async ({ page }) => {
   const authDialog = page.getByRole('dialog', { name: 'Cadet Access Station' });
   await authDialog.getByRole('tab', { name: 'Sign Up', exact: true }).click();
 
-  const suffix = Date.now().toString().slice(-8);
+  const suffix = Date.now().toString() + '_' + test.info().project.name + '_' + test.info().parallelIndex;
   await authDialog.getByLabel('Name', { exact: true }).fill('Logout E2E Cadet');
   await authDialog.getByLabel('Username', { exact: true }).fill('logout_e2e_' + suffix);
   await authDialog.getByLabel('Password', { exact: true }).fill('NextessE2E!2026');
