@@ -13,6 +13,7 @@ export type ActivePage =
 export type ThemeMode = 'dark' | 'light';
 
 export interface UserStats {
+  id: string;
   kp: number;
   coins: number;
   streakDays: number;

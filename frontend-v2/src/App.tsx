@@ -21,6 +21,7 @@ import { CadetAuthModal } from './components/CadetAuthModal';
 import { EditProfileModal } from './components/EditProfileModal';
 import { Toast } from './components/Toast';
 import { NextessLoadingScreen } from './components/NextessLoadingScreen';
+import { ContextualEventManager, enqueueContextualEvent } from './components/ContextualEventManager';
 
 export default function App() {
   // Theme State (Dark Mode default as per screens, with pastel daylight mode available)
@@ -43,7 +44,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sessionBannerDismissed, setSessionBannerDismissed] = useState(false);
 
-  const [stats,setStats]=useState<UserStats>({kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
+  const [stats,setStats]=useState<UserStats>({id:'',kp:100,coins:100,streakDays:0,lockInDay:0,lockInTarget:0,level:1,title:'Cadet',name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,division:'',rank:0,accuracyRate:0,badgesCount:0,sparkySurgeActive:false,sparkyMinutesRemaining:0});
   const [quote,setQuote]=useState<any>(null);
   const [directives,setDirectives]=useState<any[]>([]);
   const [badges,setBadges]=useState<any[]>([]);
@@ -55,25 +56,24 @@ export default function App() {
   const [streakGoalBusy,setStreakGoalBusy]=useState(false);
   const [streakLossOpen,setStreakLossOpen]=useState(false);
   const [missedStreakDays,setMissedStreakDays]=useState(0);
-  const [leaderPromptOpen,setLeaderPromptOpen]=useState(false);
-  const [leaderGap,setLeaderGap]=useState(0);
+  const [contextualRefreshTick,setContextualRefreshTick]=useState(0);
   const guestBalances = () => ({ kp: Number(localStorage.getItem('nextess_guest_kp') || 100), coins: Number(localStorage.getItem('nextess_guest_coins') || 100) });
 
   const refresh=async()=>{
     let me:any=null;
     try{me=await api.me()}catch{
-      setStats(prev=>({...prev,...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setStats(prev=>({...prev,id:'',...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
       setActiveProgress([]);setDirectives([]);setBadges([]);
       try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
       return;
     }
     if(!me?.user){
-      setStats(prev=>({...prev,kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+      setStats(prev=>({...prev,id:'',kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
       setActiveProgress([]);setDirectives([]);setBadges([]);
       return;
     }
     const u=me.user;
-    setStats(prev=>({...prev,kp:u?.xp??0,coins:u?.coins??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false}));
+    setStats(prev=>({...prev,id:u?.id||'',kp:u?.xp??0,coins:u?.coins??0,level:u?.level??1,name:u?.name??'Cadet',handle:u?.username?'@'+u.username:'',userClass:u?.schoolClass||u?.gradeClass||'',college:u?.fieldOfStudy||'',profession:u?.profession||'',profileType:u?.profileType||'STUDENT',profileStatus:u?.profileStatus||'',profileImageData:u?.profileImageData||'',isGuest:false}));
     try{
       const d=await api.dashboard();
       setStats(prev=>({...prev,kp:d.user?.xp??prev.kp,coins:d.user?.coins??prev.coins,streakDays:d?.streakDays??prev.streakDays,level:d.user?.level??prev.level,name:d?.name??prev.name,handle:d.user?.username?'@'+d.user.username:prev.handle,userClass:d.user?.schoolClass||d.user?.gradeClass||prev.userClass,college:d.user?.fieldOfStudy||prev.college,profession:d.user?.profession||prev.profession,profileType:d.user?.profileType||prev.profileType,profileStatus:d.user?.profileStatus||prev.profileStatus,profileImageData:d.user?.profileImageData||prev.profileImageData,badgesCount:d?.badgesCount??prev.badgesCount,isGuest:false}));
@@ -82,10 +82,10 @@ export default function App() {
     }catch{}
     try{
       const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
-      setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});const mine=(lb?.entries||[]).find((e:any)=>e.userId===u.id);const mineIndex=(lb?.entries||[]).findIndex((e:any)=>e.userId===u.id);const gap=mineIndex>0?Number(lb.entries[mineIndex-1].kp)-Number(mine?.kp||0):0;const promptKey='nextess_leader_prompt_'+new Date().toISOString().slice(0,10);if(mineIndex>0&&gap>0&&gap<=20&&!localStorage.getItem(promptKey)){setLeaderGap(gap);setLeaderPromptOpen(true);localStorage.setItem(promptKey,'1');}
+      setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});
     }catch{}
   };
-  useEffect(() => { const handler = (event: Event) => { const detail=(event as CustomEvent<any>).detail; const balances=detail?.guestBalances; if (balances && Number.isFinite(balances.kp) && Number.isFinite(balances.coins)) { setStats(prev=>prev.isGuest?{...prev,kp:balances.kp,coins:balances.coins}:prev); return; } refresh(); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
+  useEffect(() => { const handler = (event: Event) => { const detail=(event as CustomEvent<any>).detail; const balances=detail?.guestBalances; if (balances && Number.isFinite(balances.kp) && Number.isFinite(balances.coins)) { setStats(prev=>prev.isGuest?{...prev,kp:balances.kp,coins:balances.coins}:prev); setContextualRefreshTick((value)=>value+1); return; } void refresh().finally(() => setContextualRefreshTick((value)=>value+1)); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
   useEffect(() => { api.settings().then((result) => { const saved = result?.settings?.theme; if (saved === 'light' || saved === 'dark') setTheme(saved); }).catch(() => {}); }, []);
   useEffect(() => {
@@ -106,6 +106,21 @@ export default function App() {
     return () => { mounted = false; };
   }, []);
   // Synchronize document element class with current theme
+  useEffect(() => {
+    if (!appReady || activePage !== 'dashboard' || stats.isGuest) return;
+    let cancelled = false;
+    api.leaderboardNudge().then((result:any) => {
+      if (cancelled || !result?.success || !result?.data?.shouldShow) return;
+      const data = result.data;
+      enqueueContextualEvent({
+        type: 'LEADERBOARD_NUDGE',
+        dedupeKey: `LEADERBOARD_NUDGE:${data.currentUser?.rank ?? 'unknown'}:${data.difference?.xp ?? 0}:${data.difference?.coins ?? 0}`,
+        payload: data,
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [appReady, activePage, stats.isGuest, contextualRefreshTick]);
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -372,7 +387,13 @@ export default function App() {
 
       {streakGoalOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Choose your streak goal"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-violet-500/30 text-white':'bg-white border-violet-200 text-slate-900')}><div className="flex items-start justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-violet-400">New learning commitment</div><h2 className="text-2xl font-bold mt-1">Choose your streak target</h2></div><button type="button" onClick={()=>setStreakGoalOpen(false)} className="p-1.5 rounded-lg text-slate-400" aria-label="Close streak goal">✕</button></div><p className="text-sm text-slate-500 mt-4">Pick a target that feels realistic. Your choice gives you a small starting reward and becomes your personal streak milestone.</p><div className="grid grid-cols-2 gap-3 mt-5">{[7,14].map(days=><button key={days} type="button" disabled={streakGoalBusy} onClick={async()=>{setStreakGoalBusy(true);try{const result=await api.setStreakGoal(days);setToastMessage(`${days}-day streak target set · +${result.reward?.xp||0} KP · +${result.reward?.coins||0} coins.`);await refresh();setStreakGoalOpen(false);}catch(e:any){setToastMessage(e?.message||'Could not save your streak goal.');}finally{setStreakGoalBusy(false);}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-violet-500/20':'bg-violet-50 border-violet-200')}><div className="text-2xl font-bold">{days} days</div><div className="text-xs text-slate-500 mt-1">{days===7?'Steady start':'Longer commitment'}</div></button>)}</div></div></div>}
       {streakLossOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Streak recovery"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-orange-500/30 text-white':'bg-white border-orange-200 text-slate-900')}><div className="flex justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-orange-400">Streak recovery</div><h2 className="text-2xl font-bold mt-1">Your streak took a break</h2></div><button onClick={()=>setStreakLossOpen(false)} className="p-1.5 text-slate-400" aria-label="Close streak recovery">✕</button></div><p className="text-sm text-slate-500 mt-4">You missed {missedStreakDays} day{missedStreakDays===1?'':'s'}. Use a streak freeze to recover missed days.</p><div className="grid grid-cols-2 gap-3 mt-5"><button onClick={async()=>{try{const r=await api.freezeStreak(1);setToastMessage(`1-day streak freeze used for ${r.costCoins} coins.`);await refresh();setStreakLossOpen(false);}catch(e:any){setToastMessage(e?.message||'The 1-day freeze is not available.');}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>1 day</b><span className="block text-xs text-slate-500 mt-1">60 coins</span></button><button onClick={async()=>{try{const r=await api.freezeStreak(2);setToastMessage(`2-day streak freeze used for ${r.costCoins} coins.`);await refresh();setStreakLossOpen(false);}catch(e:any){setToastMessage(e?.message||'The 2-day freeze is not available.');}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>2 days</b><span className="block text-xs text-slate-500 mt-1">120 coins</span></button></div></div></div>}
-      {leaderPromptOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Leaderboard progress"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-cyan-500/30 text-white':'bg-white border-cyan-200 text-slate-900')}><div className="flex justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-cyan-400">Leaderboard proximity</div><h2 className="text-2xl font-bold mt-1">You are close to the next place</h2></div><button onClick={()=>setLeaderPromptOpen(false)} className="p-1.5 text-slate-400" aria-label="Close leaderboard prompt">✕</button></div><p className="text-sm text-slate-500 mt-4">You need {leaderGap} more KP to reach the next leaderboard position. Solve meaningful missions to close that gap.</p><button onClick={()=>{setLeaderPromptOpen(false);setActivePage('leaderboard')}} className="w-full mt-5 py-3 rounded-xl bg-cyan-600 text-white text-xs font-bold">View leaderboard</button></div></div>}
+
+      <ContextualEventManager
+        theme={theme}
+        userId={stats.isGuest ? null : stats.id}
+        canDisplay={!stats.isGuest && activePage === 'dashboard' && !authModalOpen && !editProfileOpen && !streakGoalOpen && !streakLossOpen}
+        onViewLeaderboard={() => setActivePage('leaderboard')}
+      />
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
     </>
