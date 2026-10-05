@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { TaskRenderer, MissionTask } from './TaskRendererRegistry';
 import { MissionStageNavigator, MissionStage } from './MissionStageNavigator';
 import { resolveSimulationSource } from '../../data/simulationRegistry';
+import { WindowPanel } from '../WindowPanel';
 
 type Props = { theme: 'dark' | 'light'; isGuest: boolean; onNavigate: (page: 'missions-map' | 'mission-detail' | 'mission-chamber') => void; onExit: () => void; onShowToast: (message: string) => void };
 
@@ -29,7 +30,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
-  const [levelReward, setLevelReward] = useState({open:false, level:0, xp:0, coins:0, balances:null as any});
+  const [levelReward, setLevelReward] = useState({open:false, level:0, xp:0, coins:0, balances:null as any, perfect:false, badgeClaimed:false, badgeClaiming:false});
   const [finalRewards, setFinalRewards] = useState({xp:0,coins:0});
 
   useEffect(() => {
@@ -285,13 +286,16 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
             : 'Not quite — that’s okay. Review your answer, use a hint if helpful, or reveal the answer before moving on.'),
       });
 
-      if (result.levelCompleted && result.levelPerfect && level + 1 < levels.length) {
+      if (result.levelCompleted) {
         setLevelReward({
           open: true,
           level: currentLevel?.levelNumber ?? level + 1,
           xp: result.reward?.xp || 0,
           coins: result.reward?.coins || 0,
           balances: result.balances || null,
+          perfect: Boolean(result.levelPerfect),
+          badgeClaimed: false,
+          badgeClaiming: false,
         });
       }
 
@@ -300,7 +304,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
       setRevealed(null);
 
       const guestBalances = result.anonymous ? syncGuestBalance(result.result === 'CORRECT' ? 2 : 0, result.result === 'CORRECT' ? 1 : 0) : null;
-      localStorage.setItem('nextess_guest_mission_progress',String(Math.round(Math.min(99,progress))));
+      if (result.progressPercent !== undefined) localStorage.setItem('nextess_guest_mission_progress',String(Math.max(0,Math.min(100,Number(result.progressPercent)))));
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
       await refreshInvestigation();
     } catch (e: any) {
@@ -378,8 +382,18 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     try {
       const result = await api.revealAnswer(investigation.id, currentQuestion.id);
       setRevealed(result);
-      const guestBalances = result.anonymous ? syncGuestBalance(hasSubmittedCurrent ? 0 : -5, hasSubmittedCurrent ? 0 : -2) : null;
+      if (result.progressPercent !== undefined) {
+        localStorage.setItem('nextess_guest_mission_progress', String(Math.max(0, Math.min(100, Number(result.progressPercent)))));
+      }
+      const guestBalances = result.anonymous
+        ? syncGuestBalance(Number(result.cost?.xp || 0) * -1, Number(result.cost?.coins || 0) * -1)
+        : null;
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
+      if (result.missionCompleted) {
+        await refreshInvestigation();
+        const completion = await finalize();
+        if (completion) setStage('complete');
+      }
     } catch (e: any) {
       setFeedback({ correct: false, message: e?.message || 'We couldn’t reveal the answer right now. Please try again.' });
     } finally {
@@ -562,7 +576,13 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
         <p className={`text-sm leading-6 mt-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>All mission levels were completed and server-authoritative rewards were applied.</p>
         <div className="mt-5">
           <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>Your final rewards below include only challenge rewards actually earned. Revealed or incorrect challenges do not grant the 2 KP + 1 coin challenge reward.</p>
-          <div role="status" aria-label="Final rewards granted" className={`mt-3 px-5 py-3 rounded-xl border text-xs font-bold ${dark ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>Final rewards granted</div>
+          <div role="status" aria-label="Final rewards granted" className={`mt-3 rounded-2xl border p-5 ${dark ? 'bg-emerald-500/10 border-emerald-500/25' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className={`text-[10px] font-mono uppercase tracking-wider ${dark ? 'text-emerald-300' : 'text-emerald-700'}`}>Mission rewards</div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className={`rounded-xl border p-3 ${dark ? 'border-violet-500/25 bg-violet-500/10' : 'border-violet-200 bg-white'}`}><div className="text-[10px] uppercase font-mono text-violet-400">Total KP earned</div><div className="text-2xl font-bold mt-1">+{finalRewards.xp}</div></div>
+              <div className={`rounded-xl border p-3 ${dark ? 'border-amber-500/25 bg-amber-500/10' : 'border-amber-200 bg-white'}`}><div className="text-[10px] uppercase font-mono text-amber-400">Total coins earned</div><div className="text-2xl font-bold mt-1">+{finalRewards.coins}</div></div>
+            </div>
+          </div>
         </div>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button type="button" onClick={onExit} className={`px-5 py-3 rounded-xl border text-xs font-bold ${dark ? 'bg-[#181926] border-violet-500/30 text-slate-200 hover:bg-[#202131]' : 'bg-white border-violet-200 text-slate-800 hover:bg-violet-50'}`}>Move to Mission Path</button>
@@ -676,31 +696,51 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
           </div>
         </aside>
       </div>
-      {levelReward.open && (
-        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Level reward">
-          <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${dark ? 'bg-[#12131b] border-amber-500/40 text-white' : 'bg-white border-amber-200 text-slate-900'}`}>
-            <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[34px]">workspace_premium</span>
-            </div>
-            <div className="font-mono text-[10px] uppercase tracking-[.2em] text-amber-400 mt-4">Level {levelReward.level} completed</div>
-            <div className="flex items-start justify-between gap-3"><h2 className="text-2xl font-bold mt-2">Rewards earned</h2><button type="button" onClick={()=>setLevelReward(v=>({...v,open:false}))} aria-label="Close level reward" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100/10">✕</button></div>
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}>
-                <div className="font-mono text-[10px] uppercase text-violet-400">KP</div>
-                <div className="text-2xl font-bold mt-1">{levelReward.xp}</div>
-              </div>
-              <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}>
-                <div className="font-mono text-[10px] uppercase text-amber-400">Coins</div>
-                <div className="text-2xl font-bold mt-1">{levelReward.coins}</div>
-              </div>
-            </div>
-            {levelReward.balances && (
-              <p className="mt-4 text-xs text-slate-400">Balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>
-            )}
-            <div className="flex items-center justify-between gap-3 mt-6"><span className="text-[10px] text-slate-500">Challenge reward: 2 KP + 1 coin per correct challenge.</span><button type="button" onClick={() => { setLevelReward(v => ({...v, open:false})); void moveNext(); }} className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">{levelReward.level ? 'Claim badge & continue' : 'Continue Mission'}</button></div>
+      <WindowPanel
+        open={levelReward.open}
+        onClose={() => setLevelReward(v => ({...v, open:false}))}
+        theme={theme}
+        title={levelReward.perfect ? 'Perfect level achievement' : 'Level reward'}
+        ariaLabel={levelReward.perfect ? 'Perfect level achievement' : 'Level reward'}
+      >
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 flex items-center justify-center mt-4">
+            <span className="material-symbols-outlined text-[34px]">workspace_premium</span>
+          </div>
+          <div className="font-mono text-[10px] uppercase tracking-[.2em] text-amber-400 mt-4">Level {levelReward.level} completed</div>
+          <h2 className="text-2xl font-bold mt-2">{levelReward.perfect ? 'Perfect level!' : 'Rewards earned'}</h2>
+          {levelReward.perfect && <p className="text-xs text-slate-400 mt-2">You completed every challenge correctly. A Perfect Mission badge has been recorded for this level.</p>}
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}><div className="font-mono text-[10px] uppercase text-violet-400">KP</div><div className="text-2xl font-bold mt-1">{levelReward.xp}</div></div>
+            <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}><div className="font-mono text-[10px] uppercase text-amber-400">Coins</div><div className="text-2xl font-bold mt-1">{levelReward.coins}</div></div>
+          </div>
+          {levelReward.balances && <p className="mt-4 text-xs text-slate-400">Current balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>}
+          <div className="flex justify-end mt-6">
+            <button
+              type="button"
+              disabled={levelReward.badgeClaiming}
+              onClick={async () => {
+                if (levelReward.perfect && !levelReward.badgeClaimed) {
+                  setLevelReward(v => ({...v, badgeClaiming:true}));
+                  try {
+                    await api.claimBadge('perfect-mission');
+                    setLevelReward(v => ({...v, badgeClaimed:true, badgeClaiming:false}));
+                  } catch (e:any) {
+                    setFeedback({correct:false,message:e?.message || 'The badge could not be claimed yet.'});
+                    setLevelReward(v => ({...v, badgeClaiming:false}));
+                    return;
+                  }
+                }
+                setLevelReward(v => ({...v, open:false}));
+                void moveNext();
+              }}
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-50"
+            >
+              {levelReward.perfect && !levelReward.badgeClaimed ? (levelReward.badgeClaiming ? 'Claiming…' : 'Claim badge & continue') : 'Continue Mission'}
+            </button>
           </div>
         </div>
-      )}
+      </WindowPanel>
 
     </div>
   );
