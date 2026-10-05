@@ -360,7 +360,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
    const resolvedCount=new Set([...allAnswerRows.map((row:any)=>row.questionId),...Object.keys(revealState.reveals||{})]).size;
    const progressPercent=missionCompleted?100:Math.min(99,Math.round(resolvedCount/Math.max(1,allQuestionIds.length)*100));
    if(identity.userId){
-     const nextQuestionForProgress=level?.questions.find((item:any)=>item.id!==q.id&&!allAnswerRows.some((row:any)=>row.questionId===item.id)&&!revealState.reveals?.[item.id]);
+     const progressLevel=current.projectVersion.levels.find((item:any)=>item.id===current.currentLevelId); const nextQuestionForProgress=progressLevel?.questions.find((item:any)=>item.id!==q.id&&!allAnswerRows.some((row:any)=>row.questionId===item.id)&&!revealState.reveals?.[item.id]);
      await tx.userProjectProgress.upsert({
        where:{userId_projectId:{userId:identity.userId!,projectId:current.projectId}},
        update:{status:missionCompleted?'COMPLETED':'IN_PROGRESS',currentLevelId:missionCompleted?null:current.currentLevelId,currentQuestionId:missionCompleted?null:(nextQuestionForProgress?.id||q.id),progressPercent,completedAt:missionCompleted?new Date():null,lastActivityAt:new Date()},
