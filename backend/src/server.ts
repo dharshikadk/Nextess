@@ -277,7 +277,7 @@ app.get('/v1/investigations/:id',optionalAuth,async(req:R,res)=>{
  if(revealedIds.length){
   const rows=await prisma.question.findMany({
    where:{id:{in:revealedIds},level:{projectVersionId:inv.projectVersionId}},
-   select:{id:evaluationDefinition:true,explanation:true}
+   select:{id:true,evaluationDefinition:true,explanation:true}
   });
   for(const row of rows) revealedAnswers[row.id]={answer:(row as any).evaluationDefinition?.answer,explanation:row.explanation||''};
  }
