@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ThemeMode } from '../types';
 import { api } from '../api';
+import { WindowPanel } from './WindowPanel';
 
 interface Props { isOpen:boolean; onClose:()=>void; theme:ThemeMode; onSuccess:(result?:any)=>void|Promise<void>; }
 
@@ -50,12 +51,9 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
     finally{setLoading(false);}
   };
 
-  return <div role="dialog" aria-label="Cadet Access Station" className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-    <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border p-6 shadow-2xl ${dark?'bg-[#12131b] border-violet-500/30 text-white':'bg-white border-slate-200 text-slate-900'}`}>
-      <div className="flex items-start justify-between gap-3 mb-5">
-        <div><div className="font-mono text-[10px] text-violet-400 uppercase">Cadet Access</div><h2 className="text-xl font-bold mt-1">{tab==='signup'?'Create your learner profile':'Sign in to Nextess'}</h2><p className="text-xs text-slate-400 mt-1">{tab==='signup'?'Add your profile details now; you can edit them later.':'Continue with your saved progress.'}</p></div>
-        <button type="button" onClick={onClose} className="p-1.5 text-slate-400" aria-label="Close authentication">✕</button>
-      </div>
+  return <WindowPanel open={isOpen} onClose={onClose} theme={theme} title="Cadet Access" ariaLabel="Cadet Access Station" maxWidth="max-w-md" zIndex="z-[70]">
+    <div className="max-h-[78vh] overflow-y-auto">
+      <div className="mb-5"><h2 className="text-xl font-bold mt-2">{tab==='signup'?'Create your learner profile':'Sign in to Nextess'}</h2><p className="text-xs text-slate-400 mt-1">{tab==='signup'?'Add your profile details now; you can edit them later.':'Continue with your saved progress.'}</p></div>
       <div role="tablist" aria-label="Authentication mode" className={`flex rounded-xl p-1 mb-4 border ${dark?'bg-[#07080c] border-violet-500/20':'bg-slate-100 border-slate-200'}`}>
         <button type="button" role="tab" aria-selected={tab==='signin'} onClick={()=>setTab('signin')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${tab==='signin'?'bg-violet-600 text-white':'text-slate-400'}`}>Log In</button>
         <button type="button" role="tab" aria-selected={tab==='signup'} onClick={()=>setTab('signup')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${tab==='signup'?'bg-violet-600 text-white':'text-slate-400'}`}>Sign Up</button>
