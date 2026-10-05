@@ -78,7 +78,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     if (!currentQuestion) return;
     if (!latestCurrentAnswer) {
       setAnswer('');
-      setRevealed(null);
+      const persistedReveal = investigation?.revealedAnswers?.[currentQuestion.id];
+      setRevealed(persistedReveal || null);
       setFeedback(null);
       setHints([]);
       return;
@@ -98,7 +99,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     setHints([]);
     setRevealed(null);
     return () => { cancelled = true; };
-  }, [currentQuestion?.id]);
+  }, [currentQuestion?.id, investigation?.revealedAnswers]);
 
   const syncGuestBalance = (deltaXp:number, deltaCoins:number) => { const kp=Math.max(0,Number(localStorage.getItem('nextess_guest_kp')||100)+deltaXp); const coins=Math.max(0,Number(localStorage.getItem('nextess_guest_coins')||100)+deltaCoins); localStorage.setItem('nextess_guest_kp',String(kp)); localStorage.setItem('nextess_guest_coins',String(coins)); window.dispatchEvent(new CustomEvent('nextess-mission-updated',{detail:{guestBalances:{kp,coins}}})); return {kp,coins}; };
   const refreshInvestigation = async () => {
@@ -492,7 +493,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
 
   if (stage === 'brief') return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
-      <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <Header theme={theme} mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
           <div className={`rounded-2xl border p-6 ${dark ? 'border-amber-500/40 bg-[#0f1017]' : 'border-amber-200 bg-amber-50/70'}`}>
@@ -531,7 +532,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     const section = capsules[capsule];
     return (
       <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
-        <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+        <Header theme={theme} mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
         <section className={`${shell} mt-5 p-6`}>
           <div className="max-w-[1000px] mx-auto">
             <div className="flex gap-2 mb-5 overflow-x-auto">
@@ -566,7 +567,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
 
   if (stage === 'complete') return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
-      <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <Header theme={theme} mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 p-8 text-center ${dark ? 'bg-[#0f1017]' : 'bg-white'}`}>
         <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center">
           <span className="material-symbols-outlined text-[42px]">celebration</span>
@@ -638,7 +639,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
 
   return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-32`}>
-      <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <Header theme={theme} mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <div className="grid grid-cols-12 xl:grid-cols-[5fr_9fr_6fr] gap-5 mt-5 items-start">
         <div className="col-span-12 xl:col-span-1">{missionPanel}</div>
         <section className={`${shell} col-span-12 xl:col-span-1 p-6`}>
@@ -746,25 +747,31 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
   );
 };
 
-const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any) => (
-  <div className="relative overflow-hidden rounded-2xl p-5 border border-violet-500/40 bg-[#12131b] shadow-2xl">
+const Header = ({ theme, mission, progress, label, onExit, stages, onStageSelect }: any) => {
+  const dark = theme === 'dark';
+  return (
+  <div className={`relative overflow-hidden rounded-2xl p-5 border shadow-2xl ${dark ? 'border-violet-500/40 bg-[#12131b]' : 'border-violet-200 bg-white'}`}>
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="flex flex-wrap gap-2 mb-2">
           <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/40 text-violet-400 font-mono text-[10px] uppercase">Discipline: {mission.subject?.displayName || ''}</span>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 font-mono text-[10px] uppercase">Difficulty: {mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'}</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white">{mission.title}</h1>
+        <h1 className={`text-2xl md:text-3xl font-bold ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h1>
       </div>
-      <div className="flex items-center gap-4 px-5 py-3 rounded-2xl border bg-[#181926]/90 border-cyan-500/30">
+      <div className={`flex items-center gap-4 px-5 py-3 rounded-2xl border ${dark ? 'bg-[#181926]/90 border-cyan-500/30' : 'bg-violet-50 border-cyan-200'}`}>
         <div><span className="font-mono text-[10px] text-slate-400 uppercase">Path Progress</span><div className="flex items-baseline gap-1.5"><span className="text-xl text-violet-400 font-bold">{progress}%</span><span className="text-xs text-slate-400 font-mono">{label}</span></div><div className="w-40 h-2 rounded-full bg-slate-700/30 overflow-hidden mt-1"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{ width: `${progress}%` }} /></div></div>
 
       </div>
     </div>
     {stages?.length > 0 && <MissionStageNavigator stages={stages} onSelect={onStageSelect} />}
+    <button type="button" onClick={onExit} aria-label="Exit Mission" className={`absolute right-5 bottom-5 inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${dark ? 'border-slate-600 bg-[#181926] text-slate-200 hover:bg-[#202131]' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>
+      <span className="material-symbols-outlined text-[16px]">logout</span>Exit Mission
+    </button>
   </div>
 );
+}
 
 const Meta = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-xl p-3 border border-violet-500/15 bg-[#181926]"><span className="font-mono text-[9px] text-slate-400 uppercase">{label}</span><span className="block text-sm font-semibold text-white mt-1">{value}</span></div>
+  <div className={`rounded-xl p-3 border border-violet-500/15 ${dark ? 'bg-[#181926]' : 'bg-violet-50'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">{label}</span><span className={`block text-sm font-semibold mt-1 ${dark ? 'text-white' : 'text-slate-900'}`}>{value}</span></div>
 );
