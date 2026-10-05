@@ -618,19 +618,19 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
         {files.map((item: any, index: number) => (
           <button key={item.id || item.fileName || index} onClick={() => setFileIndex(index)} className={`w-full text-left p-2.5 rounded-xl border ${index === fileIndex ? (dark ? 'bg-[#1f2030] border-amber-400' : 'bg-amber-50 border-amber-400') : (dark ? 'bg-[#07080c] border-amber-500/20 hover:border-amber-500/40' : 'bg-white border-amber-200 hover:border-amber-400')}`}>
             <div className="font-mono text-[9px] text-amber-400 uppercase">{item.type || item.metadata?.type || 'file'}</div>
-            <div className=`text-[11px] font-semibold mt-0.5 ${dark ? 'text-white' : 'text-slate-900'}`>{item.fileName || item.name}</div>
+            <div className={`text-[11px] font-semibold mt-0.5 ${dark ? 'text-white' : 'text-slate-900'}`}>{item.fileName || item.name}</div>
           </button>
         ))}
       </div>
       {file && (
-        <div className=`mt-3 rounded-xl border border-amber-500/20 overflow-hidden ${dark ? 'bg-[#07080c]' : 'bg-white'}`>
-          <div className=`p-3 border-b border-amber-500/20 ${dark ? 'bg-[#13141f]' : 'bg-amber-50'}`>
+        <div className={`mt-3 rounded-xl border border-amber-500/20 overflow-hidden ${dark ? 'bg-[#07080c]' : 'bg-white'}`}>
+          <div className={`p-3 border-b border-amber-500/20 ${dark ? 'bg-[#13141f]' : 'bg-amber-50'}`}>
             <div className="font-mono text-[9px] text-slate-500 uppercase">Selected file</div>
-            <div className=`text-xs font-semibold mt-0.5 ${dark ? 'text-white' : 'text-slate-900'}`>{file.fileName || file.name}</div>
+            <div className={`text-xs font-semibold mt-0.5 ${dark ? 'text-white' : 'text-slate-900'}`}>{file.fileName || file.name}</div>
           </div>
           <div className="p-3 max-h-[340px] overflow-y-auto">
             <div className="text-[10px] text-amber-300 mb-2">{file.purpose || file.metadata?.purpose || ''}</div>
-            <pre className=`whitespace-pre-wrap break-words text-[11px] leading-5 font-mono ${dark ? 'text-slate-300' : 'text-slate-700'}`>{file.content || ''}</pre>
+            <pre className={`whitespace-pre-wrap break-words text-[11px] leading-5 font-mono ${dark ? 'text-slate-300' : 'text-slate-700'}`}>{file.content || ''}</pre>
           </div>
         </div>
       )}
@@ -692,7 +692,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
             <div className="mt-3 max-h-[68vh] overflow-y-auto overflow-x-hidden overscroll-contain pr-1">
               {simulationSrc ? <iframe ref={simulationFrameRef} title="Nextess mission simulation" src={simulationSrc} onLoad={restoreSimulation} className="block w-full h-[760px] border-0 rounded-xl" allow="fullscreen" loading="eager" scrolling="no" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
             </div>
-            {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className=`px-2 py-1 rounded-lg border border-indigo-500/20 text-[9px] ${dark ? 'bg-[#181926] text-slate-300' : 'bg-indigo-50 text-slate-700'}`>{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
+            {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className={`px-2 py-1 rounded-lg border border-indigo-500/20 text-[9px] ${dark ? 'bg-[#181926] text-slate-300' : 'bg-indigo-50 text-slate-700'}`}>{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
             {simulation?.consequences?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Consequences</div>{simulation.consequences.map((item: any) => <div key={item.id || item.ordering} className="text-[9px] text-slate-400 mt-1">• {item.label}</div>)}</div>}
           </div>
         </aside>
