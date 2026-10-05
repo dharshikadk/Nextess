@@ -22,6 +22,7 @@ import { EditProfileModal } from './components/EditProfileModal';
 import { Toast } from './components/Toast';
 import { NextessLoadingScreen } from './components/NextessLoadingScreen';
 import { ContextualEventManager, enqueueContextualEvent } from './components/ContextualEventManager';
+import { WindowPanel } from './components/WindowPanel';
 
 export default function App() {
   // Theme State (Dark Mode default as per screens, with pastel daylight mode available)
@@ -56,6 +57,7 @@ export default function App() {
   const [streakGoalBusy,setStreakGoalBusy]=useState(false);
   const [streakLossOpen,setStreakLossOpen]=useState(false);
   const [missedStreakDays,setMissedStreakDays]=useState(0);
+  const [firstLoginReward,setFirstLoginReward]=useState({open:false,days:0,xp:0,coins:0});
   const [contextualRefreshTick,setContextualRefreshTick]=useState(0);
   const guestBalances = () => ({ kp: Number(localStorage.getItem('nextess_guest_kp') || 100), coins: Number(localStorage.getItem('nextess_guest_coins') || 100) });
 
@@ -78,7 +80,7 @@ export default function App() {
       const d=await api.dashboard();
       setStats(prev=>({...prev,kp:d.user?.xp??prev.kp,coins:d.user?.coins??prev.coins,streakDays:d?.streakDays??prev.streakDays,level:d.user?.level??prev.level,name:d?.name??prev.name,handle:d.user?.username?'@'+d.user.username:prev.handle,userClass:d.user?.schoolClass||d.user?.gradeClass||prev.userClass,college:d.user?.fieldOfStudy||prev.college,profession:d.user?.profession||prev.profession,profileType:d.user?.profileType||prev.profileType,profileStatus:d.user?.profileStatus||prev.profileStatus,profileImageData:d.user?.profileImageData||prev.profileImageData,badgesCount:d?.badgesCount??prev.badgesCount,isGuest:false}));
       setActiveProgress(d?.activeProgress||[]);
-      try{const st=await api.streak();const previous=Number(localStorage.getItem('nextess_last_streak')||0);if(previous>0&&Number(st?.streakDays||0)===0&&Number(st?.missedDays||0)>0){setMissedStreakDays(Number(st.missedDays));setStreakLossOpen(true);}localStorage.setItem('nextess_last_streak',String(st?.streakDays||0));}catch{}
+      try{const st=await api.streak();if(st?.streakLost){setMissedStreakDays(Number(st.missedDays||0));setStreakLossOpen(true);}}catch{}
     }catch{}
     try{
       const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
@@ -385,8 +387,30 @@ export default function App() {
         onSave={handleSaveProfile}
       />
 
-      {streakGoalOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Choose your streak goal"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-violet-500/30 text-white':'bg-white border-violet-200 text-slate-900')}><div className="flex items-start justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-violet-400">New learning commitment</div><h2 className="text-2xl font-bold mt-1">Choose your streak target</h2></div><button type="button" onClick={()=>setStreakGoalOpen(false)} className="p-1.5 rounded-lg text-slate-400" aria-label="Close streak goal">✕</button></div><p className="text-sm text-slate-500 mt-4">Pick a target that feels realistic. Your choice gives you a small starting reward and becomes your personal streak milestone.</p><div className="grid grid-cols-2 gap-3 mt-5">{[7,14].map(days=><button key={days} type="button" disabled={streakGoalBusy} onClick={async()=>{setStreakGoalBusy(true);try{const result=await api.setStreakGoal(days);setToastMessage(`${days}-day streak target set · +${result.reward?.xp||0} KP · +${result.reward?.coins||0} coins.`);await refresh();setStreakGoalOpen(false);}catch(e:any){setToastMessage(e?.message||'Could not save your streak goal.');}finally{setStreakGoalBusy(false);}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-violet-500/20':'bg-violet-50 border-violet-200')}><div className="text-2xl font-bold">{days} days</div><div className="text-xs text-slate-500 mt-1">{days===7?'Steady start':'Longer commitment'}</div></button>)}</div></div></div>}
-      {streakLossOpen && !stats.isGuest && <div className="fixed inset-0 z-[95] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Streak recovery"><div className={"w-full max-w-md rounded-3xl border p-7 shadow-2xl "+(isDark?'bg-[#12131b] border-orange-500/30 text-white':'bg-white border-orange-200 text-slate-900')}><div className="flex justify-between gap-3"><div><div className="font-mono text-[10px] uppercase text-orange-400">Streak recovery</div><h2 className="text-2xl font-bold mt-1">Your streak took a break</h2></div><button onClick={()=>setStreakLossOpen(false)} className="p-1.5 text-slate-400" aria-label="Close streak recovery">✕</button></div><p className="text-sm text-slate-500 mt-4">You missed {missedStreakDays} day{missedStreakDays===1?'':'s'}. Use a streak freeze to recover missed days.</p><div className="grid grid-cols-2 gap-3 mt-5"><button onClick={async()=>{try{const r=await api.freezeStreak(1);setToastMessage(`1-day streak freeze used for ${r.costCoins} coins.`);await refresh();setStreakLossOpen(false);}catch(e:any){setToastMessage(e?.message||'The 1-day freeze is not available.');}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>1 day</b><span className="block text-xs text-slate-500 mt-1">60 coins</span></button><button onClick={async()=>{try{const r=await api.freezeStreak(2);setToastMessage(`2-day streak freeze used for ${r.costCoins} coins.`);await refresh();setStreakLossOpen(false);}catch(e:any){setToastMessage(e?.message||'The 2-day freeze is not available.');}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>2 days</b><span className="block text-xs text-slate-500 mt-1">120 coins</span></button></div></div></div>}
+      <WindowPanel open={streakGoalOpen && !stats.isGuest} onClose={()=>setStreakGoalOpen(false)} theme={theme} title="New learning commitment" ariaLabel="Choose your streak goal">
+        <h2 className="text-2xl font-bold mt-2">Choose your streak target</h2>
+        <p className="text-sm text-slate-500 mt-4">Pick a target that feels realistic. Your choice gives you a small starting reward and becomes your personal streak milestone.</p>
+        <div className="grid grid-cols-2 gap-3 mt-5">{[7,14].map(days=><button key={days} type="button" disabled={streakGoalBusy} onClick={async()=>{setStreakGoalBusy(true);try{const result=await api.setStreakGoal(days);setFirstLoginReward({open:true,days,xp:Number(result.reward?.xp||0),coins:Number(result.reward?.coins||0)});await refresh();setStreakGoalOpen(false);}catch(e:any){setToastMessage(e?.message||'Could not save your streak goal.');}finally{setStreakGoalBusy(false);}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-violet-500/20':'bg-violet-50 border-violet-200')}><div className="text-2xl font-bold">{days} days</div><div className="text-xs text-slate-500 mt-1">{days===7?'Steady start':'Longer commitment'}</div></button>)}</div>
+      </WindowPanel>
+      <WindowPanel open={streakLossOpen && !stats.isGuest} onClose={()=>setStreakLossOpen(false)} theme={theme} title="Streak recovery" ariaLabel="Streak recovery">
+        <h2 className="text-2xl font-bold mt-2">Your streak took a break</h2>
+        <p className="text-sm text-slate-500 mt-4">You missed {missedStreakDays} day{missedStreakDays===1?'':'s'}. Use a streak freeze to recover missed days.</p>
+        <div className="grid grid-cols-2 gap-3 mt-5">
+          {[1,2].map(days=><button key={days} type="button" onClick={async()=>{try{const r=await api.freezeStreak(days);await refresh();setStreakLossOpen(false);setToastMessage(days+'-day streak freeze used for '+r.costCoins+' coins.');}catch(e:any){setToastMessage(e?.message||('The '+days+'-day freeze is not available.'));}}} className={"rounded-2xl border p-4 text-left "+(isDark?'bg-[#181926] border-orange-500/20':'bg-orange-50 border-orange-200')}><b>{days} day{days===1?'':'s'}</b><span className="block text-xs text-slate-500 mt-1">{days===1?60:120} coins</span></button>)}
+        </div>
+      </WindowPanel>
+      <WindowPanel open={firstLoginReward.open} onClose={()=>setFirstLoginReward(v=>({...v,open:false}))} theme={theme} title="Starting reward" ariaLabel="First login streak reward">
+        <div className="text-center mt-4">
+          <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center"><span className="material-symbols-outlined text-[34px]">redeem</span></div>
+          <h2 className="text-2xl font-bold mt-4">Your streak goal is locked in</h2>
+          <p className="text-sm text-slate-500 mt-2">You chose a {firstLoginReward.days}-day learning target.</p>
+          <div className="grid grid-cols-2 gap-3 mt-5">
+            <div className={"rounded-2xl border p-4 "+(isDark?'bg-violet-500/10 border-violet-500/25':'bg-violet-50 border-violet-200')}><div className="font-mono text-[10px] uppercase text-violet-400">KP reward</div><div className="text-2xl font-bold mt-1">+{firstLoginReward.xp}</div></div>
+            <div className={"rounded-2xl border p-4 "+(isDark?'bg-amber-500/10 border-amber-500/25':'bg-amber-50 border-amber-200')}><div className="font-mono text-[10px] uppercase text-amber-400">Coins reward</div><div className="text-2xl font-bold mt-1">+{firstLoginReward.coins}</div></div>
+          </div>
+          <button type="button" onClick={()=>setFirstLoginReward(v=>({...v,open:false}))} className="mt-6 w-full rounded-xl bg-violet-600 px-5 py-3 text-xs font-bold text-white hover:bg-violet-500">Continue</button>
+        </div>
+      </WindowPanel>
 
       <ContextualEventManager
         theme={theme}
