@@ -709,7 +709,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
           </div>
           <div className="font-mono text-[10px] uppercase tracking-[.2em] text-amber-400 mt-4">Level {levelReward.level} completed</div>
           <h2 className="text-2xl font-bold mt-2">{levelReward.perfect ? 'Perfect level!' : 'Rewards earned'}</h2>
-          {levelReward.perfect && <p className="text-xs text-slate-400 mt-2">You completed every challenge correctly. A Perfect Mission badge has been recorded for this level.</p>}
+          {levelReward.perfect && <p className="text-xs text-slate-400 mt-2">You completed every challenge correctly. A Perfect Level badge has been recorded for this level.</p>}
           <div className="grid grid-cols-2 gap-3 mt-6">
             <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}><div className="font-mono text-[10px] uppercase text-violet-400">KP</div><div className="text-2xl font-bold mt-1">{levelReward.xp}</div></div>
             <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}><div className="font-mono text-[10px] uppercase text-amber-400">Coins</div><div className="text-2xl font-bold mt-1">{levelReward.coins}</div></div>
