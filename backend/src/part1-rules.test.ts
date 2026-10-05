@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getStreakFreezeCost } from './part1-rules.js';
+import { getStreakFreezeCost, shouldChargeReveal } from './part1-rules.js';
 
 test('streak freeze costs are server-defined at 60 and 120 coins', () => {
   assert.equal(getStreakFreezeCost(1), 60);
