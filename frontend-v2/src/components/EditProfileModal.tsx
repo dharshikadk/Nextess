@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ThemeMode, UserStats } from '../types';
 import { api } from '../api';
+import { WindowPanel } from './WindowPanel';
 
 interface Props {
   isOpen: boolean;
@@ -82,13 +83,8 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
   const input = `w-full p-2.5 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 ${dark ? 'bg-[#181926] border-violet-500/25 text-white' : 'bg-white border-slate-300 text-slate-900'}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className={`max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-2xl p-6 border shadow-2xl relative ${dark ? 'bg-[#12131b] border-violet-500/30 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100/10" aria-label="Close edit profile">✕</button>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md"><span className="material-symbols-outlined text-[24px]">badge</span></div>
-          <div><h3 className="text-lg font-bold">Edit Profile</h3><p className="text-xs text-slate-400">Update your learner profile and profile picture.</p></div>
-        </div>
+    <WindowPanel open={isOpen} onClose={onClose} theme={theme} title="Edit Profile" ariaLabel="Edit Profile" maxWidth="max-w-lg" zIndex="z-50">
+        <div className="flex items-center gap-3 mb-5"><div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md"><span className="material-symbols-outlined text-[24px]">badge</span></div><div><h3 className="text-lg font-bold mt-2">Edit Profile</h3><p className="text-xs text-slate-400">Update your learner profile and profile picture.</p></div></div>
 
         <form onSubmit={submit} className="flex flex-col gap-3.5">
           <div className="flex items-center gap-4 rounded-xl border border-violet-500/20 p-3">
@@ -127,7 +123,6 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose, theme, stat
           {error && <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-300">{error}</div>}
           <button type="submit" disabled={saving} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md disabled:opacity-50">{saving ? 'Saving…' : 'Save Profile'}</button>
         </form>
-      </div>
-    </div>
+    </WindowPanel>
   );
 };
