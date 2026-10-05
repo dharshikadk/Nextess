@@ -504,9 +504,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
               <p className={`text-base leading-7 mt-2 ${dark ? 'text-slate-200' : 'text-slate-700'}`}>{mission.mission}</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
-              <Meta label="Role" value={mission.role || '—'} />
-              <Meta label="Difficulty" value={mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'} />
-              <Meta label="Mission Type" value={mission.problemType || '—'} />
+              <Meta dark={dark} label="Role" value={mission.role || '—'} />
+              <Meta dark={dark} label="Difficulty" value={mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'} />
+              <Meta dark={dark} label="Mission Type" value={mission.problemType || '—'} />
             </div>
             <div className="mt-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
               <div className="font-mono text-[9px] text-emerald-400 uppercase">Evidence requirement</div>
@@ -772,6 +772,6 @@ const Header = ({ theme, mission, progress, label, onExit, stages, onStageSelect
 );
 }
 
-const Meta = ({ label, value }: { label: string; value: string }) => (
+const Meta = ({ label, value, dark }: { label: string; value: string; dark: boolean }) => (
   <div className={`rounded-xl p-3 border border-violet-500/15 ${dark ? 'bg-[#181926]' : 'bg-violet-50'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">{label}</span><span className={`block text-sm font-semibold mt-1 ${dark ? 'text-white' : 'text-slate-900'}`}>{value}</span></div>
 );
