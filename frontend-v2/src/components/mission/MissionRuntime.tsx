@@ -623,7 +623,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
         ))}
       </div>
       {file && (
-        <div className="mt-3 rounded-xl border border-amber-500/20 bg-[#07080c] overflow-hidden">
+        <div className="mt-3 rounded-xl border border-amber-500/20 overflow-hidden ${dark ? 'bg-[#07080c]' : 'bg-white'}">
           <div className="p-3 bg-[#13141f] border-b border-amber-500/20">
             <div className="font-mono text-[9px] text-slate-500 uppercase">Selected file</div>
             <div className="text-xs font-semibold text-white mt-0.5">{file.fileName || file.name}</div>
