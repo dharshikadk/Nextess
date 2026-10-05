@@ -78,7 +78,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     if (!currentQuestion) return;
     if (!latestCurrentAnswer) {
       setAnswer('');
-      setRevealed(null);
+      const persistedReveal = investigation?.revealedAnswers?.[currentQuestion.id];
+      setRevealed(persistedReveal || null);
       setFeedback(null);
       setHints([]);
       return;
@@ -98,7 +99,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     setHints([]);
     setRevealed(null);
     return () => { cancelled = true; };
-  }, [currentQuestion?.id]);
+  }, [currentQuestion?.id, investigation?.revealedAnswers]);
 
   const syncGuestBalance = (deltaXp:number, deltaCoins:number) => { const kp=Math.max(0,Number(localStorage.getItem('nextess_guest_kp')||100)+deltaXp); const coins=Math.max(0,Number(localStorage.getItem('nextess_guest_coins')||100)+deltaCoins); localStorage.setItem('nextess_guest_kp',String(kp)); localStorage.setItem('nextess_guest_coins',String(coins)); window.dispatchEvent(new CustomEvent('nextess-mission-updated',{detail:{guestBalances:{kp,coins}}})); return {kp,coins}; };
   const refreshInvestigation = async () => {
@@ -492,7 +493,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
 
   if (stage === 'brief') return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
-      <Header mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <Header theme={theme} mission={mission} progress={progress} label="STAGE 01 / MISSION BRIEF" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`${shell} mt-5 p-6`}>
         <div className="max-w-[1100px] mx-auto">
           <div className={`rounded-2xl border p-6 ${dark ? 'border-amber-500/40 bg-[#0f1017]' : 'border-amber-200 bg-amber-50/70'}`}>
@@ -503,9 +504,9 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
               <p className={`text-base leading-7 mt-2 ${dark ? 'text-slate-200' : 'text-slate-700'}`}>{mission.mission}</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
-              <Meta label="Role" value={mission.role || '—'} />
-              <Meta label="Difficulty" value={mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'} />
-              <Meta label="Mission Type" value={mission.problemType || '—'} />
+              <Meta dark={dark} label="Role" value={mission.role || '—'} />
+              <Meta dark={dark} label="Difficulty" value={mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'} />
+              <Meta dark={dark} label="Mission Type" value={mission.problemType || '—'} />
             </div>
             <div className="mt-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
               <div className="font-mono text-[9px] text-emerald-400 uppercase">Evidence requirement</div>
@@ -531,7 +532,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
     const section = capsules[capsule];
     return (
       <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
-        <Header mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+        <Header theme={theme} mission={mission} progress={progress} label="STAGE 02 / LEARNING CAPSULE" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
         <section className={`${shell} mt-5 p-6`}>
           <div className="max-w-[1000px] mx-auto">
             <div className="flex gap-2 mb-5 overflow-x-auto">
@@ -566,7 +567,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
 
   if (stage === 'complete') return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-16`}>
-      <Header mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <Header theme={theme} mission={mission} progress={100} label="FINAL STAGE / CELEBRATION" onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <section className={`mt-5 max-w-[900px] mx-auto rounded-[28px] border-2 border-emerald-500/40 p-8 text-center ${dark ? 'bg-[#0f1017]' : 'bg-white'}`}>
         <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 flex items-center justify-center">
           <span className="material-symbols-outlined text-[42px]">celebration</span>
@@ -615,21 +616,21 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
       <p className="text-[11px] text-slate-400 mt-2">Use these files for evidence and data while solving the mission.</p>
       <div className="mt-3 space-y-1.5">
         {files.map((item: any, index: number) => (
-          <button key={item.id || item.fileName || index} onClick={() => setFileIndex(index)} className={`w-full text-left p-2.5 rounded-xl border ${index === fileIndex ? 'bg-[#1f2030] border-amber-400' : 'bg-[#07080c] border-amber-500/20 hover:border-amber-500/40'}`}>
+          <button key={item.id || item.fileName || index} onClick={() => setFileIndex(index)} className={`w-full text-left p-2.5 rounded-xl border ${index === fileIndex ? (dark ? 'bg-[#1f2030] border-amber-400' : 'bg-amber-50 border-amber-400') : (dark ? 'bg-[#07080c] border-amber-500/20 hover:border-amber-500/40' : 'bg-white border-amber-200 hover:border-amber-400')}`}>
             <div className="font-mono text-[9px] text-amber-400 uppercase">{item.type || item.metadata?.type || 'file'}</div>
-            <div className="text-[11px] font-semibold text-white mt-0.5">{item.fileName || item.name}</div>
+            <div className={`text-[11px] font-semibold mt-0.5 ${dark ? 'text-white' : 'text-slate-900'}`}>{item.fileName || item.name}</div>
           </button>
         ))}
       </div>
       {file && (
-        <div className="mt-3 rounded-xl border border-amber-500/20 bg-[#07080c] overflow-hidden">
-          <div className="p-3 bg-[#13141f] border-b border-amber-500/20">
+        <div className={`mt-3 rounded-xl border border-amber-500/20 overflow-hidden ${dark ? 'bg-[#07080c]' : 'bg-white'}`}>
+          <div className={`p-3 border-b border-amber-500/20 ${dark ? 'bg-[#13141f]' : 'bg-amber-50'}`}>
             <div className="font-mono text-[9px] text-slate-500 uppercase">Selected file</div>
-            <div className="text-xs font-semibold text-white mt-0.5">{file.fileName || file.name}</div>
+            <div className={`text-xs font-semibold mt-0.5 ${dark ? 'text-white' : 'text-slate-900'}`}>{file.fileName || file.name}</div>
           </div>
           <div className="p-3 max-h-[340px] overflow-y-auto">
             <div className="text-[10px] text-amber-300 mb-2">{file.purpose || file.metadata?.purpose || ''}</div>
-            <pre className="whitespace-pre-wrap break-words text-[11px] leading-5 text-slate-300 font-mono">{file.content || ''}</pre>
+            <pre className={`whitespace-pre-wrap break-words text-[11px] leading-5 font-mono ${dark ? 'text-slate-300' : 'text-slate-700'}`}>{file.content || ''}</pre>
           </div>
         </div>
       )}
@@ -638,7 +639,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
 
   return (
     <div data-testid="mission-runtime" className={`mission-runtime ${dark ? 'mission-runtime-dark' : 'mission-runtime-light'} w-full pb-32`}>
-      <Header mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
+      <Header theme={theme} mission={mission} progress={progress} label={`LEVEL ${currentLevel?.levelNumber ?? level + 1} / ${currentLevel?.title || 'MISSION'}`} onExit={onExit} stages={stageItems} onStageSelect={selectStage} />
       <div className="grid grid-cols-12 xl:grid-cols-[5fr_9fr_6fr] gap-5 mt-5 items-start">
         <div className="col-span-12 xl:col-span-1">{missionPanel}</div>
         <section className={`${shell} col-span-12 xl:col-span-1 p-6`}>
@@ -691,7 +692,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
             <div className="mt-3 max-h-[68vh] overflow-y-auto overflow-x-hidden overscroll-contain pr-1">
               {simulationSrc ? <iframe ref={simulationFrameRef} title="Nextess mission simulation" src={simulationSrc} onLoad={restoreSimulation} className="block w-full h-[760px] border-0 rounded-xl" allow="fullscreen" loading="eager" scrolling="no" /> : <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-200">The exact simulation asset is not available in the current frontend bundle. No substitute has been generated.</div>}
             </div>
-            {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className="px-2 py-1 rounded-lg bg-[#181926] border border-indigo-500/20 text-[9px] text-slate-300">{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
+            {simulation?.variables?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Variable controllers</div><div className="flex flex-wrap gap-1.5 mt-2">{simulation.variables.map((item: any) => <span key={item.variableKey} className={`px-2 py-1 rounded-lg border border-indigo-500/20 text-[9px] ${dark ? 'bg-[#181926] text-slate-300' : 'bg-indigo-50 text-slate-700'}`}>{item.label} · {item.unit || item.valueType || ''}</span>)}</div></div>}
             {simulation?.consequences?.length > 0 && <div className="mt-3 pt-3 border-t border-indigo-500/20"><div className="font-mono text-[9px] text-indigo-300 uppercase">Consequences</div>{simulation.consequences.map((item: any) => <div key={item.id || item.ordering} className="text-[9px] text-slate-400 mt-1">• {item.label}</div>)}</div>}
           </div>
         </aside>
@@ -746,25 +747,31 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
   );
 };
 
-const Header = ({ mission, progress, label, onExit, stages, onStageSelect }: any) => (
-  <div className="relative overflow-hidden rounded-2xl p-5 border border-violet-500/40 bg-[#12131b] shadow-2xl">
+const Header = ({ theme, mission, progress, label, onExit, stages, onStageSelect }: any) => {
+  const dark = theme === 'dark';
+  return (
+  <div className={`relative overflow-hidden rounded-2xl p-5 border shadow-2xl ${dark ? 'border-violet-500/40 bg-[#12131b]' : 'border-violet-200 bg-white'}`}>
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="flex flex-wrap gap-2 mb-2">
           <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/40 text-violet-400 font-mono text-[10px] uppercase">Discipline: {mission.subject?.displayName || ''}</span>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 font-mono text-[10px] uppercase">Difficulty: {mission.currentPublishedVersion?.contentMetadata?.difficulty || mission.difficulty || 'Easy'}</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white">{mission.title}</h1>
+        <h1 className={`text-2xl md:text-3xl font-bold ${dark ? 'text-white' : 'text-slate-900'}`}>{mission.title}</h1>
       </div>
-      <div className="flex items-center gap-4 px-5 py-3 rounded-2xl border bg-[#181926]/90 border-cyan-500/30">
+      <div className={`flex items-center gap-4 px-5 py-3 rounded-2xl border ${dark ? 'bg-[#181926]/90 border-cyan-500/30' : 'bg-violet-50 border-cyan-200'}`}>
         <div><span className="font-mono text-[10px] text-slate-400 uppercase">Path Progress</span><div className="flex items-baseline gap-1.5"><span className="text-xl text-violet-400 font-bold">{progress}%</span><span className="text-xs text-slate-400 font-mono">{label}</span></div><div className="w-40 h-2 rounded-full bg-slate-700/30 overflow-hidden mt-1"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{ width: `${progress}%` }} /></div></div>
 
       </div>
     </div>
     {stages?.length > 0 && <MissionStageNavigator stages={stages} onSelect={onStageSelect} />}
+    <button type="button" onClick={onExit} aria-label="Exit Mission" className={`absolute right-5 bottom-5 inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${dark ? 'border-slate-600 bg-[#181926] text-slate-200 hover:bg-[#202131]' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>
+      <span className="material-symbols-outlined text-[16px]">logout</span>Exit Mission
+    </button>
   </div>
 );
+}
 
-const Meta = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-xl p-3 border border-violet-500/15 bg-[#181926]"><span className="font-mono text-[9px] text-slate-400 uppercase">{label}</span><span className="block text-sm font-semibold text-white mt-1">{value}</span></div>
+const Meta = ({ label, value, dark }: { label: string; value: string; dark: boolean }) => (
+  <div className={`rounded-xl p-3 border border-violet-500/15 ${dark ? 'bg-[#181926]' : 'bg-violet-50'}`}><span className="font-mono text-[9px] text-slate-400 uppercase">{label}</span><span className={`block text-sm font-semibold mt-1 ${dark ? 'text-white' : 'text-slate-900'}`}>{value}</span></div>
 );

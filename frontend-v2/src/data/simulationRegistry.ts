@@ -10,7 +10,17 @@ const LEGACY_SIMULATION_ASSETS: Record<string, string> = {
 type SimulationAssetLike = { storageKey?: string | null; status?: string | null; assetType?: string | null };
 
 export function resolveSimulationSource(fileName?: string, assets: SimulationAssetLike[] = []): string | null {
-  const readyAsset = assets.find((asset) => asset.status !== 'UNAVAILABLE' && asset.storageKey);
+  const requestedName = String(fileName || '').trim().split('/').pop() || '';
+  const readyAsset = assets.find((asset) =>
+    asset.status !== 'UNAVAILABLE' &&
+    asset.storageKey &&
+    (asset.assetType === 'INTERACTIVE_SIMULATION' || assets.filter((item) => item.storageKey).length === 1) &&
+    (!requestedName || String(asset.storageKey).split('/').pop() === requestedName)
+  ) || assets.find((asset) =>
+    asset.status !== 'UNAVAILABLE' &&
+    asset.storageKey &&
+    asset.assetType === 'INTERACTIVE_SIMULATION'
+  );
   const candidate = String(readyAsset?.storageKey || fileName || '').trim().replace(/^\/+/, '');
   if (!candidate) return null;
 
