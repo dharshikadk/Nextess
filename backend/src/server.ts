@@ -272,8 +272,17 @@ app.get('/v1/investigations/:id',optionalAuth,async(req:R,res)=>{
  if(!identity)return fail(res,'AUTH_REQUIRED','Authentication or a guest mission session is required.',401);
  const inv:any=await prisma.investigation.findFirst({where:{id:String(req.params.id),...(identity.userId?{userId:identity.userId}:{anonymousSessionId:identity.anonymousSessionId})},include:{project:true,projectVersion:{include:{levels:{orderBy:{levelNumber:'asc'},include:{questions:{orderBy:{ordering:'asc'},select:{id:true,questionNumber:true,questionType:true,prompt:true,inputSchema:true,options:{orderBy:{optionKey:'asc'}},hints:{orderBy:{level:'asc'}}}},simulation:{include:{assets:true,variables:{orderBy:{variableKey:'asc'},},consequences:{orderBy:{ordering:'asc'}}}}}},caseFiles:{orderBy:{ordering:'asc'}}}},answers:{orderBy:{submittedAt:'asc'},select:{id:true,questionId:true,attemptNumber:true,result:true,feedbackData:true,submittedAt:true}}}});
  if(!inv)return fail(res,'NOT_FOUND','Investigation not found.',404);
+ const revealedIds=Object.keys((inv.state&&typeof inv.state==='object'&&inv.state.reveals&&typeof inv.state.reveals==='object')?inv.state.reveals:{});
+ const revealedAnswers:any={};
+ if(revealedIds.length){
+  const rows=await prisma.question.findMany({
+   where:{id:{in:revealedIds},level:{projectVersionId:inv.projectVersionId}},
+   select:{id:evaluationDefinition:true,explanation:true}
+  });
+  for(const row of rows) revealedAnswers[row.id]={answer:(row as any).evaluationDefinition?.answer,explanation:row.explanation||''};
+ }
  const user=identity.userId?await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
- res.json({investigation:inv,balances:user,anonymous:identity.anonymous});
+ res.json({investigation:inv,balances:user,anonymous:identity.anonymous,revealedAnswers});
 });
 app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
  const identity=await learner(req,res,false);
