@@ -12,7 +12,7 @@ async function main() {
   const badges = [
     ["streak-7","7 Day Streak","Maintain a qualifying learning streak for 7 days.","STREAK"],
     ["streak-14","14 Day Streak","Maintain a qualifying learning streak for 14 days.","STREAK"],
-    ["perfect-mission","Perfect Mission","Complete a mission without an incorrect answer.","PERFECT"],
+    ["perfect-mission","Perfect Level","Complete a mission level without an incorrect answer.","PERFECT"],
     ["mission-complete","Mission Complete","Complete a Nextess mission.","MISSION"]
   ] as const;
   for (const [key,name,description,kind] of badges) {
