@@ -88,5 +88,5 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
         <button type="submit" disabled={loading} aria-label={tab==='signup'?'Create account':'Log in'} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs disabled:opacity-50">{loading?'Working…':tab==='signin'?'Log In':'Create account'}</button>
       </form>
     </div>
-  </div>;
+  </WindowPanel>;
 };
