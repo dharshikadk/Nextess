@@ -436,17 +436,7 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
  const state:any=inv.state&&typeof inv.state==='object'?inv.state:{};
  const submitted=Boolean(await prisma.investigationAnswer.findFirst({where:{investigationId:inv.id,questionId:q.id},select:{id:true}}));
 
- if(!identity.userId && state.reveals?.[q.id]){
-  return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:{xp:0,coins:0},anonymous:true,levelCompleted:false,missionCompleted:false});
- }
- if(identity.userId){
-  const already=await prisma.rewardLedger.findFirst({where:{idempotencyKey:base+':xp'}});
-  if(already){
-   const latestState:any=inv.state&&typeof inv.state==='object'?inv.state:{};
-   const balances=await prisma.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
-   return res.json({answer:def.answer,explanation:q.explanation,cost:{xp:0,coins:0},alreadyCharged:true,balances:balances??{xp:0,coins:0},anonymous:false,levelCompleted:Boolean(latestState.reveals?.[q.id]),missionCompleted:inv.status==='COMPLETED'});
-  }
- }
+ const chargedBefore=identity.userId?Boolean(await prisma.rewardLedger.findFirst({where:{idempotencyKey:base+':xp'},select:{id:true}})):false;
 
  try{
   const outcome=await serializableTransaction(async tx=>{
@@ -521,8 +511,8 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
   });
 
   return res.json({
-   answer:def.answer,explanation:q.explanation,cost:identity.userId?{xp:5,coins:2}:{xp:0,coins:0},
-   alreadyCharged:submitted,balances:outcome.balances,anonymous:identity.anonymous,
+   answer:def.answer,explanation:q.explanation,cost:identity.userId&&!submitted&&!chargedBefore?{xp:5,coins:2}:{xp:0,coins:0},
+   alreadyCharged:submitted||chargedBefore,balances:outcome.balances,anonymous:identity.anonymous,
    levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,
    progressPercent:outcome.progressPercent
   });
