@@ -20,12 +20,44 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
   const [futureSubjects, setFutureSubjects] = useState<any[]>([]);
   useEffect(() => {
     let cancelled = false;
-    api.subjects().then(async ({subjects}:any) => {
-      const active = (subjects || []).filter((s:any) => s.status === 'ACTIVE');
-      if (!cancelled) setFutureSubjects((subjects || []).filter((s:any) => s.status === 'FUTURE'));
-      const pairs = await Promise.all(active.map(async (subject:any) => [subject.key.toLowerCase(), (await api.projects(subject.id)).projects || []]));
-      if (!cancelled) setCatalogue(Object.fromEntries(pairs));
-    }).catch(() => { if (!cancelled) onShowToast('Subject catalogue could not be loaded from the server.'); });
+
+    const loadCatalogue = async () => {
+      try {
+        const result:any = await api.subjects();
+        const subjects = Array.isArray(result?.subjects) ? result.subjects : [];
+        const active = subjects.filter((subject:any) => String(subject?.status || '').toUpperCase() === 'ACTIVE');
+        const future = subjects.filter((subject:any) => String(subject?.status || '').toUpperCase() === 'FUTURE');
+
+        if (!cancelled) setFutureSubjects(future);
+
+        // Do not let one subject/API failure erase every other subject's missions.
+        const entries = await Promise.all(
+          active.map(async (subject:any) => {
+            const key = String(subject?.key || '').toLowerCase();
+            if (!subject?.id || !key) return [key, []] as const;
+            try {
+              const projectResult:any = await api.projects(String(subject.id));
+              const projects = Array.isArray(projectResult?.projects) ? projectResult.projects : [];
+              return [key, projects] as const;
+            } catch {
+              if (!cancelled) {
+                onShowToast(`${subject.displayName || subject.key} missions could not be loaded.`);
+              }
+              return [key, []] as const;
+            }
+          }),
+        );
+
+        if (!cancelled) setCatalogue(Object.fromEntries(entries));
+      } catch {
+        if (!cancelled) {
+          setCatalogue({});
+          onShowToast('Subject catalogue could not be loaded from the server.');
+        }
+      }
+    };
+
+    void loadCatalogue();
     return () => { cancelled = true; };
   }, [onShowToast]);
   const physicsMissions = catalogue.physics || [];
