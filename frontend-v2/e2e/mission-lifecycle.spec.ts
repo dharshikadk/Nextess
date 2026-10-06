@@ -31,6 +31,11 @@ async function reachMissionTask(
 ) {
   if (options.prepareAccess) await prepareMissionAccess(page, missionTitle);
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
+  if (await contextualNotification.isVisible().catch(() => false)) {
+    await contextualNotification.click();
+    await expect(contextualNotification).toBeHidden({ timeout: 5000 });
+  }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
 
   const trackPattern = /The Bus Fare Decision|The Canteen Price Problem/.test(missionTitle)
