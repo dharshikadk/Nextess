@@ -182,8 +182,8 @@ export default function App() {
 
   return (
     <>
-      <NextessLoadingScreen mode="loading" visible={!appReady} message="Getting Nextess ready..." />
-      <NextessLoadingScreen mode="start" visible={showStartAnimation} onVideoComplete={handleStartAnimationComplete} />
+      <NextessLoadingScreen mode="loading" visible={!appReady} theme={theme} message="Getting Nextess ready..." />
+      <NextessLoadingScreen mode="start" visible={showStartAnimation} theme={theme} onVideoComplete={handleStartAnimationComplete} />
     <div
       className={`min-h-screen transition-colors duration-300 ${
         isDark ? 'bg-[#0d0e14] text-slate-200' : 'bg-[#f8f9fe] text-slate-800'

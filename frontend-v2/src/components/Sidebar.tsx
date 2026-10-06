@@ -17,6 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isGuest,
 }) => {
   const isDark = theme === 'dark';
+  const logoSrc = isDark ? '/LogoAssets/Nextess_d_logo.jpg' : '/LogoAssets/Nextess_l_logo.jpg';
 
   const isMissionsActive =
     activePage === 'missions' ||
@@ -42,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <img
             alt="Nextess Logo"
             className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
-            src="/branding/NextessLogopic.png"
+            src={logoSrc}
           />
           <div className="flex flex-col">
             <span
