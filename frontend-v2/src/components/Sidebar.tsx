@@ -17,6 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isGuest,
 }) => {
   const isDark = theme === 'dark';
+  const logoSrc = isDark ? '/LogoAssets/Nextess_d_logo.jpg' : '/LogoAssets/Nextess_l_logo.jpg';
 
   const isMissionsActive =
     activePage === 'missions' ||
@@ -42,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <img
             alt="Nextess Logo"
             className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
-            src="/branding/NextessLogopic.png"
+            src={logoSrc}
           />
           <div className="flex flex-col">
             <span
@@ -67,149 +68,80 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <nav className="flex flex-col gap-1.5 px-1">
-          {/* Dashboard */}
-          <button
-            onClick={() => onNavigate('dashboard')}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
-              activePage === 'dashboard'
-                ? isDark
-                  ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
-                  : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
-                : isDark
-                ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
-                : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
+          <button onClick={() => onNavigate('dashboard')} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
+            activePage === 'dashboard'
+              ? isDark
+                ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
+                : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
+              : isDark
+              ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
+              : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
+          }`}>
             <span className="material-symbols-outlined text-[22px] text-violet-400">terminal</span>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold leading-tight">Dashboard</span>
-              <span className={`font-mono text-[11px] ${isMissionsActive ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>
-                Explore & Discover
-              </span>
-            </div>
+            <div className="flex flex-col text-left"><span className="text-sm font-semibold leading-tight">Dashboard</span><span className={`font-mono text-[11px] ${isMissionsActive ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>Explore & Discover</span></div>
           </button>
 
-          {/* Missions (Learning Path & Discovery) */}
-          <button
-            onClick={() => onNavigate('disciplines')}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
-              isMissionsActive
-                ? isDark
-                  ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
-                  : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
-                : isDark
-                ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
-                : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
+          <button onClick={() => onNavigate('disciplines')} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
+            isMissionsActive
+              ? isDark
+                ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
+                : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
+              : isDark
+              ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
+              : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
+          }`}>
             <span className="material-symbols-outlined text-[22px] text-violet-400">timeline</span>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold leading-tight">Missions</span>
-              <span className={`font-mono text-[11px] ${isMissionsActive ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>
-                Learning Paths & Discovery
-              </span>
-            </div>
+            <div className="flex flex-col text-left"><span className="text-sm font-semibold leading-tight">Missions</span><span className={`font-mono text-[11px] ${isMissionsActive ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>Learning Paths & Discovery</span></div>
           </button>
 
-          {/* Streaks & Leaderboard */}
-          <button
-            onClick={() => onNavigate('leaderboard')}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
-              activePage === 'leaderboard'
-                ? isDark
-                  ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
-                  : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
-                : isDark
-                ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
-                : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
+          <button onClick={() => onNavigate('leaderboard')} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
+            activePage === 'leaderboard'
+              ? isDark
+                ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
+                : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
+              : isDark
+              ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
+              : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
+          }`}>
             <span className="material-symbols-outlined text-[22px] text-amber-400">military_tech</span>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold leading-tight">Streaks &amp; Leaderboard</span>
-              <span className={`font-mono text-[11px] ${activePage === 'leaderboard' ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>
-                3-Day League
-              </span>
-            </div>
+            <div className="flex flex-col text-left"><span className="text-sm font-semibold leading-tight">Streaks &amp; Leaderboard</span><span className={`font-mono text-[11px] ${activePage === 'leaderboard' ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>3-Day League</span></div>
           </button>
 
-          {/* Profile & Badges */}
-          <button
-            onClick={() => onNavigate('profile')}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
-              activePage === 'profile'
-                ? isDark
-                  ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
-                  : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
-                : isDark
-                ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
-                : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
+          <button onClick={() => onNavigate('profile')} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
+            activePage === 'profile'
+              ? isDark
+                ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
+                : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
+              : isDark
+              ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
+              : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
+          }`}>
             <span className="material-symbols-outlined text-[22px] text-violet-400">pets</span>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold leading-tight">Profile &amp; Badges</span>
-              <span className={`font-mono text-[11px] ${isMissionsActive ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>
-                Customise Appearance
-              </span>
-            </div>
+            <div className="flex flex-col text-left"><span className="text-sm font-semibold leading-tight">Profile &amp; Badges</span><span className={`font-mono text-[11px] ${isMissionsActive ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>Customise Appearance</span></div>
           </button>
         </nav>
 
-        {/* Section 2: System & Info */}
         <div className="px-2 pt-2 mt-1">
-          <span
-            className={`font-caption-caps uppercase tracking-wider text-[11px] font-semibold ${
-              isDark ? 'text-slate-400' : 'text-slate-500'
-            }`}
-          >
-            System & Info
-          </span>
+          <span className={`font-caption-caps uppercase tracking-wider text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>System & Info</span>
         </div>
 
         <nav className="flex flex-col gap-1.5 px-1">
-          {/* Settings */}
-          <button
-            onClick={() => onNavigate('settings')}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
-              activePage === 'settings'
-                ? isDark
-                  ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
-                  : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
-                : isDark
-                ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
-                : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
+          <button onClick={() => onNavigate('settings')} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
+            activePage === 'settings'
+              ? isDark ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
+              : isDark ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white' : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
+          }`}>
             <span className="material-symbols-outlined text-[22px]">tune</span>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold leading-tight">Settings</span>
-              <span className={`font-mono text-[11px] ${activePage === 'settings' ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>
-                Theme & Preferences
-              </span>
-            </div>
+            <div className="flex flex-col text-left"><span className="text-sm font-semibold leading-tight">Settings</span><span className={`font-mono text-[11px] ${activePage === 'settings' ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>Theme & Preferences</span></div>
           </button>
 
-          {/* About */}
-          <button
-            onClick={() => onNavigate('about')}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
-              activePage === 'about'
-                ? isDark
-                  ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
-                  : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
-                : isDark
-                ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white'
-                : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
+          <button onClick={() => onNavigate('about')} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left border ${
+            activePage === 'about'
+              ? isDark ? 'bg-violet-600/30 text-white font-bold border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'bg-violet-100 text-violet-950 font-bold border-violet-300 shadow-sm'
+              : isDark ? 'text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white' : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900'
+          }`}>
             <span className="material-symbols-outlined text-[22px]">info</span>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold leading-tight">About</span>
-              <span className={`font-mono text-[11px] ${activePage === 'about' ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>
-                Vision & Roadmap
-              </span>
-            </div>
+            <div className="flex flex-col text-left"><span className="text-sm font-semibold leading-tight">About</span><span className={`font-mono text-[11px] ${activePage === 'about' ? (isDark ? 'text-violet-200' : 'text-violet-700') : 'opacity-75'}`}>Vision & Roadmap</span></div>
           </button>
         </nav>
       </div>
