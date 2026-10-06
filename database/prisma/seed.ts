@@ -5,10 +5,20 @@ import { importMissionPackage } from "../src/mission-importer.js";
 
 const prisma = new PrismaClient();
 const sourcePath = path.resolve(__dirname, "../content/nextess_missions(4).json");
+const class11Sources = [
+  "../content/class11/physics-escape-ramp-brake-failure.json",
+  "../content/class11/physics-crane-cable-overstretch.json",
+  "../content/class11/economics-metro-fare-dilemma.json",
+  "../content/class11/economics-two-inflations-price-index.json"
+].map(file => path.resolve(__dirname, file));
 
 async function main() {
   const pkg = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-  const imported = await importMissionPackage(prisma, pkg, "publish");
+  const imported = [...(await importMissionPackage(prisma, pkg, "publish"))];
+  for (const class11Path of class11Sources) {
+    const class11Pkg = JSON.parse(fs.readFileSync(class11Path, "utf8"));
+    imported.push(...(await importMissionPackage(prisma, class11Pkg, "publish")));
+  }
   const badges = [
     ["streak-7","7 Day Streak","Maintain a qualifying learning streak for 7 days.","STREAK"],
     ["streak-14","14 Day Streak","Maintain a qualifying learning streak for 14 days.","STREAK"],
