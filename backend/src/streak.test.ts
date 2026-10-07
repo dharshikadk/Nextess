@@ -19,7 +19,7 @@ test("streak semantics cover today, yesterday and gaps",()=>{
 
 test("timezone boundary is evaluated by the India-local product day",()=>{
   const now=new Date("2026-10-08T00:15:00+05:30");
-  const sameLocalDay=new Date("2026-10-07T23:55:00+05:30");
+  const sameLocalDay=new Date("2026-10-08T00:05:00+05:30");
   const previousLocalDay=new Date("2026-10-07T00:15:00+05:30");
   assert.equal(calculateStreak([sameLocalDay],now).streakDays,1);
   assert.equal(calculateStreak([sameLocalDay],now).atRisk,false);
