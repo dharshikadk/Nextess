@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ActivePage, ThemeMode, UserStats } from './types';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
@@ -59,19 +59,32 @@ export default function App() {
   const [missedStreakDays,setMissedStreakDays]=useState(0);
   const [firstLoginReward,setFirstLoginReward]=useState({open:false,days:0,xp:0,coins:0});
   const [contextualRefreshTick,setContextualRefreshTick]=useState(0);
+  const [dataLoadError,setDataLoadError]=useState<string|null>(null);
+  const [dataLoadBusy,setDataLoadBusy]=useState(false);
   const guestBalances = () => ({ kp: Number(localStorage.getItem('nextess_guest_kp') || 100), coins: Number(localStorage.getItem('nextess_guest_coins') || 100) });
 
   const refresh=async()=>{
+    setDataLoadBusy(true);
+    setDataLoadError(null);
     let me:any=null;
-    try{me=await api.me()}catch{
-      setStats(prev=>({...prev,id:'',...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
-      setActiveProgress([]);setDirectives([]);setBadges([]);
-      try{setLeaderboard(await api.leaderboard())}catch{setLeaderboard({opened:false,entries:[]})}
+    try{
+      me=await api.me();
+    }catch(error:any){
+      if(error instanceof ApiError && error.status===401){
+        setStats(prev=>({...prev,id:'',...guestBalances(),streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
+        setActiveProgress([]);setDirectives([]);setBadges([]);
+        try{setLeaderboard(await api.leaderboard());}catch{setLeaderboard({opened:false,entries:[]});}
+        setDataLoadBusy(false);
+        return;
+      }
+      setDataLoadError(error?.message||'Nextess could not reach the account service. Check your connection and retry.');
+      setDataLoadBusy(false);
       return;
     }
     if(!me?.user){
       setStats(prev=>({...prev,id:'',kp:100,coins:100,streakDays:0,level:1,name:'Guest Cadet',handle:'',userClass:'',college:'',profession:'',profileType:'STUDENT',profileStatus:'',profileImageData:'',isGuest:true,badgesCount:0}));
       setActiveProgress([]);setDirectives([]);setBadges([]);
+      setDataLoadBusy(false);
       return;
     }
     const u=me.user;
@@ -80,12 +93,21 @@ export default function App() {
       const d=await api.dashboard();
       setStats(prev=>({...prev,kp:d.user?.xp??prev.kp,coins:d.user?.coins??prev.coins,streakDays:d?.streakDays??prev.streakDays,level:d.user?.level??prev.level,name:d?.name??prev.name,handle:d.user?.username?'@'+d.user.username:prev.handle,userClass:d.user?.schoolClass||d.user?.gradeClass||prev.userClass,college:d.user?.fieldOfStudy||prev.college,profession:d.user?.profession||prev.profession,profileType:d.user?.profileType||prev.profileType,profileStatus:d.user?.profileStatus||prev.profileStatus,profileImageData:d.user?.profileImageData||prev.profileImageData,badgesCount:d?.badgesCount??prev.badgesCount,isGuest:false}));
       setActiveProgress(d?.activeProgress||[]);
-      try{const st=await api.streak();if(st?.streakLost){setMissedStreakDays(Number(st.missedDays||0));setStreakLossOpen(true);}}catch{}
-    }catch{}
+      try{
+        const st=await api.streak();
+        if(st?.streakLost||st?.atRisk){setMissedStreakDays(Number(st.missedDays||0));setStreakLossOpen(true);}
+      }catch(error:any){setDataLoadError(error?.message||'Streak data could not be loaded.');}
+    }catch(error:any){
+      setDataLoadError(error?.message||'Dashboard data could not be loaded. Retry to recover the latest progress.');
+    }
     try{
       const [ds,bs,lb]=await Promise.all([api.directives(),api.badges(),api.leaderboard()]);
       setDirectives(ds?.directives||[]);setBadges(bs?.badges||[]);setLeaderboard(lb||{opened:false,entries:[]});
-    }catch{}
+    }catch(error:any){
+      setDataLoadError(error?.message||'Some engagement data could not be loaded. Retry to recover it.');
+    } finally {
+      setDataLoadBusy(false);
+    }
   };
   useEffect(() => { const handler = (event: Event) => { const detail=(event as CustomEvent<any>).detail; const balances=detail?.guestBalances; if (balances && Number.isFinite(balances.kp) && Number.isFinite(balances.coins)) { setStats(prev=>prev.isGuest?{...prev,kp:balances.kp,coins:balances.coins}:prev); setContextualRefreshTick((value)=>value+1); return; } void refresh().finally(() => setContextualRefreshTick((value)=>value+1)); }; window.addEventListener('nextess-mission-updated', handler); return () => window.removeEventListener('nextess-mission-updated', handler); }, []);
   useEffect(() => { localStorage.setItem('nextess_active_page', activePage); }, [activePage]);
@@ -94,8 +116,8 @@ export default function App() {
     let cancelled = false;
     api.quote().then((result) => {
       if (!cancelled) setQuote(result?.quote || null);
-    }).catch(() => {
-      if (!cancelled) setQuote(null);
+    }).catch((error:any) => {
+      if (!cancelled) { setQuote(null); setDataLoadError(error?.message || 'The daily quote could not be loaded.'); }
     });
     return () => { cancelled = true; };
   }, []);
@@ -185,6 +207,17 @@ export default function App() {
     <>
       <NextessLoadingScreen mode="loading" visible={!appReady} theme={theme} message="Getting Nextess ready..." />
       <NextessLoadingScreen mode="start" visible={showStartAnimation} theme={theme} onVideoComplete={handleStartAnimationComplete} />
+      {dataLoadError && (
+        <div role="alert" className="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,760px)] rounded-2xl border border-rose-400/40 bg-rose-950/95 px-4 py-3 text-sm text-rose-100 shadow-2xl">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined shrink-0">error</span>
+            <div className="flex-1"><strong>Some Nextess data could not be loaded.</strong><div className="mt-1 text-xs text-rose-200/90">{dataLoadError}</div></div>
+            <button type="button" onClick={() => void refresh()} disabled={dataLoadBusy} className="rounded-lg bg-rose-500/20 px-3 py-1.5 text-xs font-semibold hover:bg-rose-500/30 disabled:opacity-50">{dataLoadBusy ? 'Retrying…' : 'Retry'}</button>
+            <button type="button" aria-label="Dismiss data loading error" onClick={() => setDataLoadError(null)} className="rounded-lg p-1 hover:bg-white/10"><span className="material-symbols-outlined text-[18px]">close</span></button>
+          </div>
+        </div>
+      )}
+
     <div
       className={`min-h-screen transition-colors duration-300 ${
         isDark ? 'bg-[#0d0e14] text-slate-200' : 'bg-[#f8f9fe] text-slate-800'

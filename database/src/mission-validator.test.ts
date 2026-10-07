@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildDefaultStages, validateMissionPackage } from "./mission-validator.js";
+import { buildDefaultStages, validateMissionPackage, validateMissionPublishReadiness } from "./mission-validator.js";
 
 const base = (levels: any[]) => ({ contentPackageVersion: 1, projects: [{ key:"test", subject:"physics", version:1, title:"Test", mission:"Test mission", levels }] });
 
@@ -26,4 +26,31 @@ test("rejects duplicate and out-of-order structure", () => {
 test("default stages are derived from mission data", () => {
   const stages = buildDefaultStages(base([{number:1,title:"A",questions:[{number:1,type:"numerical",prompt:"x?",answer:1}] }]).projects[0]);
   assert.deepEqual(stages.map(x=>x.type), ["brief","level","completion"]);
+});
+
+test("publish validation requires renderer, evaluator and resource contracts", () => {
+  const valid = base([{
+    number:1,
+    title:"Published",
+    questions:[{number:1,type:"numerical",prompt:"x?",answer:1}]
+  }]);
+  assert.deepEqual(validateMissionPublishReadiness(valid), []);
+
+  const invalid = base([{
+    number:1,
+    title:"Invalid",
+    questions:[{number:1,type:"numerical",prompt:"x?"}]
+  }]);
+  invalid.projects[0].levels[0].questions[0].type = "future-renderer";
+  invalid.projects[0].levels[0].questions[0].answer = 1;
+  const structurallyInvalid = validateMissionPublishReadiness(invalid);
+  assert.ok(structurallyInvalid.some(x=>x.message.includes("Unsupported challenge type")));
+
+  const missingAnswer = base([{
+    number:1,
+    title:"Invalid",
+    questions:[{number:1,type:"numerical",prompt:"x?"}]
+  }]);
+  const issues = validateMissionPublishReadiness(missingAnswer);
+  assert.ok(issues.some(x=>x.message.includes("answer contract")));
 });

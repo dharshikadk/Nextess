@@ -1,18 +1,16 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: nextess-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: nextess
-      POSTGRES_USER: nextess
-      POSTGRES_PASSWORD: nextess_dev_password
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - nextess_postgres_data:/var/lib/postgresql/data
+    networks: [nextess]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nextess -d nextess"]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -22,48 +20,51 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: nextess-backend
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test:
-        ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 90s
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://nextess:nextess_dev_password@postgres:5432/nextess?schema=public
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       PORT: 4000
       HOST: 0.0.0.0
-      FRONTEND_ORIGIN: http://localhost:3000
-      SESSION_DAYS: 30
-      TRUST_PROXY: "false"
-    ports:
-      - "4000:4000"
-    command: >
-      sh -c "npm run prisma:generate &&
-             npm run prisma:migrate &&
-             npm --prefix ../database run seed &&
-             npm run dev"
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
+      SESSION_DAYS: ${SESSION_DAYS:-30}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+    networks: [nextess]
+    expose:
+      - "4000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   frontend:
     build:
       context: .
       dockerfile: frontend-v2/Dockerfile
-    container_name: nextess-frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL is required at build time}
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
-    environment:
-      VITE_API_BASE_URL: http://localhost:4000
     ports:
-      - "3000:3000"
-    command: npm run dev -- --host 0.0.0.0 --port 3000
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks: [nextess]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+networks:
+  nextess:
+    driver: bridge
+    internal: false
 
 volumes:
   nextess_postgres_data:

@@ -1,0 +1,31 @@
+name: Nextess Production Migration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install database tooling
+        working-directory: database
+        run: npm install
+      - name: Validate Prisma schema
+        working-directory: database
+        run: npm run validate
+      - name: Apply reviewed migrations
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run migrate:deploy
+      - name: Verify database readiness
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate status

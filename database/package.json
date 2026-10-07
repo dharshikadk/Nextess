@@ -14,9 +14,11 @@
     "mission:import": "tsx src/mission-cli.ts import",
     "mission:publish": "tsx src/mission-cli.ts publish",
     "test": "tsx src/*.test.ts",
-    "migrate:docker": "docker compose run --rm backend npm run prisma:migrate",
-    "setup:docker": "docker compose up -d postgres && docker compose run --rm backend npm run prisma:migrate",
-    "seed:docker": "docker compose run --rm backend npm --prefix ../database run seed"
+    "migrate:docker": "docker compose -f ../docker-compose.dev.yml run --rm backend npm run prisma:migrate",
+    "setup:docker": "docker compose -f ../docker-compose.dev.yml up -d postgres && docker compose -f ../docker-compose.dev.yml run --rm backend npm run prisma:migrate",
+    "seed:docker": "docker compose -f ../docker-compose.dev.yml run --rm backend npm --prefix ../database run seed",
+    "reconcile:rewards": "tsx src/maintenance.ts reconcile-rewards",
+    "cleanup:anonymous": "tsx src/maintenance.ts cleanup-anonymous"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0"
