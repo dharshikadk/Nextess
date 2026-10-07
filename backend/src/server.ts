@@ -308,7 +308,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
    const created=await tx.investigationAnswer.create({data:{investigationId:current.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer,normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
    let penalty={xp:0,coins:0};
    if(evaluation.correct&&identity.userId){
-    await rewardChallenge(tx,identity.userId!,current.id,q.id);
+    challengeReward=await rewardChallenge(tx,identity.userId!,current.id,q.id);
    }
    if(!evaluation.correct&&identity.userId){
     const u=await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}});
@@ -333,7 +333,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
      if(levelCompleted){
       const finalLevel=current.projectVersion.levels[current.projectVersion.levels.length-1]?.id===level.id;
       if(identity.userId){
-       const challengeRows=await tx.rewardLedger.findMany({where:{userId:identity.userId!,investigationId:current.id,sourceId:{in:ids},reasonCode:'MISSION_CHALLENGE_CORRECT',amount:{gt:0}},select:{rewardType:true,amount:true}});challengeReward={xp:challengeRows.filter((x:any)=>x.rewardType===RewardType.XP).reduce((a:number,x:any)=>a+Number(x.amount),0),coins:challengeRows.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((a:number,x:any)=>a+Number(x.amount),0)};const levelReward=await rewardMissionLevel(tx,identity.userId!,current.id,level.id,level.rewardXp,level.rewardCoins,finalLevel);levelCompletionReward=levelReward;if(finalLevel)finalMissionReward=levelReward;reward={xp:challengeReward.xp+levelCompletionReward.xp,coins:challengeReward.coins+levelCompletionReward.coins};if(levelPerfect)await awardBadge(tx,identity.userId!,'perfect-mission',{levelId:level.id,investigationId:current.id});
+       const levelReward=await rewardMissionLevel(tx,identity.userId!,current.id,level.id,level.rewardXp,level.rewardCoins,finalLevel);levelCompletionReward=levelReward;if(finalLevel)finalMissionReward=levelReward;reward={xp:challengeReward.xp+levelCompletionReward.xp,coins:challengeReward.coins+levelCompletionReward.coins};if(levelPerfect)await awardBadge(tx,identity.userId!,'perfect-mission',{levelId:level.id,investigationId:current.id});
        await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
       }
       if(finalLevel){
