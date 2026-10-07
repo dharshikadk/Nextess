@@ -24,12 +24,17 @@ export const NextessLoadingScreen: React.FC<NextessLoadingScreenProps> = ({
   message,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const onVideoCompleteRef = useRef(onVideoComplete);
   const [videoFailed, setVideoFailed] = useState(false);
   const [videoComplete, setVideoComplete] = useState(false);
   const isDark = theme === 'dark';
   const isStart = mode === 'start';
   const loadingVideo = isDark ? NEXTESS_DARK_LOADING_VIDEO : NEXTESS_LIGHT_LOADING_VIDEO;
   const fallbackLogo = isDark ? NEXTESS_DARK_LOGO_IMAGE : NEXTESS_LIGHT_LOGO_IMAGE;
+
+  useEffect(() => {
+    onVideoCompleteRef.current = onVideoComplete;
+  }, [onVideoComplete]);
 
   useEffect(() => {
     setVideoFailed(false);
@@ -43,24 +48,24 @@ export const NextessLoadingScreen: React.FC<NextessLoadingScreenProps> = ({
     video.currentTime = 0;
     video.play().catch(() => {
       setVideoFailed(true);
-      if (isStart) onVideoComplete?.();
+      if (isStart) onVideoCompleteRef.current?.();
     });
-  }, [visible, mode, theme, isStart, onVideoComplete]);
+  }, [visible, mode, theme, isStart]);
 
   const handleVideoEnded = () => {
     if (isStart) {
-      onVideoComplete?.();
+      onVideoCompleteRef.current?.();
       return;
     }
 
     // The loading animation is intentionally one-shot. Once the video finishes,
-    // keep the already-loaded logo visible and let CSS provide the continuous flicker.
+    // keep the logo visible and let CSS provide the continuous flicker.
     setVideoComplete(true);
   };
 
   const handleVideoError = () => {
     setVideoFailed(true);
-    if (isStart) onVideoComplete?.();
+    if (isStart) onVideoCompleteRef.current?.();
   };
 
   if (!visible) return null;
