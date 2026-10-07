@@ -1,5 +1,8 @@
 const DEFAULT_API_BASE=typeof window!=='undefined'&&window.location.hostname==='localhost'?'http://localhost:4000':'http://127.0.0.1:4000';
-export const API_BASE=(import.meta.env.VITE_API_BASE_URL||DEFAULT_API_BASE).replace(/\/$/,'');
+const configuredApiBase=String(import.meta.env.VITE_API_BASE_URL||'').trim().replace(/\/$/,'');
+const LOCAL_API_BASES=new Set(['http://localhost:4000','http://127.0.0.1:4000']);
+const configuredHostMismatch=typeof window!=='undefined'&&LOCAL_API_BASES.has(configuredApiBase)&&((window.location.hostname==='localhost'&&configuredApiBase==='http://127.0.0.1:4000')||(window.location.hostname==='127.0.0.1'&&configuredApiBase==='http://localhost:4000'));
+export const API_BASE=(configuredApiBase&&!configuredHostMismatch?configuredApiBase:DEFAULT_API_BASE).replace(/\/$/,'');
 export type ApiErrorCode =
   | 'VALIDATION_ERROR' | 'AUTH_REQUIRED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT'
   | 'RATE_LIMITED' | 'MISSION_UNAVAILABLE' | 'INVALID_VERSION' | 'INVALID_TASK'
