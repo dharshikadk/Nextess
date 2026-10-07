@@ -36,7 +36,13 @@ async function reachMissionTask(
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
     const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
-    await notificationDialog.getByRole('button', { name: 'Close leaderboard notification', exact: true }).click();
+    if (await notificationDialog.isVisible().catch(() => false)) {
+      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification', exact: true }).click();
+    } else {
+      // The notification trigger can outlive its dialog during startup rerenders.
+      // Escape closes any transient overlay without depending on a stale dialog node.
+      await page.keyboard.press('Escape');
+    }
     await expect(contextualNotification).toBeHidden({ timeout: 5000 });
   }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -588,6 +594,7 @@ test('completed mission enters paid review exactly once and resumes from the fre
   const preview = page.getByRole('dialog', { name: 'The Runaway Truck Escape Ramp', exact: true });
   if (await preview.isVisible().catch(() => false)) {
     await preview.getByRole('button', { name: /Close mission details/i }).click();
+    await expect(preview).toBeHidden({ timeout: 5000 });
   }
   const reviewResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/projects/') &&
