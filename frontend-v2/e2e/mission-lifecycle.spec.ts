@@ -546,11 +546,8 @@ test('completed mission enters paid review exactly once and resumes from the fre
   const fixturePath = path.resolve(process.cwd(), '../database/content/class11/physics-escape-ramp-brake-failure.json');
   const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
   const questions = fixture.projects[0].levels.flatMap((level: any) => level.questions);
-  const start = await page.request.post(apiBase + '/v1/projects/' + fixture.projects[0].id, { data: {} });
   // The content package does not contain database UUIDs; resolve the published
   // mission through the authenticated catalogue instead of embedding IDs.
-  expect(start.status()).not.toBe(201);
-
   const subjects = await page.request.get(apiBase + '/v1/subjects');
   expect(subjects.ok()).toBeTruthy();
   const subject = (await subjects.json()).subjects.find((item: any) => item.key === 'physics');
@@ -612,14 +609,14 @@ test('completed mission enters paid review exactly once and resumes from the fre
   if (await preview.isVisible().catch(() => false)) {
     await preview.getByRole('button', { name: /Close mission details/i }).click();
   }
-  await page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true }).click();
-
-  const reviewResponse = await page.waitForResponse((response) =>
+  const reviewResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/projects/') &&
     response.url().endsWith('/start') &&
     response.request().method() === 'POST',
   );
-  const reviewBody = await reviewResponse.json();
+  await page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true }).click();
+  const reviewResponseResult = await reviewResponse;
+  const reviewBody = await reviewResponseResult.json();
   expect(reviewResponse.ok(), JSON.stringify(reviewBody)).toBeTruthy();
   expect(reviewBody.replayed).toBeTruthy();
   expect(reviewBody.investigationId).not.toBe(investigationId);
