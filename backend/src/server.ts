@@ -322,7 +322,7 @@ let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},challengeR
      penalty={xp:xpPenalty,coins:coinPenalty};
     }
    }
-   let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},challengeReward={xp:0,coins:0},levelCompletionReward={xp:0,coins:0},finalMissionReward={xp:0,coins:0},levelPenalty={xp:0,coins:0},levelPerfect=false;
+   
 
    {
     const level=current.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
