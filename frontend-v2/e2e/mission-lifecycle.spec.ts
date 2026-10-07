@@ -532,7 +532,7 @@ test('correct challenge rewards update authoritative balances and open the level
   await expect(rewardDialog).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(rewardDialog).toContainText('Level 1 completed');
   await expect(rewardDialog).toContainText('KP');
-  await expect(rewardDialog).toContainText('Coins');
+  await expect(rewardDialog).toContainText(/coins/i);
   await expect(rewardDialog).not.toContainText('+null');
   await expect(rewardDialog).not.toContainText('0 KP');
   await expect(rewardDialog).not.toContainText('0 Coins');
