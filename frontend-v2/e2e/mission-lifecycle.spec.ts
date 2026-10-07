@@ -517,8 +517,10 @@ test('correct challenge rewards update authoritative balances and open the level
         ? { xp: configuredLevel.rewardXp, coins: configuredLevel.rewardCoins }
         : { xp: 0, coins: 0 };
     expect(body.reward).toEqual(expectedLevelReward);
-    expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
-    expect(body.balances.coins).toBe(before.coins + (questionIndex + 1));
+    const expectedXp = before.xp + (questionIndex + 1) * 2 + (questionIndex === levelOne.questions.length - 1 ? configuredLevel.rewardXp : 0);
+    const expectedCoins = before.coins + (questionIndex + 1) + (questionIndex === levelOne.questions.length - 1 ? configuredLevel.rewardCoins : 0);
+    expect(body.balances.xp).toBe(expectedXp);
+    expect(body.balances.coins).toBe(expectedCoins);
 
     if (questionIndex < levelOne.questions.length - 1) {
       await page.getByRole('button', { name: /Move to Next/i }).click();
