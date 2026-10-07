@@ -120,12 +120,6 @@ test('guest can open the Nextess shell', async ({ page }) => {
 });
 
 test('mission stage opens its metadata panel on the first click', async ({ page }) => {
-  const me = await page.request.get(apiBase + '/v1/auth/me');
-  expect(me.ok()).toBeTruthy();
-  const user = (await me.json()).user;
-  expect(user?.id).toBeTruthy();
-  await page.addInitScript((sessionKey) => { sessionStorage.setItem(sessionKey, '1'); }, `nextess:contextual-nudge:leaderboard_nudge:${user.id}:shown`);
-
   await page.goto('/');
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -648,6 +642,11 @@ test('completed mission enters paid review exactly once and resumes from the fre
 test('dashboard resume selects the persisted mission and exposes Continue Missions', async ({ page }) => {
   await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
   const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const me = await page.request.get(apiBase + '/v1/auth/me');
+  expect(me.ok()).toBeTruthy();
+  const user = (await me.json()).user;
+  expect(user?.id).toBeTruthy();
+  await page.addInitScript((sessionKey) => { sessionStorage.setItem(sessionKey, '1'); }, `nextess:contextual-nudge:leaderboard_nudge:${user.id}:shown`);
   const subjects = await page.request.get(apiBase + '/v1/subjects');
   expect(subjects.ok()).toBeTruthy();
   const subject = (await subjects.json()).subjects.find((item: any) => String(item.key || '').toLowerCase() === 'physics' || String(item.displayName || '').toLowerCase() === 'physics');
