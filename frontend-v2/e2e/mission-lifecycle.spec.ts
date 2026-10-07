@@ -120,6 +120,12 @@ test('guest can open the Nextess shell', async ({ page }) => {
 });
 
 test('mission stage opens its metadata panel on the first click', async ({ page }) => {
+  const me = await page.request.get(apiBase + '/v1/auth/me');
+  expect(me.ok()).toBeTruthy();
+  const user = (await me.json()).user;
+  expect(user?.id).toBeTruthy();
+  await page.addInitScript((sessionKey) => { sessionStorage.setItem(sessionKey, '1'); }, `nextess:contextual-nudge:leaderboard_nudge:${user.id}:shown`);
+
   await page.goto('/');
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -486,6 +492,11 @@ test('correct challenge rewards update authoritative balances and open the level
   const fixturePath = path.resolve(process.cwd(), '../database/content/class11/physics-escape-ramp-brake-failure.json');
   const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
   const levelOne = fixture.projects[0].levels[0];
+  const investigation = await page.request.get(apiBase + '/v1/investigations/' + await page.evaluate(() => localStorage.getItem('nextess_investigation_id')));
+  expect(investigation.ok()).toBeTruthy();
+  const investigationBody = await investigation.json();
+  const configuredLevel = investigationBody.investigation.projectVersion.levels.find((level: any) => level.levelNumber === levelOne.number);
+  expect(configuredLevel).toBeTruthy();
 
   for (let questionIndex = 0; questionIndex < levelOne.questions.length; questionIndex += 1) {
     const sourceQuestion = levelOne.questions[questionIndex];
@@ -509,7 +520,7 @@ test('correct challenge rewards update authoritative balances and open the level
     expect(body.replayed).toBe(false);
     const expectedLevelReward =
       questionIndex === levelOne.questions.length - 1
-        ? { xp: levelOne.questions.length * 2, coins: levelOne.questions.length }
+        ? { xp: configuredLevel.rewardXp, coins: configuredLevel.rewardCoins }
         : { xp: 0, coins: 0 };
     expect(body.reward).toEqual(expectedLevelReward);
     expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
