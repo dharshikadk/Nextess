@@ -665,7 +665,7 @@ test('dashboard resume selects the persisted mission and exposes Continue Missio
   const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
   const subjects = await page.request.get(apiBase + '/v1/subjects');
   expect(subjects.ok()).toBeTruthy();
-  const subject = (await subjects.json()).subjects.find((item: any) => item.key === 'physics');
+  const subject = (await subjects.json()).subjects.find((item: any) => String(item.key || '').toLowerCase() === 'physics' || String(item.displayName || '').toLowerCase() === 'physics');
   const catalogue = await page.request.get(apiBase + '/v1/subjects/' + subject.id + '/projects');
   const project = (await catalogue.json()).projects.find((item: any) => item.title === 'The Runaway Truck Escape Ramp');
   expect(project).toBeTruthy();
