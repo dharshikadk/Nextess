@@ -40,7 +40,7 @@ async function request<T>(path:string,init:RequestInit={}):Promise<T>{
       lastError=new ApiError(messageWithRetry,error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[],retryAfterMs);
     }catch(error){
       lastError=error;
-      if(error instanceof ApiError && error.status<500)throw error;
+      if(error instanceof ApiError && error.status<500 && error.status!==429)throw error;
       if(attempt===maxAttempts)throw error;
     }
     const waitMs=lastError instanceof ApiError&&lastError.status===429&&lastError.retryAfterMs?lastError.retryAfterMs:attempt*400;
