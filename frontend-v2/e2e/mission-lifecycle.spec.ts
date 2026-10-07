@@ -35,9 +35,8 @@ async function reachMissionTask(
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
-    // The backdrop is the notification's explicit close control. Click a point
-    // on the uncovered backdrop rather than relying on focus/keyboard state.
-    await contextualNotification.click({ position: { x: 8, y: 8 } });
+    const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+    await notificationDialog.getByRole('button', { name: 'Close leaderboard notification', exact: true }).click();
     await expect(contextualNotification).toBeHidden({ timeout: 5000 });
   }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -577,7 +576,8 @@ test('completed mission enters paid review exactly once and resumes from the fre
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const reviewContextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await reviewContextualNotification.isVisible().catch(() => false)) {
-    await reviewContextualNotification.click({ position: { x: 8, y: 8 } });
+    const reviewNotificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+    await reviewNotificationDialog.getByRole('button', { name: 'Close leaderboard notification', exact: true }).click();
     await expect(reviewContextualNotification).toBeHidden({ timeout: 5000 });
   }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
