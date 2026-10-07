@@ -506,7 +506,12 @@ test('correct challenge rewards update authoritative balances and open the level
 
     expect(response.ok(), JSON.stringify(body)).toBeTruthy();
     expect(body.result).toBe('CORRECT');
-    expect(body.reward).toEqual({ xp: (questionIndex + 1) * 2, coins: questionIndex + 1 });
+    expect(body.replayed).toBe(false);
+    const expectedLevelReward =
+      questionIndex === levelOne.questions.length - 1
+        ? { xp: levelOne.questions.length * 2, coins: levelOne.questions.length }
+        : { xp: 0, coins: 0 };
+    expect(body.reward).toEqual(expectedLevelReward);
     expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
     expect(body.balances.coins).toBe(before.coins + (questionIndex + 1));
 
@@ -582,28 +587,21 @@ test('completed mission enters paid review exactly once and resumes from the fre
   expect(beforeReview.xp).toBeGreaterThanOrEqual(100 + answerOffset * 2);
   expect(beforeReview.coins).toBeGreaterThanOrEqual(100 + answerOffset);
 
+  const projectState = await page.request.get(apiBase + '/v1/projects/' + project.id);
+  expect(projectState.ok()).toBeTruthy();
+  const projectStateBody = await projectState.json();
+  expect(projectStateBody.progress?.status).toBe('COMPLETED');
+
+  // Enter MissionDetailView from explicit persisted navigation state. This avoids
+  // depending on a catalogue preview's local React snapshot after the API has
+  // completed the mission.
   await page.goto('/');
-  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
-  const reviewContextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
-  if (await reviewContextualNotification.isVisible().catch(() => false)) {
-    const reviewNotificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
-    await reviewNotificationDialog.getByRole('button', { name: 'Close leaderboard notification', exact: true }).click();
-    await expect(reviewContextualNotification).toBeHidden({ timeout: 5000 });
-  }
-  await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
-  await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
-  const missionNode = page.getByRole('button', { name: 'Select mission The Runaway Truck Escape Ramp', exact: true });
-  await expect(missionNode).toBeVisible({ timeout: UI_TIMEOUT });
-  await missionNode.click();
-  const preview = page.getByRole('dialog', { name: 'The Runaway Truck Escape Ramp', exact: true });
-  if (await preview.isVisible().catch(() => false)) {
-    await preview.getByRole('button', { name: /Close mission details/i }).click();
-    await expect(preview).toBeHidden({ timeout: 5000 });
-  }
-  // MissionDetailView loads authoritative progress when the selected project is fetched.
-  // Reload after closing the catalogue preview so the completed state cannot remain stale
-  // from the map's earlier project list response.
+  await page.evaluate((projectId) => {
+    localStorage.setItem('nextess_selected_mission', projectId);
+    localStorage.setItem('nextess_active_page', 'mission-detail');
+  }, project.id);
   await page.reload();
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   await expect(page.getByText('The Runaway Truck Escape Ramp')).toBeVisible({ timeout: UI_TIMEOUT });
   const reviewButton = page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true });
   await expect(reviewButton).toBeVisible({ timeout: UI_TIMEOUT });
