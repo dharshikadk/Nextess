@@ -10,6 +10,44 @@ export const SUPPORTED_CHALLENGE_TYPES = [
 
 export type ValidationIssue = { path: string; message: string };
 
+export const SUPPORTED_RENDERER_TYPES = [...SUPPORTED_CHALLENGE_TYPES] as const;
+
+export function validateMissionPublishReadiness(pkg: any): ValidationIssue[] {
+  const issues = validateMissionPackage(pkg);
+  if (issues.length) return issues;
+  const publishIssues: ValidationIssue[] = [];
+  for (let i = 0; i < pkg.projects.length; i++) {
+    const mission = pkg.projects[i];
+    const basePath = `projects[${i}]`;
+    if (mission.requiredSimulation) {
+      const simulationPath = `${basePath}.requiredSimulation`;
+      if (typeof mission.requiredSimulation.fileName !== "string" || !mission.requiredSimulation.fileName.trim()) {
+        publishIssues.push({ path: `${simulationPath}.fileName`, message: "Published simulations require a non-empty fileName." });
+      }
+      if (typeof mission.requiredSimulation.description !== "string" || !mission.requiredSimulation.description.trim()) {
+        publishIssues.push({ path: `${simulationPath}.description`, message: "Published simulations require a description." });
+      }
+    }
+    for (let li = 0; li < mission.levels.length; li++) {
+      for (let qi = 0; qi < mission.levels[li].questions.length; qi++) {
+        const q = mission.levels[li].questions[qi];
+        if (!SUPPORTED_RENDERER_TYPES.includes(q.type)) {
+          publishIssues.push({ path: `${basePath}.levels[${li}].questions[${qi}].type`, message: `No registered frontend renderer contract for "${q.type}".` });
+        }
+        if (!hasOwn(q, "answer")) {
+          publishIssues.push({ path: `${basePath}.levels[${li}].questions[${qi}].answer`, message: "Published tasks require a deterministic answer contract." });
+        }
+      }
+    }
+    for (const [ri, resource] of (mission.requiredEvidence?.files ?? []).entries()) {
+      if (!isRecord(resource) || typeof resource.fileName !== "string" || !resource.fileName.trim()) {
+        publishIssues.push({ path: `${basePath}.requiredEvidence.files[${ri}]`, message: "Published evidence resources require a fileName." });
+      }
+    }
+  }
+  return publishIssues;
+}
+
 const hasOwn = (v: unknown, key: string) =>
   !!v && typeof v === "object" && Object.prototype.hasOwnProperty.call(v, key);
 
