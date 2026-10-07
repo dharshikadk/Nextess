@@ -20,6 +20,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   theme,
   stats,
   onNavigate,
+  onResumeMission,
   onOpenAuth,
   onClaimSurge,
   onClaimDirective,
