@@ -8,6 +8,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
   const isDark = theme === 'dark';
   const [board, setBoard] = useState<any>({ opened: false, entries: [] });
   const [freezing, setFreezing] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [missedDays, setMissedDays] = useState(0);
   const [freezeLoaded, setFreezeLoaded] = useState(false);
   useEffect(() => {
@@ -23,6 +24,21 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
     });
     return () => { cancelled=true; };
   }, [stats.isGuest]);
+
+  const joinLeague = async () => {
+    if (stats.isGuest || joining) return;
+    setJoining(true);
+    try {
+      await api.joinLeague();
+      const refreshed = await api.leaderboard();
+      setBoard(refreshed);
+      onShowToast('You joined the active league cycle.');
+    } catch (e:any) {
+      onShowToast(e?.message || 'The league could not be joined.');
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const freeze = async (days:number) => {
     if (stats.isGuest || freezing) return;
@@ -43,7 +59,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ theme, stats, 
     <div className="flex flex-col w-full pb-20">
       <div className="flex flex-wrap items-end justify-between gap-4 py-3">
         <div className="flex flex-col gap-1"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-violet-400 animate-ping" /><span className="font-mono text-xs uppercase tracking-wider text-violet-400 font-bold">Tournament Hub</span></div><h1 className={isDark ? 'font-headline-lg text-2xl md:text-3xl font-bold tracking-tight text-white' : 'font-headline-lg text-2xl md:text-3xl font-bold tracking-tight text-slate-900'}>Streaks &amp; Leaderboard</h1></div>
-        <div className={isDark ? 'px-3 py-2 rounded-xl border bg-[#12131b] border-violet-500/20 text-xs font-mono text-slate-300' : 'px-3 py-2 rounded-xl border bg-white border-slate-200 text-xs font-mono text-slate-600'}>{board.opened ? 'OPEN' : 'CLOSED'}</div>
+        <div className="flex items-center gap-2"><div className={isDark ? 'px-3 py-2 rounded-xl border bg-[#12131b] border-violet-500/20 text-xs font-mono text-slate-300' : 'px-3 py-2 rounded-xl border bg-white border-slate-200 text-xs font-mono text-slate-600'}>{board.opened ? 'OPEN' : board.cycle ? 'OPEN · JOIN TO PARTICIPATE' : 'CLOSED'}</div>{!stats.isGuest && board.cycle && !board.joined && <button type="button" onClick={joinLeague} disabled={joining} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50">{joining ? 'Joining…' : 'Join League'}</button>}</div>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mt-2 items-start">
         <div className="xl:col-span-4 flex flex-col gap-5">
