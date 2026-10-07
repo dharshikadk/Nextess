@@ -633,6 +633,16 @@ test('dashboard resume selects the persisted mission and exposes Continue Missio
 
   await page.goto('/');
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
+  if (await contextualNotification.isVisible().catch(() => false)) {
+    const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+    if (await notificationDialog.isVisible().catch(() => false)) {
+      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification' }).click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+    await expect(contextualNotification).toBeHidden({ timeout: 5000 });
+  }
   const resume = page.getByRole('button', { name: 'Resume Saved Mission', exact: true });
   await expect(resume).toBeVisible({ timeout: UI_TIMEOUT });
   await resume.click();
