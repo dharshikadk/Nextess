@@ -321,7 +321,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
      penalty={xp:xpPenalty,coins:coinPenalty};
     }
    }
-   let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},levelPenalty={xp:0,coins:0},levelPerfect=false;
+   let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},challengeReward={xp:0,coins:0},levelCompletionReward={xp:0,coins:0},finalMissionReward={xp:0,coins:0},levelPenalty={xp:0,coins:0},levelPerfect=false;
    {
     const level=current.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
     if(level){
@@ -333,7 +333,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
      if(levelCompleted){
       const finalLevel=current.projectVersion.levels[current.projectVersion.levels.length-1]?.id===level.id;
       if(identity.userId){
-       const positive=await tx.rewardLedger.findMany({where:{userId:identity.userId!,investigationId:current.id,sourceId:{in:ids},amount:{gt:0}},select:{rewardType:true,amount:true}});reward={xp:positive.filter((x:any)=>x.rewardType===RewardType.XP).reduce((a:number,x:any)=>a+Number(x.amount),0),coins:positive.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((a:number,x:any)=>a+Number(x.amount),0)};if(levelPerfect)await awardBadge(tx,identity.userId!,'perfect-mission',{levelId:level.id,investigationId:current.id});
+       const challengeRows=await tx.rewardLedger.findMany({where:{userId:identity.userId!,investigationId:current.id,sourceId:{in:ids},reasonCode:'MISSION_CHALLENGE_CORRECT',amount:{gt:0}},select:{rewardType:true,amount:true}});challengeReward={xp:challengeRows.filter((x:any)=>x.rewardType===RewardType.XP).reduce((a:number,x:any)=>a+Number(x.amount),0),coins:challengeRows.filter((x:any)=>x.rewardType===RewardType.COINS).reduce((a:number,x:any)=>a+Number(x.amount),0)};const levelReward=await rewardMissionLevel(tx,identity.userId!,current.id,level.id,level.rewardXp,level.rewardCoins,finalLevel);levelCompletionReward=levelReward;if(finalLevel)finalMissionReward=levelReward;reward={xp:challengeReward.xp+levelCompletionReward.xp,coins:challengeReward.coins+levelCompletionReward.coins};if(levelPerfect)await awardBadge(tx,identity.userId!,'perfect-mission',{levelId:level.id,investigationId:current.id});
        await tx.userLevelProgress.upsert({where:{userId_levelId:{userId:identity.userId!,levelId:level.id}},update:{status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null},create:{userId:identity.userId!,levelId:level.id,status:'COMPLETED',completedQuestions:ids.length,totalQuestions:ids.length,completedAt:new Date(),currentQuestionId:null}});
       }
       if(finalLevel){
@@ -368,9 +368,9 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
      });
    }
    const balances=identity.userId?await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}}):{xp:0,coins:0};
-   return {answer:created,levelCompleted,levelPerfect,missionCompleted,reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},progressPercent,balances:balances??{xp:0,coins:0}};
+   return {answer:created,levelCompleted,levelPerfect,missionCompleted,reward,challengeReward,levelCompletionReward,finalMissionReward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},progressPercent,balances:balances??{xp:0,coins:0}};
   });
-  return res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:outcome.answer.id,feedbackData:evaluation.feedback,explanation:q.explanation,replayed:false,levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,reward:outcome.reward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:outcome.reward.xp,coins:outcome.reward.coins},progressPercent:outcome.progressPercent,balances:outcome.balances,anonymous:identity.anonymous});
+  return res.json({result:evaluation.correct?'CORRECT':'INCORRECT',answerId:outcome.answer.id,feedbackData:evaluation.feedback,explanation:q.explanation,replayed:false,levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,reward:outcome.reward,challengeReward:outcome.challengeReward,levelCompletionReward:outcome.levelCompletionReward,finalMissionReward:outcome.finalMissionReward,penalty:{xp:0,coins:0},levelPenalty:{xp:0,coins:0},netChange:{xp:outcome.reward.xp,coins:outcome.reward.coins},progressPercent:outcome.progressPercent,balances:outcome.balances,anonymous:identity.anonymous});
  }catch(e:any){
   if(e?.message==='INVESTIGATION_NOT_FOUND')return fail(res,'NOT_FOUND','Investigation not found.',404);
   if(e?.message==='INVESTIGATION_CLOSED')return fail(res,'INVESTIGATION_CLOSED','This investigation is already completed.',409);
