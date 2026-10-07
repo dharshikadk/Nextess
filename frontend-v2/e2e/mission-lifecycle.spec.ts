@@ -632,7 +632,7 @@ test('completed mission enters paid review exactly once and resumes from the fre
   if (await preview.isVisible().catch(() => false)) {
     await preview.getByRole('button', { name: /Close mission details/i }).click();
   }
-  const reviewResponse: Promise<import('@playwright/test').Response> = page.waitForResponse((response) =>
+  const reviewResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/projects/') &&
     response.url().endsWith('/start') &&
     response.request().method() === 'POST',
