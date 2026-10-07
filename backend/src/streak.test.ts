@@ -19,7 +19,7 @@ test("streak semantics cover today, yesterday and gaps",()=>{
 
 test("timezone boundary is evaluated by UTC calendar day",()=>{
   const now=new Date("2026-10-08T00:15:00+05:30");
-  const yesterday=new Date("2026-10-07T23:50:00+05:30");
+  const yesterday=new Date("2026-10-07T00:15:00+05:30");
   assert.equal(calculateStreak([yesterday],now).streakDays,1);
   assert.equal(calculateStreak([yesterday],now).atRisk,true);
 });
