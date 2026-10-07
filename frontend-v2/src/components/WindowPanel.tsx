@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ThemeMode } from '../types';
 
 interface WindowPanelProps {
@@ -22,6 +22,15 @@ export const WindowPanel: React.FC<WindowPanelProps> = ({
   maxWidth = 'max-w-md',
   zIndex = 'z-[100]',
 }) => {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
   const dark = theme === 'dark';
 
