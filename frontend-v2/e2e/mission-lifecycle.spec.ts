@@ -33,7 +33,15 @@ async function reachMissionTask(
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
-    await contextualNotification.click();
+    // The backdrop fills the viewport and its center is covered by the dialog.
+    // Close through the dialog's actual close control instead of clicking the
+    // covered backdrop, which can leave Playwright waiting for a clickable point.
+    const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+    if (await notificationDialog.isVisible().catch(() => false)) {
+      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification' }).click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
     await expect(contextualNotification).toBeHidden({ timeout: 5000 });
   }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -164,7 +172,10 @@ test('opening an unlocked level starts the investigation and loads its first tas
 
   const levelPreview = page.getByRole('dialog').filter({ hasText: /Level 1/i }).first();
   await expect(levelPreview).toBeVisible({ timeout: UI_TIMEOUT });
-  await levelPreview.getByRole('button', { name: /Open Level 1/i }).click();
+  const openLevelButton = levelPreview.getByRole('button', { name: /Open Level 1/i });
+  await expect(openLevelButton).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(openLevelButton).toBeEnabled({ timeout: UI_TIMEOUT });
+  await openLevelButton.click();
 
   await expect(page.getByTestId('mission-runtime-loading')).toBeHidden({ timeout: UI_TIMEOUT });
   await expect(page.getByTestId('mission-runtime-error')).toBeHidden({ timeout: UI_TIMEOUT });
