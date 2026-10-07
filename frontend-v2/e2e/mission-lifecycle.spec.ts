@@ -635,3 +635,27 @@ test('completed mission enters paid review exactly once and resumes from the fre
   await expect(page.getByTestId('mission-runtime')).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
 });
+
+
+test('dashboard resume selects the persisted mission and exposes Continue Missions', async ({ page }) => {
+  await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const subjects = await page.request.get(apiBase + '/v1/subjects');
+  expect(subjects.ok()).toBeTruthy();
+  const subject = (await subjects.json()).subjects.find((item: any) => item.key === 'physics');
+  const catalogue = await page.request.get(apiBase + '/v1/subjects/' + subject.id + '/projects');
+  const project = (await catalogue.json()).projects.find((item: any) => item.title === 'The Runaway Truck Escape Ramp');
+  expect(project).toBeTruthy();
+
+  const started = await page.request.post(apiBase + '/v1/projects/' + project.id + '/start');
+  expect(started.ok()).toBeTruthy();
+
+  await page.goto('/');
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  const resume = page.getByRole('button', { name: 'Resume Saved Mission', exact: true });
+  await expect(resume).toBeVisible({ timeout: UI_TIMEOUT });
+  await resume.click();
+
+  await expect(page.getByRole('heading', { name: 'The Runaway Truck Escape Ramp', exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByRole('button', { name: 'Continue Missions — Open Mission Stages', exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+});
