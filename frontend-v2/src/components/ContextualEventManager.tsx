@@ -52,7 +52,11 @@ export const ContextualEventManager: React.FC<Props> = ({ theme, userId, canDisp
   }, [current?.dedupeKey]);
 
   useEffect(() => {
-    if (!canDisplay || current || queue.length === 0) return;
+    if (!canDisplay) {
+      if (current) setCurrent(null);
+      return;
+    }
+    if (current || queue.length === 0) return;
     const next = queue[0];
     if (next.type === 'LEADERBOARD_NUDGE' && (!userId || wasShown(next.type, userId))) {
       setQueue((items) => items.slice(1));

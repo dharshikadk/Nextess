@@ -486,6 +486,11 @@ test('correct challenge rewards update authoritative balances and open the level
   const fixturePath = path.resolve(process.cwd(), '../database/content/class11/physics-escape-ramp-brake-failure.json');
   const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
   const levelOne = fixture.projects[0].levels[0];
+  const investigation = await page.request.get(apiBase + '/v1/investigations/' + await page.evaluate(() => localStorage.getItem('nextess_investigation_id')));
+  expect(investigation.ok()).toBeTruthy();
+  const investigationBody = await investigation.json();
+  const configuredLevel = investigationBody.investigation.projectVersion.levels.find((level: any) => level.levelNumber === levelOne.number);
+  expect(configuredLevel).toBeTruthy();
 
   for (let questionIndex = 0; questionIndex < levelOne.questions.length; questionIndex += 1) {
     const sourceQuestion = levelOne.questions[questionIndex];
@@ -509,11 +514,13 @@ test('correct challenge rewards update authoritative balances and open the level
     expect(body.replayed).toBe(false);
     const expectedLevelReward =
       questionIndex === levelOne.questions.length - 1
-        ? { xp: levelOne.questions.length * 2, coins: levelOne.questions.length }
+        ? { xp: configuredLevel.rewardXp, coins: configuredLevel.rewardCoins }
         : { xp: 0, coins: 0 };
     expect(body.reward).toEqual(expectedLevelReward);
-    expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
-    expect(body.balances.coins).toBe(before.coins + (questionIndex + 1));
+    const expectedXp = before.xp + (questionIndex + 1) * 2 + (questionIndex === levelOne.questions.length - 1 ? configuredLevel.rewardXp : 0);
+    const expectedCoins = before.coins + (questionIndex + 1) + (questionIndex === levelOne.questions.length - 1 ? configuredLevel.rewardCoins : 0);
+    expect(body.balances.xp).toBe(expectedXp);
+    expect(body.balances.coins).toBe(expectedCoins);
 
     if (questionIndex < levelOne.questions.length - 1) {
       await page.getByRole('button', { name: /Move to Next/i }).click();
@@ -525,7 +532,7 @@ test('correct challenge rewards update authoritative balances and open the level
   await expect(rewardDialog).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(rewardDialog).toContainText('Level 1 completed');
   await expect(rewardDialog).toContainText('KP');
-  await expect(rewardDialog).toContainText('Coins');
+  await expect(rewardDialog).toContainText(/coins/i);
   await expect(rewardDialog).not.toContainText('+null');
   await expect(rewardDialog).not.toContainText('0 KP');
   await expect(rewardDialog).not.toContainText('0 Coins');
@@ -637,6 +644,11 @@ test('completed mission enters paid review exactly once and resumes from the fre
 test('dashboard resume selects the persisted mission and exposes Continue Missions', async ({ page }) => {
   await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
   const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const me = await page.request.get(apiBase + '/v1/auth/me');
+  expect(me.ok()).toBeTruthy();
+  const user = (await me.json()).user;
+  expect(user?.id).toBeTruthy();
+  await page.addInitScript((sessionKey) => { sessionStorage.setItem(sessionKey, '1'); }, `nextess:contextual-nudge:leaderboard_nudge:${user.id}:shown`);
   const subjects = await page.request.get(apiBase + '/v1/subjects');
   expect(subjects.ok()).toBeTruthy();
   const subject = (await subjects.json()).subjects.find((item: any) => String(item.key || '').toLowerCase() === 'physics' || String(item.displayName || '').toLowerCase() === 'physics');
