@@ -74,7 +74,14 @@ async function importMission(tx: any, mission: any, subjects: Map<string,string>
   });
 
   if (existingVersion) {
-    await tx.projectVersion.update({where:{id:version.id},data:{contentMetadata:metadataFor(mission)}});
+    await tx.projectVersion.update({
+      where:{id:version.id},
+      data:{
+        contentMetadata:metadataFor(mission),
+        status:mode==="publish"?"PUBLISHED":"DRAFT",
+        publishedAt:mode==="publish"?new Date():null
+      }
+    });
   }
 
   if (mode === "publish") {
