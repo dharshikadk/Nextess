@@ -27,3 +27,21 @@ test("default stages are derived from mission data", () => {
   const stages = buildDefaultStages(base([{number:1,title:"A",questions:[{number:1,type:"numerical",prompt:"x?",answer:1}] }]).projects[0]);
   assert.deepEqual(stages.map(x=>x.type), ["brief","level","completion"]);
 });
+
+test("publish validation requires renderer, evaluator and resource contracts", () => {
+  const valid = base([{
+    number:1,
+    title:"Published",
+    questions:[{number:1,type:"numerical",prompt:"x?",answer:1}]
+  }]);
+  assert.deepEqual(validateMissionPublishReadiness(valid), []);
+
+  const invalid = base([{
+    number:1,
+    title:"Invalid",
+    questions:[{number:1,type:"future-renderer",prompt:"x?"}]
+  }]);
+  const issues = validateMissionPublishReadiness(invalid);
+  assert.ok(issues.some(x=>x.message.includes("frontend renderer")));
+  assert.ok(issues.some(x=>x.message.includes("answer contract")));
+});
