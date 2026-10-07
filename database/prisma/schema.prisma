@@ -484,6 +484,8 @@ model Investigation {
 
   @@index([userId, status])
   @@index([anonymousSessionId, status])
+  // Exactly-one-owner invariant is enforced by PostgreSQL CHECK constraint in migration 20261008090000_add_production_integrity_constraints.
+
   @@index([projectId, status])
   @@index([projectVersionId])
 }
