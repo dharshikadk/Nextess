@@ -39,6 +39,7 @@ export const ContextualEventManager: React.FC<Props> = ({ theme, userId, canDisp
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<ContextualEvent>).detail;
       if (!detail?.type || !detail.dedupeKey) return;
+      if (detail.type === 'LEADERBOARD_NUDGE' && userId && wasShown(detail.type, userId)) return;
       setQueue((existing) => {
         if (existing.some((item) => item.dedupeKey === detail.dedupeKey) || current?.dedupeKey === detail.dedupeKey) {
           return existing;

@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -30,21 +32,24 @@ async function reachMissionTask(
   options: { prepareAccess?: boolean } = {},
 ) {
   if (options.prepareAccess) await prepareMissionAccess(page, missionTitle);
+  if (page.url() === 'about:blank') await page.goto('/');
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
-    // The backdrop fills the viewport and its center is covered by the dialog.
-    // Close through the dialog's actual close control instead of clicking the
-    // covered backdrop, which can leave Playwright waiting for a clickable point.
     const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
     if (await notificationDialog.isVisible().catch(() => false)) {
-      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification' }).click();
+      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification', exact: true }).click();
     } else {
+      // The notification trigger can outlive its dialog during startup rerenders.
+      // Escape closes any transient overlay without depending on a stale dialog node.
       await page.keyboard.press('Escape');
     }
     await expect(contextualNotification).toBeHidden({ timeout: 5000 });
   }
-  await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
+  const missions = page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ });
+  await expect(missions).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(missions).toBeEnabled({ timeout: UI_TIMEOUT });
+  await missions.click();
 
   const trackPattern = /The Bus Fare Decision|The Canteen Price Problem/.test(missionTitle)
     ? /Open Economics Missions/i
@@ -62,7 +67,7 @@ async function reachMissionTask(
     await expect(missionPreview).toBeHidden({ timeout: 5000 });
   }
 
-  const open = page.getByRole('button', { name: /Start Solving Mission/i });
+  const open = page.getByRole('button', { name: /Start Solving Mission|Continue Missions/i });
   await expect(open).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(open).toBeEnabled({ timeout: UI_TIMEOUT });
   await open.click();
@@ -145,8 +150,9 @@ test('mission stage opens its metadata panel on the first click', async ({ page 
   await expect(stageDialog).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(stageDialog).toContainText('Role');
   await expect(stageDialog).toContainText('Concept used');
-  await expect(stageDialog).toContainText('KP earned');
-  await expect(stageDialog).toContainText('Coins earned');
+  await expect(stageDialog).not.toContainText('+null');
+  await expect(stageDialog).not.toContainText('KP earned');
+  await expect(stageDialog).not.toContainText('Coins earned');
 });
 
 test('opening an unlocked level starts the investigation and loads its first task', async ({ page }) => {
@@ -464,4 +470,199 @@ test('leaderboard nudge is authoritative-shaped and shown only once per browser 
 
   await page.reload();
   await expect(page.getByRole('dialog', { name: "You're close to the top!", exact: true })).toBeHidden({ timeout: 5000 });
+});
+
+
+test('correct challenge rewards update authoritative balances and open the level reward window', async ({ page }) => {
+  await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+
+  const meBefore = await page.request.get(apiBase + '/v1/auth/me');
+  expect(meBefore.ok()).toBeTruthy();
+  const before = (await meBefore.json()).user;
+
+  await reachMissionTask(page, 'The Runaway Truck Escape Ramp', { prepareAccess: false });
+
+  const fixturePath = path.resolve(process.cwd(), '../database/content/class11/physics-escape-ramp-brake-failure.json');
+  const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  const levelOne = fixture.projects[0].levels[0];
+
+  for (let questionIndex = 0; questionIndex < levelOne.questions.length; questionIndex += 1) {
+    const sourceQuestion = levelOne.questions[questionIndex];
+    if (sourceQuestion.options) {
+      await page.getByRole('button', { name: sourceQuestion.answer, exact: true }).click();
+    } else {
+      await page.getByLabel(/Numeric answer/i).first().fill(String(sourceQuestion.answer));
+    }
+
+    const responsePromise = page.waitForResponse((response) =>
+      response.url().includes('/v1/investigations/') &&
+      response.url().endsWith('/answers') &&
+      response.request().method() === 'POST',
+    );
+    await page.getByTestId('mission-submit').click();
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(response.ok(), JSON.stringify(body)).toBeTruthy();
+    expect(body.result).toBe('CORRECT');
+    expect(body.replayed).toBe(false);
+    const expectedLevelReward =
+      questionIndex === levelOne.questions.length - 1
+        ? { xp: levelOne.questions.length * 2, coins: levelOne.questions.length }
+        : { xp: 0, coins: 0 };
+    expect(body.reward).toEqual(expectedLevelReward);
+    expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
+    expect(body.balances.coins).toBe(before.coins + (questionIndex + 1));
+
+    if (questionIndex < levelOne.questions.length - 1) {
+      await page.getByRole('button', { name: /Move to Next/i }).click();
+      await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
+    }
+  }
+
+  const rewardDialog = page.getByRole('dialog', { name: /Level reward|Perfect level achievement/i });
+  await expect(rewardDialog).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(rewardDialog).toContainText('Level 1 completed');
+  await expect(rewardDialog).toContainText('KP');
+  await expect(rewardDialog).toContainText('Coins');
+  await expect(rewardDialog).not.toContainText('+null');
+  await expect(rewardDialog).not.toContainText('0 KP');
+  await expect(rewardDialog).not.toContainText('0 Coins');
+});
+
+test('completed mission enters paid review exactly once and resumes from the fresh investigation', async ({ page }) => {
+  await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const fixturePath = path.resolve(process.cwd(), '../database/content/class11/physics-escape-ramp-brake-failure.json');
+  const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  const questions = fixture.projects[0].levels.flatMap((level: any) => level.questions);
+  // The content package does not contain database UUIDs; resolve the published
+  // mission through the authenticated catalogue instead of embedding IDs.
+  const subjects = await page.request.get(apiBase + '/v1/subjects');
+  expect(subjects.ok()).toBeTruthy();
+  const subject = (await subjects.json()).subjects.find((item: any) => String(item.key || '').toLowerCase() === 'physics' || String(item.displayName || '').toLowerCase() === 'physics');
+  const catalogue = await page.request.get(apiBase + '/v1/subjects/' + subject.id + '/projects');
+  const project = (await catalogue.json()).projects.find((item: any) => item.title === fixture.projects[0].title);
+  expect(project).toBeTruthy();
+
+  const initial = await page.request.post(apiBase + '/v1/projects/' + project.id + '/start');
+  expect(initial.ok()).toBeTruthy();
+  let investigationId = (await initial.json()).investigationId;
+  const investigationResponse = await page.request.get(apiBase + '/v1/investigations/' + investigationId);
+  const investigation = (await investigationResponse.json()).investigation;
+  const dbQuestions = investigation.projectVersion.levels.flatMap((level: any) => level.questions);
+  expect(dbQuestions.length).toBe(questions.length);
+
+  let answerOffset = 0;
+  for (let levelIndex = 0; levelIndex < investigation.projectVersion.levels.length; levelIndex += 1) {
+    const dbLevel = investigation.projectVersion.levels[levelIndex];
+    const sourceLevel = fixture.projects[0].levels[levelIndex];
+    for (let questionIndex = 0; questionIndex < dbLevel.questions.length; questionIndex += 1) {
+      const dbQuestion = dbLevel.questions[questionIndex];
+      const sourceQuestion = sourceLevel.questions[questionIndex];
+      const key = 'review-lifecycle-' + levelIndex + '-' + questionIndex;
+      const answer = { value: sourceQuestion.answer };
+      const response = await page.request.post(apiBase + '/v1/investigations/' + investigationId + '/answers', {
+        headers: { 'Idempotency-Key': key },
+        data: { questionId: dbQuestion.id, answer },
+      });
+      const body = await response.json();
+      expect(response.ok(), JSON.stringify(body)).toBeTruthy();
+      expect(body.result).toBe('CORRECT');
+      answerOffset += 1;
+    }
+    if (levelIndex < investigation.projectVersion.levels.length - 1) {
+      const advance = await page.request.post(apiBase + '/v1/investigations/' + investigationId + '/advance-level');
+      expect(advance.ok(), await advance.text()).toBeTruthy();
+    }
+  }
+
+  const completed = await page.request.get(apiBase + '/v1/investigations/' + investigationId);
+  expect(completed.ok()).toBeTruthy();
+  expect((await completed.json()).investigation.status).toBe('COMPLETED');
+
+  const meBeforeReview = await page.request.get(apiBase + '/v1/auth/me');
+  const beforeReview = (await meBeforeReview.json()).user;
+  expect(beforeReview.xp).toBeGreaterThanOrEqual(100 + answerOffset * 2);
+  expect(beforeReview.coins).toBeGreaterThanOrEqual(100 + answerOffset);
+
+  const projectState = await page.request.get(apiBase + '/v1/projects/' + project.id);
+  expect(projectState.ok()).toBeTruthy();
+  const projectStateBody = await projectState.json();
+  expect(projectStateBody.progress?.status).toBe('COMPLETED');
+
+  // Enter MissionDetailView from explicit persisted navigation state. This avoids
+  // depending on a catalogue preview's local React snapshot after the API has
+  // completed the mission.
+  await page.goto('/');
+  await page.evaluate((projectId) => {
+    localStorage.setItem('nextess_selected_mission', projectId);
+    localStorage.setItem('nextess_active_page', 'mission-detail');
+  }, project.id);
+  await page.reload();
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByText('The Runaway Truck Escape Ramp')).toBeVisible({ timeout: UI_TIMEOUT });
+  const reviewButton = page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true });
+  await expect(reviewButton).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(reviewButton).toBeEnabled({ timeout: UI_TIMEOUT });
+  const reviewResponse = page.waitForResponse((response) =>
+    response.url().includes('/v1/projects/') &&
+    response.url().endsWith('/start') &&
+    response.request().method() === 'POST',
+  );
+  await reviewButton.click();
+  const reviewResponseResult = await reviewResponse;
+  const reviewBody = await reviewResponseResult.json();
+  expect(reviewResponseResult.ok(), JSON.stringify(reviewBody)).toBeTruthy();
+  expect(reviewBody.replayed).toBeTruthy();
+  expect(reviewBody.investigationId).not.toBe(investigationId);
+
+  const meAfterReview = await page.request.get(apiBase + '/v1/auth/me');
+  const afterReview = (await meAfterReview.json()).user;
+  expect(afterReview.xp).toBe(beforeReview.xp - 10);
+  expect(afterReview.coins).toBe(beforeReview.coins - 10);
+
+  const replay = await page.request.post(apiBase + '/v1/projects/' + project.id + '/start');
+  const replayBody = await replay.json();
+  expect(replay.ok()).toBeTruthy();
+  expect(replayBody.resumed).toBeTruthy();
+  expect(replayBody.investigationId).toBe(reviewBody.investigationId);
+
+  await expect(page.getByTestId('mission-runtime')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
+});
+
+
+test('dashboard resume selects the persisted mission and exposes Continue Missions', async ({ page }) => {
+  await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
+  const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
+  const subjects = await page.request.get(apiBase + '/v1/subjects');
+  expect(subjects.ok()).toBeTruthy();
+  const subject = (await subjects.json()).subjects.find((item: any) => String(item.key || '').toLowerCase() === 'physics' || String(item.displayName || '').toLowerCase() === 'physics');
+  const catalogue = await page.request.get(apiBase + '/v1/subjects/' + subject.id + '/projects');
+  const project = (await catalogue.json()).projects.find((item: any) => item.title === 'The Runaway Truck Escape Ramp');
+  expect(project).toBeTruthy();
+
+  const started = await page.request.post(apiBase + '/v1/projects/' + project.id + '/start');
+  expect(started.ok()).toBeTruthy();
+
+  await page.goto('/');
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
+  if (await contextualNotification.isVisible().catch(() => false)) {
+    const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+    if (await notificationDialog.isVisible().catch(() => false)) {
+      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification' }).click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+    await expect(contextualNotification).toBeHidden({ timeout: 5000 });
+  }
+  const resume = page.getByRole('button', { name: 'Resume Saved Mission', exact: true });
+  await expect(resume).toBeVisible({ timeout: UI_TIMEOUT });
+  await resume.click();
+
+  await expect(page.getByRole('heading', { name: 'The Runaway Truck Escape Ramp', exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByRole('button', { name: 'Continue Missions — Open Mission Stages', exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
 });

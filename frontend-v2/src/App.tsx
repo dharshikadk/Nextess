@@ -116,7 +116,7 @@ export default function App() {
       const data = result.data;
       enqueueContextualEvent({
         type: 'LEADERBOARD_NUDGE',
-        dedupeKey: `LEADERBOARD_NUDGE:${data.currentUser?.rank ?? 'unknown'}:${data.difference?.xp ?? 0}:${data.difference?.coins ?? 0}`,
+        dedupeKey: 'LEADERBOARD_NUDGE',
         payload: data,
       });
     }).catch(() => {});
@@ -155,6 +155,7 @@ export default function App() {
 
   const handleAwardKP=(_amount:number)=>refresh();
   const handleClaimSurge=()=>{setToastMessage('Rewards are issued by the server after eligible activity.');refresh()};
+  const handleResumeMission=(projectId:string)=>{localStorage.setItem('nextess_selected_mission',projectId);localStorage.removeItem('nextess_investigation_id');localStorage.removeItem('nextess_investigation_mission_id');localStorage.setItem('nextess_active_page','mission-detail');setActivePage('mission-detail');};
   const handleClaimDirective=async(id:string)=>{
     if(stats.isGuest){setAuthModalOpen(true);return;}
     try{
@@ -220,6 +221,7 @@ export default function App() {
                 theme={theme}
                 stats={stats}
                 onNavigate={setActivePage}
+                onResumeMission={handleResumeMission}
                 onOpenAuth={() => setAuthModalOpen(true)}
                 onClaimSurge={handleClaimSurge}
                 onClaimDirective={handleClaimDirective}
