@@ -474,93 +474,51 @@ test('correct challenge rewards update authoritative balances and open the level
   await prepareMissionAccess(page, 'The Runaway Truck Escape Ramp');
   const apiBase = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:4000';
 
-  const subjects = await page.request.get(apiBase + '/v1/subjects');
-  expect(subjects.ok()).toBeTruthy();
-  const subject = (await subjects.json()).subjects.find((item: any) =>
-    String(item.key || '').toLowerCase() === 'physics' ||
-    String(item.displayName || '').toLowerCase() === 'physics',
-  );
-  expect(subject).toBeTruthy();
-
-  const catalogue = await page.request.get(apiBase + '/v1/subjects/' + subject.id + '/projects');
-  expect(catalogue.ok()).toBeTruthy();
-  const project = (await catalogue.json()).projects.find((item: any) => item.title === 'The Runaway Truck Escape Ramp');
-  expect(project).toBeTruthy();
-
-  // Create the investigation through the authenticated API first. This gives
-  // the UI a concrete, server-authoritative investigation to resume instead
-  // of relying on whatever stale browser state a previous test left behind.
-  const started = await page.request.post(apiBase + '/v1/projects/' + project.id + '/start');
-  expect(started.status()).toBe(201);
-  const startedBody = await started.json();
-  expect(startedBody.replayed).not.toBeTruthy();
-  const investigationId = startedBody.investigationId;
-
-  const investigationResponse = await page.request.get(apiBase + '/v1/investigations/' + investigationId);
-  expect(investigationResponse.ok()).toBeTruthy();
-  const investigation = (await investigationResponse.json()).investigation;
-  const levelOne = investigation.projectVersion.levels[0];
-  expect(levelOne.questions.length).toBeGreaterThanOrEqual(2);
-
   const meBefore = await page.request.get(apiBase + '/v1/auth/me');
   expect(meBefore.ok()).toBeTruthy();
   const before = (await meBefore.json()).user;
 
-  // Answer every question except the last one through the API. The final
-  // question is submitted through the actual UI so the real reward-window
-  // presentation path is exercised.
-  for (let questionIndex = 0; questionIndex < levelOne.questions.length - 1; questionIndex += 1) {
-    const question = levelOne.questions[questionIndex];
-    const response = await page.request.post(
-      apiBase + '/v1/investigations/' + investigationId + '/answers',
-      {
-        headers: { 'Idempotency-Key': 'level-window-' + investigationId + '-' + question.id },
-        data: { questionId: question.id, answer: { value: question.answer } },
-      },
+  await reachMissionTask(page, 'The Runaway Truck Escape Ramp', { prepareAccess: false });
+
+  const fixturePath = path.resolve(process.cwd(), '../database/content/class11/physics-escape-ramp-brake-failure.json');
+  const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  const levelOne = fixture.projects[0].levels[0];
+
+  for (let questionIndex = 0; questionIndex < levelOne.questions.length; questionIndex += 1) {
+    const sourceQuestion = levelOne.questions[questionIndex];
+    if (sourceQuestion.options) {
+      await page.getByRole('button', { name: sourceQuestion.answer, exact: true }).click();
+    } else {
+      await page.getByLabel(/Numeric answer/i).first().fill(String(sourceQuestion.answer));
+    }
+
+    const responsePromise = page.waitForResponse((response) =>
+      response.url().includes('/v1/investigations/') &&
+      response.url().endsWith('/answers') &&
+      response.request().method() === 'POST',
     );
+    await page.getByTestId('mission-submit').click();
+    const response = await responsePromise;
     const body = await response.json();
+
     expect(response.ok(), JSON.stringify(body)).toBeTruthy();
     expect(body.result).toBe('CORRECT');
     expect(body.reward).toEqual({ xp: 2, coins: 1 });
+    expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
+    expect(body.balances.coins).toBe(before.coins + (questionIndex + 1));
+
+    if (questionIndex < levelOne.questions.length - 1) {
+      await page.getByRole('button', { name: /Move to Next/i }).click();
+      await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
+    }
   }
-
-  await page.goto('/');
-  await page.evaluate(({ projectId, investigationId }) => {
-    localStorage.setItem('nextess_selected_mission', projectId);
-    localStorage.setItem('nextess_investigation_id', investigationId);
-    localStorage.setItem('nextess_investigation_mission_id', projectId);
-  }, { projectId: project.id, investigationId });
-
-  await reachMissionTask(page, 'The Runaway Truck Escape Ramp', { prepareAccess: false });
-
-  const lastQuestion = levelOne.questions[levelOne.questions.length - 1];
-  if (lastQuestion.options) {
-    await page.getByRole('button', { name: lastQuestion.answer, exact: true }).click();
-  } else {
-    const input = page.getByLabel(/Numeric answer/i).first();
-    await input.fill(String(lastQuestion.answer));
-  }
-
-  const responsePromise = page.waitForResponse((response) =>
-    response.url().includes('/v1/investigations/') &&
-    response.url().endsWith('/answers') &&
-    response.request().method() === 'POST',
-  );
-  await page.getByTestId('mission-submit').click();
-  const response = await responsePromise;
-  const body = await response.json();
-
-  expect(response.ok(), JSON.stringify(body)).toBeTruthy();
-  expect(body.result).toBe('CORRECT');
-  expect(body.reward).toEqual({ xp: 2, coins: 1 });
-  expect(body.balances.xp).toBe(before.xp + levelOne.questions.length * 2);
-  expect(body.balances.coins).toBe(before.coins + levelOne.questions.length);
 
   const rewardDialog = page.getByRole('dialog', { name: /Level reward|Perfect level achievement/i });
   await expect(rewardDialog).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(rewardDialog).toContainText('Level 1 completed');
   await expect(rewardDialog).toContainText('KP');
   await expect(rewardDialog).toContainText('Coins');
+  await expect(rewardDialog).not.toContainText('+null');
   await expect(rewardDialog).not.toContainText('0 KP');
   await expect(rewardDialog).not.toContainText('0 Coins');
 });
