@@ -35,12 +35,12 @@ async function reachMissionTask(
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
-    // The backdrop fills the viewport and its center is covered by the dialog.
-    // Close through the dialog's actual close control instead of clicking the
-    // covered backdrop, which can leave Playwright waiting for a clickable point.
+    // The notification is an application modal. Dismiss it through the modal's
+    // keyboard contract so the test does not depend on a transient button
+    // position while the backdrop is animating.
     const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
     if (await notificationDialog.isVisible().catch(() => false)) {
-      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification' }).click();
+      await notificationDialog.press('Escape');
     } else {
       await page.keyboard.press('Escape');
     }
@@ -598,7 +598,7 @@ test('completed mission enters paid review exactly once and resumes from the fre
   await page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true }).click();
   const reviewResponseResult = await reviewResponse;
   const reviewBody = await reviewResponseResult.json();
-  expect(reviewResponse.ok(), JSON.stringify(reviewBody)).toBeTruthy();
+  expect(reviewResponseResult.ok(), JSON.stringify(reviewBody)).toBeTruthy();
   expect(reviewBody.replayed).toBeTruthy();
   expect(reviewBody.investigationId).not.toBe(investigationId);
 
