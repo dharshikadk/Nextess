@@ -116,7 +116,7 @@ export default function App() {
       const data = result.data;
       enqueueContextualEvent({
         type: 'LEADERBOARD_NUDGE',
-        dedupeKey: `LEADERBOARD_NUDGE:${data.currentUser?.rank ?? 'unknown'}:${data.difference?.xp ?? 0}:${data.difference?.coins ?? 0}`,
+        dedupeKey: 'LEADERBOARD_NUDGE',
         payload: data,
       });
     }).catch(() => {});
