@@ -590,9 +590,7 @@ app.post('/v1/investigations/:id/simulation-state',optionalAuth,async(req:R,res)
  if(!simulationId||simulationId.length>120||!validateObject(req.body?.state))return fail(res,'VALIDATION_ERROR','simulationId and an object state are required.');
  const currentLevel=inv.currentLevelId?await prisma.level.findUnique({where:{id:inv.currentLevelId},include:{simulation:true}}):null;
  if(!currentLevel?.simulation||currentLevel.simulation.id!==simulationId)return fail(res,'TASK_NOT_AVAILABLE','The simulation is not attached to the current mission level.',409);
- const currentState:any=inv.state&&typeof inv.state==='object'?inv.state:{};
- const nextState={...currentState,simulations:{...(currentState.simulations||{}),[simulationId]:req.body.state}};
- await prisma.investigation.update({where:{id:inv.id},data:{state:nextState,lastActivityAt:new Date()}});
+ const currentState:any=inv.state&&typeof inv.state==='object'?inv.state:{};const previousSimulationState=currentState.simulations?.[simulationId];const changed=previousSimulationState!==undefined&&JSON.stringify(previousSimulationState)!==JSON.stringify(req.body.state);const now=new Date();const nextState={...currentState,simulations:{...(currentState.simulations||{}),[simulationId]:req.body.state},simulationActivity:{...(currentState.simulationActivity||{}),[simulationId]:{changed,changedAt:changed?now.toISOString():(currentState.simulationActivity?.[simulationId]?.changedAt||null)}}};await prisma.investigation.update({where:{id:inv.id},data:{state:nextState,lastActivityAt:now}});
  res.json({saved:true,simulationId,state:req.body.state});
 });
 app.use((err:any,_req:express.Request,res:express.Response,next:express.NextFunction)=>{
