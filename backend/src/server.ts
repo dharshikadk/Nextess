@@ -475,6 +475,8 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
    const missionCompleted=finalLevel&&levelCompleted;
    const progressPercent=missionCompleted?100:Math.min(99,Math.round(resolvedCount/totalQuestions*100));
    const nextQuestion=level.questions.find((item:any)=>!answerIds.has(item.id)&&!revealIds.has(item.id));
+   const levelCompletionReward=identity.userId&&levelCompleted?await rewardMissionLevel(tx,identity.userId!,current.id,level.id,level.rewardXp,level.rewardCoins,Boolean(finalLevel)):{xp:0,coins:0};
+   const finalMissionReward=finalLevel?levelCompletionReward:{xp:0,coins:0};
 
    await tx.investigation.update({where:{id:current.id},data:{
     state:nextState,
@@ -508,13 +510,13 @@ app.post('/v1/investigations/:id/reveal-answer', optionalAuth, async (req:R,res)
    }
 
    const balances=identity.userId?(await tx.user.findUnique({where:{id:identity.userId!},select:{xp:true,coins:true}})??{xp:0,coins:0}):{xp:0,coins:0};
-   return {levelCompleted,levelPerfect,missionCompleted,progressPercent,balances};
+   return {levelCompleted,levelPerfect,missionCompleted,progressPercent,levelCompletionReward,finalMissionReward,balances};
   });
 
   return res.json({
    answer:def.answer,explanation:q.explanation,cost:identity.userId&&!submitted&&!chargedBefore?{xp:5,coins:2}:{xp:0,coins:0},
    alreadyCharged:submitted||chargedBefore,balances:outcome.balances,anonymous:identity.anonymous,
-   levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,
+   levelCompleted:outcome.levelCompleted,levelPerfect:outcome.levelPerfect,missionCompleted:outcome.missionCompleted,levelCompletionReward:outcome.levelCompletionReward,finalMissionReward:outcome.finalMissionReward,
    progressPercent:outcome.progressPercent
   });
  }catch(e:any){
