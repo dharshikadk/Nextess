@@ -162,7 +162,7 @@ test('opening an unlocked level starts the investigation and loads its first tas
   await expect(levelOne).toBeEnabled({ timeout: UI_TIMEOUT });
   await levelOne.click();
 
-  const levelPreview = page.getByRole('dialog', { name: /Why Did the|Find What Controls/i }).first();
+  const levelPreview = page.getByRole('dialog').filter({ hasText: /Level 1/i }).first();
   await expect(levelPreview).toBeVisible({ timeout: UI_TIMEOUT });
   await levelPreview.getByRole('button', { name: /Open Level 1/i }).click();
 
