@@ -38,7 +38,7 @@ export const CadetAuthModal:React.FC<Props> = ({ isOpen, onClose, theme, onSucce
         authResult=await api.register({
           name:name.trim(),username,password,profileType,
           profession:profileType==='WORKING_PROFESSIONAL'?profession.trim():null,
-          profileStatus:profileStatus.trim()||null,
+          ...(profileStatus.trim()?{profileStatus:profileStatus.trim()}:{}),
           profileImageData:profileImageData||null,
           educationStage:profileType==='STUDENT'?educationStage:null,
           schoolClass:profileType==='STUDENT'&&educationStage==='SCHOOL'?schoolClass.trim():null,
