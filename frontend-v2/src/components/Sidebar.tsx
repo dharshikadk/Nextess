@@ -17,7 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isGuest,
 }) => {
   const isDark = theme === 'dark';
-  const logoSrc = isDark ? '/LogoAssets/Nextess_d_logo.jpg' : '/LogoAssets/Nextess_l_logo.jpg';
+  const logoSrc = isDark ? '/branding/Nextess_d_logo.jpg' : '/branding/Nextess_l_logo.jpg';
 
   const isMissionsActive =
     activePage === 'missions' ||
