@@ -30,7 +30,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [simulationSaving, setSimulationSaving] = useState(false);
-  const [levelReward, setLevelReward] = useState({open:false, level:0, xp:0, coins:0, balances:null as any, perfect:false, badgeClaimed:false, badgeClaiming:false});
+  const [levelReward, setLevelReward] = useState({open:false, level:0, challengeXp:0, challengeCoins:0, levelXp:0, levelCoins:0, finalXp:0, finalCoins:0, balances:null as any, perfect:false, badgeClaimed:false, badgeClaiming:false});
   const [finalRewards, setFinalRewards] = useState({xp:0,coins:0});
 
   useEffect(() => {
@@ -291,8 +291,12 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
         setLevelReward({
           open: true,
           level: currentLevel?.levelNumber ?? level + 1,
-          xp: result.reward?.xp || 0,
-          coins: result.reward?.coins || 0,
+          challengeXp: result.challengeReward?.xp || 0,
+          challengeCoins: result.challengeReward?.coins || 0,
+          levelXp: result.levelCompletionReward?.xp || 0,
+          levelCoins: result.levelCompletionReward?.coins || 0,
+          finalXp: result.finalMissionReward?.xp || 0,
+          finalCoins: result.finalMissionReward?.coins || 0,
           balances: result.balances || null,
           perfect: Boolean(result.levelPerfect),
           badgeClaimed: false,
@@ -304,7 +308,7 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
       // until the learner explicitly uses Reveal Answer.
       setRevealed(null);
 
-      const guestBalances = result.anonymous ? syncGuestBalance(result.result === 'CORRECT' ? 2 : 0, result.result === 'CORRECT' ? 1 : 0) : null;
+      const guestBalances = result.anonymous ? syncGuestBalance(Number(result.reward?.xp || 0), Number(result.reward?.coins || 0)) : null;
       if (result.progressPercent !== undefined) localStorage.setItem('nextess_guest_mission_progress',String(Math.max(0,Math.min(100,Number(result.progressPercent)))));
       window.dispatchEvent(new CustomEvent('nextess-mission-updated', { detail: { ...result, guestBalances } }));
       await refreshInvestigation();
@@ -712,8 +716,8 @@ export const MissionRuntime: React.FC<Props> = ({ theme, isGuest, onNavigate, on
           <h2 className="text-2xl font-bold mt-2">{levelReward.perfect ? 'Perfect level!' : 'Rewards earned'}</h2>
           {levelReward.perfect && <p className="text-xs text-slate-400 mt-2">You completed every challenge correctly. A Perfect Level badge has been recorded for this level.</p>}
           <div className="grid grid-cols-2 gap-3 mt-6">
-            <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}><div className="font-mono text-[10px] uppercase text-violet-400">KP</div><div className="text-2xl font-bold mt-1">{levelReward.xp}</div></div>
-            <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}><div className="font-mono text-[10px] uppercase text-amber-400">Coins</div><div className="text-2xl font-bold mt-1">{levelReward.coins}</div></div>
+            <div className={`rounded-2xl border p-4 ${dark ? 'bg-violet-500/10 border-violet-500/25' : 'bg-violet-50 border-violet-200'}`}><div className="font-mono text-[10px] uppercase text-violet-400">Challenge reward</div><div className="text-xl font-bold mt-1">+{levelReward.challengeXp} KP</div><div className="text-xs text-slate-400 mt-1">+{levelReward.challengeCoins} coins</div></div>
+            <div className={`rounded-2xl border p-4 ${dark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}><div className="font-mono text-[10px] uppercase text-amber-400">{levelReward.finalXp || levelReward.finalCoins ? 'Final mission reward' : 'Level completion reward'}</div><div className="text-xl font-bold mt-1">+{levelReward.levelXp} KP</div><div className="text-xs text-slate-400 mt-1">+{levelReward.levelCoins} coins</div></div>
           </div>
           {levelReward.balances && <p className="mt-4 text-xs text-slate-400">Current balance: {levelReward.balances.xp} KP · {levelReward.balances.coins} coins</p>}
           <div className="flex justify-end mt-6">
