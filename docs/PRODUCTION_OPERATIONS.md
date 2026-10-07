@@ -1,71 +1,77 @@
 # Nextess Production Operations
 
-## Runtime topology
+## Release flow
 
-```
-GitHub
-  ↓
-CI validation
-  ↓
-Build artifacts
-  ↓
-Staging
-  ↓
-Health/readiness verification
-  ↓
-Production
-```
+1. Build immutable backend/frontend images.
+2. Validate the candidate with CI.
+3. Run the database migration job exactly once with `prisma migrate deploy`.
+4. Run controlled mission/content deployment separately when required.
+5. Verify `/health` and `/ready`.
+6. Start application containers and route traffic only after readiness succeeds.
+7. Never run seed or migrations from application startup.
 
-Nextess remains a modular frontend + backend + PostgreSQL application. Do not introduce microservices, queues, Kubernetes, or subject-specific databases without demonstrated operational need.
+## Secrets
 
-## Health
+Production database credentials, session configuration, API origins and other secrets must come from the deployment secret manager/environment. Do not commit `.env` files or real credentials.
 
-- `GET /health` confirms the API process is running.
-- `GET /ready` checks PostgreSQL reachability and returns HTTP 503 when the service is not ready.
+## Database network
 
-Production deployment should not receive traffic until readiness succeeds.
+PostgreSQL is on the private application network and has no public port mapping in the production compose configuration. Only the frontend public port is exposed; the backend is reachable through the internal network/reverse proxy topology.
 
-## Security baseline
+## Backups
 
-The backend currently applies:
-- request correlation IDs;
-- JSON request-size limits;
-- CORS with an explicit frontend origin;
-- SameSite/HttpOnly session cookies;
-- security headers;
-- state-changing Origin validation;
-- request rate limits;
-- sanitized client-facing internal errors.
+Recommended minimum operational policy:
 
-Rate limiting is intentionally in-process for the current single-service deployment. If Nextess becomes multi-instance, replace it with shared infrastructure rather than pretending the local bucket is globally authoritative.
+- Daily encrypted PostgreSQL custom-format backup.
+- Retain at least 7 daily and 4 weekly backups.
+- Store backups outside the primary database host/account.
+- Monitor backup job success and storage capacity.
+- Perform a restore drill at least monthly and after major migration changes.
 
-## Database backup/recovery
+Example:
+`pg_dump -Fc "$DATABASE_URL" > nextess-YYYY-MM-DD.dump`
 
-Production PostgreSQL must have:
-1. automated backups;
-2. documented retention;
-3. a tested restore procedure;
-4. a restore drill before production launch;
-5. a migration rollback/forward-fix procedure.
+Restore verification should use an isolated database and `pg_restore --exit-on-error`; validate row counts, foreign keys, ownership constraints and representative mission/runtime flows before treating the backup as valid.
 
-A backup is not considered verified until a restore has succeeded in an isolated environment.
+## Migration safety
 
-The application repository does not contain provider-specific backup credentials or destructive restore commands. Those remain deployment-operator responsibilities.
+- Every schema change gets a timestamped Prisma migration.
+- Migration preflight checks must fail before destructive changes when legacy data violates the new invariant.
+- Deploy migrations separately from application startup.
+- Prefer expand/validate/contract for high-risk production changes.
+- Do not edit an already-applied production migration.
 
-## Deployment procedure
+## Observability
 
-1. Open a PR and wait for CI.
-2. Validate frontend TypeScript/build.
-3. Validate Prisma schema and migrations.
-4. Run backend tests.
-5. Run mission content validation.
-6. Deploy to staging.
-7. Run health/readiness and browser smoke tests.
-8. Apply reviewed production migrations.
-9. Deploy backend/frontend.
-10. Verify readiness and the mission catalogue.
-11. Monitor error rate, latency, authentication failures, answer submissions and simulation failures.
+Application logs are JSON for HTTP requests and include request IDs. Monitor:
 
-## Rollback
+- request latency
+- 5xx rate
+- authentication failures
+- rate-limit events
+- readiness/health failures
+- PostgreSQL connectivity
+- connection exhaustion
+- disk/storage usage
 
-Prefer a forward fix for database changes. Application deployment rollback must only use a previous build that is compatible with the current schema. Never roll back a schema blindly when a migration has removed or changed required data.
+Keep request IDs in incident tickets so application logs can be correlated with client/API failures.
+
+## Recovery
+
+A release is not complete until:
+
+- the migration job succeeds,
+- readiness is healthy,
+- backup freshness is within policy,
+- the latest restore drill succeeds,
+- rollback/recovery steps are documented and tested in staging.
+
+## Security checklist
+
+- HTTPS at the public edge.
+- Secure, HTTP-only session cookies in production.
+- Explicit CORS allowlist.
+- HSTS enabled by the application.
+- CSP/frame/content-sniffing protections at the edge.
+- Request body limits and authentication rate limits enabled.
+- No production secrets in Git.
