@@ -82,7 +82,8 @@ export const WindowPanel: React.FC<WindowPanelProps> = ({
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', handleKeyDown);
-      root?.removeAttribute('inert');
+      const remainingDialogs = document.body.querySelectorAll('[role="dialog"][aria-modal="true"]').length;
+      if (remainingDialogs <= 1) root?.removeAttribute('inert');
       if (previousActive?.isConnected) previousActive.focus();
     };
   }, [open, onClose]);
