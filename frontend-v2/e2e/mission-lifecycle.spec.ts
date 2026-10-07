@@ -141,6 +141,40 @@ test('mission stage opens its metadata panel on the first click', async ({ page 
   await expect(stageDialog).toContainText('Coins earned');
 });
 
+test('opening an unlocked level starts the investigation and loads its first task', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
+  await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const missionNode = page.getByTestId('mission-node').first();
+  await missionNode.click();
+  const missionTitle = (await missionNode.getAttribute('aria-label'))!.replace(/^Select mission /, '');
+  const preview = page.getByRole('dialog', { name: missionTitle, exact: true });
+  await expect(preview).toBeVisible({ timeout: UI_TIMEOUT });
+  await preview.getByRole('button', { name: /Close mission details/i }).click();
+
+  await page.getByRole('button', { name: /Start Solving Mission/i }).click();
+  await expect(page.getByRole('heading', { name: missionTitle, exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const levelOne = page.getByRole('button', { name: /Level 1:/i }).first();
+  await expect(levelOne).toBeEnabled({ timeout: UI_TIMEOUT });
+  await levelOne.click();
+
+  const levelPreview = page.getByRole('dialog', { name: /Why Did the|Find What Controls/i }).first();
+  await expect(levelPreview).toBeVisible({ timeout: UI_TIMEOUT });
+  await levelPreview.getByRole('button', { name: /Open Level 1/i }).click();
+
+  await expect(page.getByTestId('mission-runtime-loading')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-runtime-error')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-runtime')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task')).toHaveAttribute('aria-busy', 'false', { timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task').locator('h2')).not.toContainText('Loading investigation task', { timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-submit')).toBeVisible({ timeout: UI_TIMEOUT });
+});
+
 test('mission catalogue, first task, feedback, and refresh resume are reachable through the real UI', async ({ page }) => {
   await page.goto('/');
   await reachFirstMissionTask(page);
