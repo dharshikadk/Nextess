@@ -506,7 +506,7 @@ test('correct challenge rewards update authoritative balances and open the level
 
     expect(response.ok(), JSON.stringify(body)).toBeTruthy();
     expect(body.result).toBe('CORRECT');
-    expect(body.reward).toEqual({ xp: 2, coins: 1 });
+    expect(body.reward).toEqual({ xp: (questionIndex + 1) * 2, coins: questionIndex + 1 });
     expect(body.balances.xp).toBe(before.xp + (questionIndex + 1) * 2);
     expect(body.balances.coins).toBe(before.coins + (questionIndex + 1));
 
@@ -600,12 +600,20 @@ test('completed mission enters paid review exactly once and resumes from the fre
     await preview.getByRole('button', { name: /Close mission details/i }).click();
     await expect(preview).toBeHidden({ timeout: 5000 });
   }
+  // MissionDetailView loads authoritative progress when the selected project is fetched.
+  // Reload after closing the catalogue preview so the completed state cannot remain stale
+  // from the map's earlier project list response.
+  await page.reload();
+  await expect(page.getByText('The Runaway Truck Escape Ramp')).toBeVisible({ timeout: UI_TIMEOUT });
+  const reviewButton = page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true });
+  await expect(reviewButton).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(reviewButton).toBeEnabled({ timeout: UI_TIMEOUT });
   const reviewResponse = page.waitForResponse((response) =>
     response.url().includes('/v1/projects/') &&
     response.url().endsWith('/start') &&
     response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Review Mission — 10 KP and 10 coins', exact: true }).click();
+  await reviewButton.click();
   const reviewResponseResult = await reviewResponse;
   const reviewBody = await reviewResponseResult.json();
   expect(reviewResponseResult.ok(), JSON.stringify(reviewBody)).toBeTruthy();
