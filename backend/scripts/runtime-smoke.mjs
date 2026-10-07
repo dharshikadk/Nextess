@@ -7,6 +7,24 @@ const subjects=await request('/v1/subjects');
 expect(subjects.response.ok,'subjects endpoint failed');
 expect(subjects.body.subjects?.some(s=>s.status==='ACTIVE'),'no active subject returned');
 expect(subjects.body.subjects?.some(s=>s.status==='FUTURE'),'future subject catalogue is missing');
+const activeSubjects=subjects.body.subjects.filter(s=>s.status==='ACTIVE');
+expect(activeSubjects.length>=2,'expected at least two active subjects');
+
+for(const subject of activeSubjects){
+  const subjectCatalogue=await request('/v1/subjects/'+subject.id+'/projects');
+  expect(subjectCatalogue.response.ok,`published mission catalogue failed for ${subject.key}`);
+  expect(subjectCatalogue.body.projects?.length>0,`no published missions returned for ${subject.key}`);
+  for(const catalogueProject of subjectCatalogue.body.projects){
+    expect(Number(catalogueProject.levelsCount)>0,`mission ${catalogueProject.slug} returned zero levels`);
+    const projectDetail=await request('/v1/projects/'+catalogueProject.id);
+    expect(projectDetail.response.ok,`project detail failed for ${catalogueProject.slug}`);
+    expect(projectDetail.body.project.currentPublishedVersion?.id===catalogueProject.currentPublishedVersion?.id,`published version mismatch for ${catalogueProject.slug}`);
+    const levels=projectDetail.body.project.currentPublishedVersion?.levels||[];
+    expect(levels.length>0,`mission ${catalogueProject.slug} has no levels in its published version`);
+    expect(levels.every(level=>level.questions?.length>0),`mission ${catalogueProject.slug} has a level with no questions`);
+  }
+}
+
 const physics=subjects.body.subjects.find(s=>s.key.toLowerCase()==='physics');
 expect(physics,'Physics subject is missing');
 const catalogue=await request('/v1/subjects/'+physics.id+'/projects');
