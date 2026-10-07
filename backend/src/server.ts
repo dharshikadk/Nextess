@@ -96,7 +96,7 @@ app.post('/v1/streak/goal',auth,async(req:R,res)=>{const days=Number(req.body?.d
       const latest=await tx.streakActivity.findFirst({where:{userId:req.userId!,activityDate:{lt:today}},orderBy:{activityDate:'desc'}});
       if(!latest)throw new Error('NO_STREAK');
       const latestDay=new Date(latest.activityDate); latestDay.setUTCHours(0,0,0,0);
-      const missed=Math.round((today.getTime()-latestDay.getTime())/864e5)-1;
+      const missed=Math.round((today.getTime()-latestDay.getTime())/864e5);
       if(missed!==days)throw new Error('INVALID_MISSED_DAYS');
       const updated=await tx.user.updateMany({where:{id:req.userId!,coins:{gte:cost}},data:{coins:{decrement:cost},lastActivityAt:new Date()}});
       if(updated.count!==1)throw new Error('INSUFFICIENT_FUNDS');
