@@ -33,7 +33,15 @@ async function reachMissionTask(
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
-    await contextualNotification.click();
+    // The backdrop fills the viewport and its center is covered by the dialog.
+    // Close through the dialog's actual close control instead of clicking the
+    // covered backdrop, which can leave Playwright waiting for a clickable point.
+    const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
+    if (await notificationDialog.isVisible().catch(() => false)) {
+      await notificationDialog.getByRole('button', { name: 'Close leaderboard notification' }).click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
     await expect(contextualNotification).toBeHidden({ timeout: 5000 });
   }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -139,6 +147,43 @@ test('mission stage opens its metadata panel on the first click', async ({ page 
   await expect(stageDialog).toContainText('Concept used');
   await expect(stageDialog).toContainText('KP earned');
   await expect(stageDialog).toContainText('Coins earned');
+});
+
+test('opening an unlocked level starts the investigation and loads its first task', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
+  await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Missions Path' })).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const missionNode = page.getByTestId('mission-node').first();
+  await missionNode.click();
+  const missionTitle = (await missionNode.getAttribute('aria-label'))!.replace(/^Select mission /, '');
+  const preview = page.getByRole('dialog', { name: missionTitle, exact: true });
+  await expect(preview).toBeVisible({ timeout: UI_TIMEOUT });
+  await preview.getByRole('button', { name: /Close mission details/i }).click();
+
+  await page.getByRole('button', { name: /Start Solving Mission/i }).click();
+  await expect(page.getByRole('heading', { name: missionTitle, exact: true })).toBeVisible({ timeout: UI_TIMEOUT });
+
+  const levelOne = page.getByRole('button', { name: /Level 1:/i }).first();
+  await expect(levelOne).toBeEnabled({ timeout: UI_TIMEOUT });
+  await levelOne.click();
+
+  const levelPreview = page.getByRole('dialog').filter({ hasText: /Level 1/i }).first();
+  await expect(levelPreview).toBeVisible({ timeout: UI_TIMEOUT });
+  const openLevelButton = levelPreview.getByRole('button', { name: /^Open /i });
+  await expect(openLevelButton).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(openLevelButton).toBeEnabled({ timeout: UI_TIMEOUT });
+  await openLevelButton.click();
+
+  await expect(page.getByTestId('mission-runtime-loading')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-runtime-error')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-runtime')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task')).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task')).toHaveAttribute('aria-busy', 'false', { timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-task').locator('h2')).not.toContainText('Loading investigation task', { timeout: UI_TIMEOUT });
+  await expect(page.getByTestId('mission-submit')).toBeVisible({ timeout: UI_TIMEOUT });
 });
 
 test('mission catalogue, first task, feedback, and refresh resume are reachable through the real UI', async ({ page }) => {

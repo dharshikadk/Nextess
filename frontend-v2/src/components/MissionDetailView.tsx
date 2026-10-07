@@ -26,6 +26,7 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
     kp:number|null;
     coins:number|null;
   } | null>(null);
+  const [openingStage, setOpeningStage] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled=false;
@@ -79,14 +80,38 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
     );
   }
 
-  const openStage = (stage:number) => {
+  const openStage = async (stage:number) => {
     const validStage = isStageUnlocked(stage);
-    if (!validStage) {
-      onShowToast('Invalid mission stage.');
+    if (!validStage || openingStage !== null) {
+      if (!validStage) onShowToast('Invalid mission stage.');
       return;
     }
+
     localStorage.setItem('nextess_selected_mission', mission.id);
     localStorage.setItem('nextess_mission_stage', String(stage));
+
+    // Level stages are actionable entry points. If the learner has not started
+    // the investigation yet, create it before navigating so MissionRuntime can
+    // fetch the server-authoritative level/question state. If an investigation
+    // already exists, the API returns that same in-progress investigation.
+    // Completed missions intentionally do not start a paid review here; the
+    // dedicated Review Mission action remains the only review entry point.
+    if (stage >= 3 && progressStatus !== 'COMPLETED') {
+      setOpeningStage(stage);
+      try {
+        const started = await api.startMission(mission.id);
+        localStorage.setItem('nextess_investigation_id', started.investigationId);
+        localStorage.setItem('nextess_investigation_mission_id', mission.id);
+      } catch (e:any) {
+        localStorage.removeItem('nextess_investigation_id');
+        localStorage.removeItem('nextess_investigation_mission_id');
+        onShowToast(e?.message || 'The mission investigation could not be opened.');
+        return;
+      } finally {
+        setOpeningStage(null);
+      }
+    }
+
     onNavigate('mission-chamber');
   };
 
@@ -379,14 +404,15 @@ export const MissionDetailView: React.FC<MissionDetailViewProps> = ({ theme, sta
 
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 const stage=stagePreview.stage;
                 setStagePreview(null);
-                openStage(stage);
+                await openStage(stage);
               }}
-              className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold"
+              disabled={openingStage !== null}
+              className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-wait"
             >
-              Open {stagePreview?.title || 'Mission Stage'}
+              {openingStage === stagePreview.stage ? 'Opening Mission…' : `Open ${stagePreview?.title || 'Mission Stage'}`}
             </button>
           </div>
         </div>
