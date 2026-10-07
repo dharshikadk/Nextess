@@ -6,6 +6,7 @@ interface DashboardViewProps {
   theme: ThemeMode;
   stats: UserStats;
   onNavigate: (page: ActivePage) => void;
+  onResumeMission: (projectId: string) => void;
   onOpenAuth: () => void;
   onClaimSurge: () => void;
   onClaimDirective: (id: string) => Promise<void>;
@@ -153,7 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-center justify-between"><span className="font-mono text-xs font-semibold">Saved investigation progress</span><span className="font-mono text-xs text-violet-400 font-bold">{effectiveActiveProgress[0].progressPercent}%</span></div>
                   <div className="w-full h-2 rounded-full bg-slate-700/30 overflow-hidden mt-2"><div className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full" style={{width:`${Math.max(0,Math.min(100,effectiveActiveProgress[0].progressPercent))}%`}} /></div>
                 </div>
-                <button onClick={() => onNavigate('mission-chamber')} className="self-start px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6]">Resume Saved Mission</button>
+                <button onClick={() => onResumeMission(effectiveActiveProgress[0].projectId)} className="self-start px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_4px_0_#5b21b6]">Resume Saved Mission</button>
               </>
             ) : (
               <div className={`rounded-xl p-5 border ${isDark ? 'bg-[#181926] border-violet-500/20' : 'bg-white/90 border-slate-200'}`}>
