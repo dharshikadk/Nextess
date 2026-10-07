@@ -13,8 +13,9 @@ export class ApiError extends Error {
   requestId?: string;
   status: number;
   details: unknown[];
-  constructor(message:string, code:ApiErrorCode, status:number, requestId?:string, details:unknown[]=[]){
-    super(message); this.name='ApiError'; this.code=code; this.status=status; this.requestId=requestId; this.details=details;
+  retryAfterMs?: number;
+  constructor(message:string, code:ApiErrorCode, status:number, requestId?:string, details:unknown[]=[], retryAfterMs?:number){
+    super(message); this.name='ApiError'; this.code=code; this.status=status; this.requestId=requestId; this.details=details; this.retryAfterMs=retryAfterMs;
   }
 }
 async function request<T>(path:string,init:RequestInit={}):Promise<T>{
@@ -27,17 +28,23 @@ async function request<T>(path:string,init:RequestInit={}):Promise<T>{
       const body=await response.json().catch(()=>({}));
       if(response.ok)return body as T;
       const error=body?.error;
-      const retryable=response.status>=500&&response.status<=599;
+      const retryAfterHeader=response.headers.get('Retry-After');
+      const retryAfterSeconds=retryAfterHeader&&/^\\d+(?:\\.\\d+)?$/.test(retryAfterHeader)?Number(retryAfterHeader):0;
+      const retryAfterMs=retryAfterSeconds>0?Math.min(retryAfterSeconds*1000,10000):undefined;
+      const retryable=(response.status>=500&&response.status<=599)||(response.status===429&&Boolean(retryAfterMs));
+      const message=error?.message||'Request failed.';
+      const messageWithRetry=response.status===429&&retryAfterMs?message+' Retry available in '+Math.ceil(retryAfterMs/1000)+' seconds.':message;
       if(!retryable||attempt===maxAttempts){
-        throw new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+        throw new ApiError(messageWithRetry,error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[],retryAfterMs);
       }
-      lastError=new ApiError(error?.message||'Request failed.',error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[]);
+      lastError=new ApiError(messageWithRetry,error?.code||'INTERNAL_ERROR',response.status,error?.requestId||response.headers.get('X-Request-Id')||undefined,Array.isArray(error?.details)?error.details:[],retryAfterMs);
     }catch(error){
       lastError=error;
       if(error instanceof ApiError && error.status<500)throw error;
       if(attempt===maxAttempts)throw error;
     }
-    await new Promise(resolve=>setTimeout(resolve,attempt*400));
+    const waitMs=lastError instanceof ApiError&&lastError.status===429&&lastError.retryAfterMs?lastError.retryAfterMs:attempt*400;
+    await new Promise(resolve=>setTimeout(resolve,waitMs));
   }
   throw lastError instanceof Error?lastError:new Error('Request failed.');
 }
