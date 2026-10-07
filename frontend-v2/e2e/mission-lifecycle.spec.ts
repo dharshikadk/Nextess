@@ -35,15 +35,9 @@ async function reachMissionTask(
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
   const contextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
   if (await contextualNotification.isVisible().catch(() => false)) {
-    // The notification is an application modal. Dismiss it through the modal's
-    // keyboard contract so the test does not depend on a transient button
-    // position while the backdrop is animating.
-    const notificationDialog = page.getByRole('dialog', { name: "You're close to the top!", exact: true });
-    if (await notificationDialog.isVisible().catch(() => false)) {
-      await notificationDialog.press('Escape');
-    } else {
-      await page.keyboard.press('Escape');
-    }
+    // The backdrop is the notification's explicit close control. Click a point
+    // on the uncovered backdrop rather than relying on focus/keyboard state.
+    await contextualNotification.click({ position: { x: 8, y: 8 } });
     await expect(contextualNotification).toBeHidden({ timeout: 5000 });
   }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
@@ -581,6 +575,11 @@ test('completed mission enters paid review exactly once and resumes from the fre
 
   await page.goto('/');
   await expect(page.getByText('Getting Nextess ready...', { exact: true })).toBeHidden({ timeout: UI_TIMEOUT });
+  const reviewContextualNotification = page.getByRole('button', { name: 'Close contextual notification' });
+  if (await reviewContextualNotification.isVisible().catch(() => false)) {
+    await reviewContextualNotification.click({ position: { x: 8, y: 8 } });
+    await expect(reviewContextualNotification).toBeHidden({ timeout: 5000 });
+  }
   await page.getByRole('button', { name: /Missions\s+Learning Paths & Discovery/ }).click();
   await page.getByRole('button', { name: /Open Physics Missions/i }).first().click();
   const missionNode = page.getByRole('button', { name: 'Select mission The Runaway Truck Escape Ramp', exact: true });
