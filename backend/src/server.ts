@@ -306,6 +306,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
    if(current.status!=='IN_PROGRESS')throw new Error('INVESTIGATION_CLOSED');
    const attempts=await tx.investigationAnswer.count({where:{investigationId:current.id,questionId:q.id}})+1;
    const created=await tx.investigationAnswer.create({data:{investigationId:current.id,questionId:q.id,userId:identity.userId??undefined,attemptNumber:attempts,idempotencyKey:scopedKey,answerPayload:req.body.answer,normalizedAnswer:{value:evaluation.normalizedAnswer as any},result:evaluation.correct?'CORRECT':'INCORRECT',evaluatorVersion:evaluation.evaluatorVersion,feedbackData:evaluation.feedback}});
+let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},challengeReward={xp:0,coins:0},levelCompletionReward={xp:0,coins:0},finalMissionReward={xp:0,coins:0},levelPenalty={xp:0,coins:0},levelPerfect=false;
    let penalty={xp:0,coins:0};
    if(evaluation.correct&&identity.userId){
     challengeReward=await rewardChallenge(tx,identity.userId!,current.id,q.id);
@@ -322,6 +323,7 @@ app.post('/v1/investigations/:id/answers',optionalAuth,async(req:R,res)=>{
     }
    }
    let levelCompleted=false,missionCompleted=false,reward={xp:0,coins:0},challengeReward={xp:0,coins:0},levelCompletionReward={xp:0,coins:0},finalMissionReward={xp:0,coins:0},levelPenalty={xp:0,coins:0},levelPerfect=false;
+
    {
     const level=current.projectVersion.levels.find((l:any)=>l.questions.some((x:any)=>x.id===q.id));
     if(level){
