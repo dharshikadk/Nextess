@@ -69,6 +69,7 @@ jobs:
       - run: npm run prisma:migrate
       - run: npm --prefix ../database run generate
       - run: npm --prefix ../database run seed
+      - run: npm --prefix ../database run reconcile:rewards
       - run: npm test
       - run: npm run build
       - name: Verify seeded runtime data
@@ -208,3 +209,12 @@ jobs:
       - run: npm test
       - name: Validate canonical mission package
         run: npm run mission:validate -- 'content/nextess_missions(4).json'
+
+      - name: Build production backend container
+        working-directory: .
+        run: docker build -f backend/Dockerfile -t nextess-backend-ci .
+      - name: Build production frontend container
+        working-directory: .
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:4000
+        run: docker build --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL" -f frontend-v2/Dockerfile -t nextess-frontend-ci .
