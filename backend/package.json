@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "commonjs",
+  "main": "index.js",
   "scripts": {
     "dev": "tsx src/server.ts",
     "predev": "npm run prisma:generate",
