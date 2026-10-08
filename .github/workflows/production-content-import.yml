@@ -1,0 +1,36 @@
+name: Nextess Production Content Import
+
+on:
+  workflow_dispatch:
+
+jobs:
+  import-content:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install database tooling
+        working-directory: database
+        run: npm install
+
+      - name: Validate mission content
+        working-directory: database
+        run: npm run mission:validate -- content
+
+      - name: Import and publish production mission content
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run seed
+
+      - name: Verify production migration state
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate status
