@@ -7,15 +7,36 @@
     },
     "backend": {
       "root": "backend",
-      "framework": "express",
-      "installCommand": "npm install && npm --prefix ../database install",
-      "buildCommand": "npm run vercel-build"
+      "framework": "node",
+      "entrypoint": "src/server.ts",
+      "installCommand": "npm install",
+      "buildCommand": "npm install --package-lock-only --ignore-scripts && npm ci && npm run vercel-build"
     }
   },
   "rewrites": [
-    { "source": "/health", "destination": { "service": "backend" } },
-    { "source": "/ready", "destination": { "service": "backend" } },
-    { "source": "/v1/(.*)", "destination": { "service": "backend" } },
-    { "source": "/(.*)", "destination": { "service": "frontend" } }
+    {
+      "source": "/health",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/ready",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/v1/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
   ]
 }
