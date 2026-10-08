@@ -18,7 +18,8 @@
     "setup:docker": "docker compose -f ../docker-compose.dev.yml up -d postgres && docker compose -f ../docker-compose.dev.yml run --rm backend npm run prisma:migrate",
     "seed:docker": "docker compose -f ../docker-compose.dev.yml run --rm backend npm --prefix ../database run seed",
     "reconcile:rewards": "tsx src/maintenance.ts reconcile-rewards",
-    "cleanup:anonymous": "tsx src/maintenance.ts cleanup-anonymous"
+    "cleanup:anonymous": "tsx src/maintenance.ts cleanup-anonymous",
+    "validate:database-url": "node scripts/assert-database-url.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0"
