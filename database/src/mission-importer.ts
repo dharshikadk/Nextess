@@ -145,6 +145,9 @@ export async function importMissionPackage(prisma: PrismaClient, pkg: any, mode:
     const results = [];
     for (const mission of pkg.projects) results.push(await importMission(tx,mission,subjectMap,mode));
     return results;
+  }, {
+    maxWait: 10000,
+    timeout: 60000
   });
 }
 
