@@ -6,9 +6,11 @@
       "framework": "vite"
     },
     "backend": {
-      "root": ".",
-      "runtime": "container",
-      "entrypoint": "backend/Dockerfile.vercel"
+      "root": "backend",
+      "framework": "express",
+      "entrypoint": "src/server.ts",
+      "installCommand": "npm install",
+      "buildCommand": "npm run vercel-build"
     }
   },
   "rewrites": [
