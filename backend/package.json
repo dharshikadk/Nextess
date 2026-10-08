@@ -12,7 +12,7 @@
     "prisma:migrate": "prisma migrate deploy --schema ../database/prisma/schema.prisma",
     "test": "tsx --test src/*.test.ts",
     "setup:local": "npm run prisma:migrate && npm --prefix ../database run seed",
-    "vercel-build": "npm run prisma:generate && npm run build"
+    "vercel-build": "npm run prisma:generate && npm --prefix ../database install --production=false && npm --prefix ../database run migrate:deploy && npm --prefix ../database run seed && npm run build"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
