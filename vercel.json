@@ -8,7 +8,7 @@
     "backend": {
       "root": "backend",
       "framework": "express",
-      "installCommand": "cd .. && npm install --prefix database --production=false && npm install --prefix backend --production=false",
+      "installCommand": "if [ -d database ]; then npm install --prefix database --production=false && npm install --prefix backend --production=false; else npm install --prefix ../database --production=false && npm install --prefix . --production=false; fi",
       "buildCommand": "npm run vercel-build",
       "entrypoint": "src/server.ts"
     }
