@@ -9,7 +9,6 @@
       "root": "backend",
       "framework": "express",
       "entrypoint": "src/server.ts",
-      "installCommand": "npm install --production=false",
       "buildCommand": "npm run vercel-build"
     }
   },
