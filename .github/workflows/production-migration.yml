@@ -6,7 +6,7 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production-nextess
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
