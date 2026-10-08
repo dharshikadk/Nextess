@@ -6,10 +6,11 @@
       "framework": "vite"
     },
     "backend": {
-      "root": "backend",
-      "entrypoint": "vercel-entry.js",
-      "installCommand": "cd .. && npm install --prefix database --production=false && npm install --prefix backend --production=false",
-      "buildCommand": "npm run vercel-build"
+      "root": ".",
+      "framework": "express",
+      "installCommand": "cd .. && npm install --production=false && npm install --prefix database --production=false && npm install --prefix backend --production=false",
+      "buildCommand": "npm run vercel-build --prefix backend",
+      "entrypoint": "backend/index.js"
     }
   },
   "rewrites": [
