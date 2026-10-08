@@ -6,7 +6,9 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    environment: Production-nextess
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -17,27 +19,19 @@ jobs:
         run: npm install
       - name: Verify production database secret is injected
         working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::error::DATABASE_URL is empty or unavailable in the Production-nextess environment."
+            echo "::error::DATABASE_URL is empty or unavailable in the production environment."
+            echo "::error::Configure the DATABASE_URL secret in GitHub Settings > Environments > production."
             exit 1
           fi
           echo "DATABASE_URL is present in the runner environment (value intentionally not displayed)."
-
       - name: Validate Prisma schema
         working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run validate
       - name: Apply reviewed migrations
         working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run migrate:deploy
       - name: Verify database readiness
         working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate status
