@@ -12,7 +12,7 @@
     "prisma:migrate": "prisma migrate deploy --schema ../database/prisma/schema.prisma",
     "test": "tsx --test src/*.test.ts",
     "setup:local": "npm run prisma:migrate && npm --prefix ../database run seed",
-    "vercel-build": "npm run prisma:generate && npm run build"
+    "vercel-build": "npm run prisma:generate && if [ -n \"$DATABASE_URL\" ]; then npm --prefix ../database install --production=false && npm --prefix ../database run migrate:deploy && npm --prefix ../database run seed; else echo \"DATABASE_URL is not configured for this deployment; skipping database migration and mission seed.\"; fi && npm run build"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",

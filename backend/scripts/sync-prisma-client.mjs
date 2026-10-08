@@ -3,7 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const backendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const databaseDir = path.resolve(backendDir, "..", "database");
+const repositoryDir = path.resolve(backendDir, "..");
+const databaseDir = path.join(repositoryDir, "database");
 
 const copy = (source, destination) => {
   fs.rmSync(destination, { recursive: true, force: true });
@@ -11,13 +12,18 @@ const copy = (source, destination) => {
   fs.cpSync(source, destination, { recursive: true });
 };
 
-copy(
-  path.join(databaseDir, "node_modules", "@prisma", "client"),
-  path.join(backendDir, "node_modules", "@prisma", "client")
-);
-copy(
-  path.join(databaseDir, "node_modules", ".prisma", "client"),
-  path.join(backendDir, "node_modules", ".prisma", "client")
-);
+for (const nodeModulesDir of [
+  path.join(backendDir, "node_modules"),
+  path.join(repositoryDir, "node_modules")
+]) {
+  copy(
+    path.join(databaseDir, "node_modules", "@prisma", "client"),
+    path.join(nodeModulesDir, "@prisma", "client")
+  );
+  copy(
+    path.join(databaseDir, "node_modules", ".prisma", "client"),
+    path.join(nodeModulesDir, ".prisma", "client")
+  );
+}
 
-console.log("Synced generated Prisma client into backend/node_modules.");
+console.log("Synced generated Prisma client into backend and repository-root node_modules.");
