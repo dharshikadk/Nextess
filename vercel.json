@@ -7,7 +7,7 @@
     },
     "backend": {
       "root": "backend",
-      "entrypoint": "dist/server.js",
+      "entrypoint": "vercel-entry.js",
       "installCommand": "npm install --production=false",
       "buildCommand": "npm run vercel-build"
     }
