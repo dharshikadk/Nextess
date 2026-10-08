@@ -7,7 +7,7 @@
     },
     "backend": {
       "root": "backend",
-      "framework": "express",
+      "framework": "node",
       "entrypoint": "src/server.ts",
       "installCommand": "npm install",
       "buildCommand": "npm install --no-audit --no-fund && npm run vercel-build"
