@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "generate": "prisma generate",
-    "validate": "node scripts/require-database-url.mjs validate",
+    "validate": "prisma validate",
     "format": "prisma format",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "node scripts/require-database-url.mjs migrate deploy",
+    "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "seed:v2": "tsx prisma/seed-v2.ts",
     "mission:validate": "tsx src/mission-cli.ts validate",

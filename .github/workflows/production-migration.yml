@@ -14,62 +14,46 @@ jobs:
         with:
           node-version: 22
 
-      - name: Normalize production database URL
+      - name: Prepare production database URL
         env:
           RAW_DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
 
-          const rawValue = process.env.RAW_DATABASE_URL;
-          if (typeof rawValue !== 'string' || rawValue.length === 0) {
+          let value = process.env.RAW_DATABASE_URL;
+          if (typeof value !== 'string' || value.length === 0) {
             console.error('::error::DATABASE_URL is empty or unavailable in the production environment.');
-            console.error('::error::Configure the DATABASE_URL secret in GitHub Settings > Environments > production.');
             process.exit(1);
           }
 
-          let normalizedValue = rawValue.trim();
+          value = value.trim();
 
           if (
-            normalizedValue.length >= 2 &&
-            ((normalizedValue.startsWith('"') && normalizedValue.endsWith('"')) ||
-              (normalizedValue.startsWith("'") && normalizedValue.endsWith("'")))
+            value.length >= 2 &&
+            ((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'")))
           ) {
-            normalizedValue = normalizedValue.slice(1, -1).trim();
+            value = value.slice(1, -1).trim();
           }
 
-          if (/[\r\n]/.test(normalizedValue)) {
-            console.error('::error::DATABASE_URL contains an unexpected newline. Store the PostgreSQL URL as a single line.');
-            process.exit(1);
+          if (value.startsWith('DATABASE_URL=')) {
+            value = value.slice('DATABASE_URL='.length).trim();
           }
 
-          if (!/^(postgresql|postgres):\/\//.test(normalizedValue)) {
-            if (/^DATABASE_URL\s*=/.test(normalizedValue)) {
-              console.error("::error::DATABASE_URL contains a 'DATABASE_URL=' prefix. Store only the PostgreSQL URL as the secret value.");
-            } else {
-              console.error('::error::DATABASE_URL is present but does not start with postgresql:// or postgres:// after safe normalization.');
-            }
+          if (!/^(postgresql|postgres):\/\//.test(value) || /[\r\n]/.test(value)) {
+            console.error('::error::DATABASE_URL is not a valid single-line PostgreSQL URL.');
+            console.error('::error::The secret must contain only the connection URL beginning with postgresql:// or postgres://.');
             process.exit(1);
           }
 
           fs.appendFileSync(
             process.env.GITHUB_ENV,
-            `DATABASE_URL<<NEXTESS_DATABASE_URL
-${normalizedValue}
-NEXTESS_DATABASE_URL
-`
+            `DATABASE_URL<<NEXTESS_DATABASE_URL\n${value}\nNEXTESS_DATABASE_URL\n`
           );
-          console.log('DATABASE_URL is present and has a valid PostgreSQL URL format; value intentionally not displayed.');
-          NODE
 
-      - name: Verify production database secret is injected
-        working-directory: database
-        run: |
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::error::DATABASE_URL is empty after normalization."
-            exit 1
-          fi
-          echo "DATABASE_URL is available to Prisma (value intentionally not displayed)."
+          console.log('DATABASE_URL format verified; value intentionally not displayed.');
+          NODE
 
       - name: Install database tooling
         working-directory: database
