@@ -8,12 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          package-manager-cache: false
+
+      - name: Validate production database URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node database/scripts/assert-database-url.mjs
 
       - name: Install database tooling
         working-directory: database
