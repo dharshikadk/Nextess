@@ -7,10 +7,10 @@
     },
     "backend": {
       "root": "backend",
-      "framework": "node",
+      "framework": "express",
       "entrypoint": "src/server.ts",
-      "installCommand": "npm install",
-      "buildCommand": "npm install --package-lock-only --ignore-scripts && npm ci && npm run vercel-build"
+      "installCommand": "npm install --production=false",
+      "buildCommand": "npm run vercel-build"
     }
   },
   "rewrites": [
