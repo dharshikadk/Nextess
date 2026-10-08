@@ -20,6 +20,13 @@ if (
   normalizedValue = normalizedValue.slice(1, -1).trim();
 }
 
+if (/[\r\n]/.test(normalizedValue)) {
+  console.error(
+    "DATABASE_URL contains an unexpected newline. Store the PostgreSQL URL as a single line."
+  );
+  process.exit(1);
+}
+
 if (!/^(postgresql|postgres):\/\//.test(normalizedValue)) {
   if (/^DATABASE_URL\s*=/.test(normalizedValue)) {
     console.error(
