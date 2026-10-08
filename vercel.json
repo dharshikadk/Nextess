@@ -10,7 +10,7 @@
       "framework": "express",
       "entrypoint": "src/server.ts",
       "installCommand": "npm install",
-      "buildCommand": "npm run vercel-build"
+      "buildCommand": "npm install --no-audit --no-fund && npm run vercel-build"
     }
   },
   "rewrites": [
