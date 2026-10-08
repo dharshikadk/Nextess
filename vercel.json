@@ -10,10 +10,7 @@
       "framework": "node",
       "entrypoint": "src/server.ts",
       "installCommand": "npm install",
-      "buildCommand": "npm install --no-audit --no-fund && npm run vercel-build",
-      "includeFiles": [
-        "node_modules/**"
-      ]
+      "buildCommand": "npm install --package-lock-only --ignore-scripts && npm ci && npm run vercel-build"
     }
   },
   "rewrites": [
