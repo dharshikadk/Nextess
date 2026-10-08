@@ -17,6 +17,8 @@ jobs:
         run: npm install
       - name: Validate Prisma schema
         working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run validate
       - name: Apply reviewed migrations
         working-directory: database
