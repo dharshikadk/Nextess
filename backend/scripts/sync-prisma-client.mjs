@@ -3,7 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const backendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const databaseDir = path.resolve(backendDir, "..", "database");
+const repositoryDir = path.resolve(backendDir, "..");
+const databaseDir = path.join(repositoryDir, "database");
 
 const copy = (source, destination) => {
   fs.rmSync(destination, { recursive: true, force: true });
