@@ -6,9 +6,9 @@
       "framework": "vite"
     },
     "backend": {
-      "root": "backend",
+      "root": ".",
       "runtime": "container",
-      "entrypoint": "Dockerfile.vercel"
+      "entrypoint": "backend/Dockerfile.vercel"
     }
   },
   "rewrites": [
