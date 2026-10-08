@@ -2,7 +2,7 @@
   "name": "nextess-backend-v2",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "tsx src/server.ts",
     "predev": "npm run prisma:generate",
