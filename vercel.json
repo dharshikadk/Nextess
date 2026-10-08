@@ -7,9 +7,8 @@
     },
     "backend": {
       "root": "backend",
-      "framework": "express",
-      "entrypoint": "src/server.ts",
-      "installCommand": "cd .. && npm install --prefix backend --production=false",
+      "entrypoint": "dist/server.js",
+      "installCommand": "npm install --production=false",
       "buildCommand": "npm run vercel-build"
     }
   },
