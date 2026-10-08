@@ -39,4 +39,13 @@ try {
   process.exit(1);
 }
 
-console.log('DATABASE_URL format verified; value intentionally not displayed.');
+if (process.env.GITHUB_ENV) {
+  const fs = await import('node:fs/promises');
+  await fs.appendFile(
+    process.env.GITHUB_ENV,
+    `DATABASE_URL=${normalized.replace(/%/g, '%25').replace(/\\r/g, '%0D').replace(/\\n/g, '%0A')}\\n`,
+    { encoding: 'utf8' }
+  );
+}
+
+console.log('DATABASE_URL format verified and normalized for subsequent workflow steps; value intentionally not displayed.');
