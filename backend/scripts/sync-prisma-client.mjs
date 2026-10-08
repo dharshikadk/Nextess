@@ -12,13 +12,18 @@ const copy = (source, destination) => {
   fs.cpSync(source, destination, { recursive: true });
 };
 
-copy(
-  path.join(databaseDir, "node_modules", "@prisma", "client"),
-  path.join(backendDir, "node_modules", "@prisma", "client")
-);
-copy(
-  path.join(databaseDir, "node_modules", ".prisma", "client"),
-  path.join(backendDir, "node_modules", ".prisma", "client")
-);
+for (const nodeModulesDir of [
+  path.join(backendDir, "node_modules"),
+  path.join(repositoryDir, "node_modules")
+]) {
+  copy(
+    path.join(databaseDir, "node_modules", "@prisma", "client"),
+    path.join(nodeModulesDir, "@prisma", "client")
+  );
+  copy(
+    path.join(databaseDir, "node_modules", ".prisma", "client"),
+    path.join(nodeModulesDir, ".prisma", "client")
+  );
+}
 
-console.log("Synced generated Prisma client into backend/node_modules.");
+console.log("Synced generated Prisma client into backend and repository-root node_modules.");
