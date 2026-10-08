@@ -29,12 +29,8 @@ jobs:
 
       - name: Import and publish production mission content
         working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run seed
 
       - name: Verify production migration state
         working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate status
