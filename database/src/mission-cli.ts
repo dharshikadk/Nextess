@@ -17,7 +17,7 @@ function discoverJsonFiles(inputPath:string): string[] {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
       const full=path.join(dir,entry.name);
       if(entry.isDirectory()) walk(full);
-      else if(entry.isFile()&&entry.name.toLowerCase().endsWith(".json")) results.push(full);
+      else if(entry.isFile()&&entry.name.toLowerCase().endsWith(".json")&&entry.name.toLowerCase()!=="mission.schema.json") results.push(full);
     }
   };
   walk(absolute);
