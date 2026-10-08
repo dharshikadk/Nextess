@@ -43,7 +43,7 @@ if (process.env.GITHUB_ENV) {
   const fs = await import('node:fs/promises');
   await fs.appendFile(
     process.env.GITHUB_ENV,
-    `DATABASE_URL=${normalized.replace(/%/g, '%25').replace(/\\r/g, '%0D').replace(/\\n/g, '%0A')}\\n`,
+    `DATABASE_URL=${normalized}\\n`,
     { encoding: 'utf8' }
   );
 }
