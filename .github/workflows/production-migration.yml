@@ -7,31 +7,77 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     environment: production
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v5
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Install database tooling
-        working-directory: database
-        run: npm install
+
+      - name: Normalize production database URL
+        env:
+          RAW_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const rawValue = process.env.RAW_DATABASE_URL;
+          if (typeof rawValue !== 'string' || rawValue.length === 0) {
+            console.error('::error::DATABASE_URL is empty or unavailable in the production environment.');
+            console.error('::error::Configure the DATABASE_URL secret in GitHub Settings > Environments > production.');
+            process.exit(1);
+          }
+
+          let normalizedValue = rawValue.trim();
+
+          if (
+            normalizedValue.length >= 2 &&
+            ((normalizedValue.startsWith('"') && normalizedValue.endsWith('"')) ||
+              (normalizedValue.startsWith("'") && normalizedValue.endsWith("'")))
+          ) {
+            normalizedValue = normalizedValue.slice(1, -1).trim();
+          }
+
+          if (!/^(postgresql|postgres):\/\//.test(normalizedValue)) {
+            if (/^DATABASE_URL\s*=/.test(normalizedValue)) {
+              console.error("::error::DATABASE_URL contains a 'DATABASE_URL=' prefix. Store only the PostgreSQL URL as the secret value.");
+            } else {
+              console.error('::error::DATABASE_URL is present but does not start with postgresql:// or postgres:// after safe normalization.');
+            }
+            process.exit(1);
+          }
+
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            `DATABASE_URL<<NEXTESS_DATABASE_URL
+${normalizedValue}
+NEXTESS_DATABASE_URL
+`
+          );
+          console.log('DATABASE_URL is present and has a valid PostgreSQL URL format; value intentionally not displayed.');
+          NODE
+
       - name: Verify production database secret is injected
         working-directory: database
         run: |
           if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::error::DATABASE_URL is empty or unavailable in the production environment."
-            echo "::error::Configure the DATABASE_URL secret in GitHub Settings > Environments > production."
+            echo "::error::DATABASE_URL is empty after normalization."
             exit 1
           fi
-          echo "DATABASE_URL is present in the runner environment (value intentionally not displayed)."
+          echo "DATABASE_URL is available to Prisma (value intentionally not displayed)."
+
+      - name: Install database tooling
+        working-directory: database
+        run: npm install
+
       - name: Validate Prisma schema
         working-directory: database
         run: npm run validate
+
       - name: Apply reviewed migrations
         working-directory: database
         run: npm run migrate:deploy
+
       - name: Verify database readiness
         working-directory: database
         run: npx prisma migrate status
