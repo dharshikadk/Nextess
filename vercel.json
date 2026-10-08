@@ -7,7 +7,7 @@
     },
     "backend": {
       "root": "backend",
-      "entrypoint": "vercel-entry.js",
+      "framework": "express",
       "installCommand": "cd .. && npm install --prefix database --production=false && npm install --prefix backend --production=false",
       "buildCommand": "npm run vercel-build"
     }
