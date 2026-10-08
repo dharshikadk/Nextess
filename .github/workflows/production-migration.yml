@@ -55,6 +55,10 @@ jobs:
           console.log('DATABASE_URL format verified; value intentionally not displayed.');
           NODE
 
+      - name: Validate normalized database URL
+        working-directory: database
+        run: npm run validate:database-url
+
       - name: Install database tooling
         working-directory: database
         run: npm install
